@@ -1,5 +1,4 @@
-"""Numerical tests need no simulation backend, GP fitting, or model calls."""
-
+"""Numerical tests: no simulation backend, GP fitting or model calls."""
 import importlib.util
 from pathlib import Path
 import warnings
@@ -21,7 +20,7 @@ spec.loader.exec_module(numerics)
     (-30., -457.724653760598), (-50., -1258.744182868461),
     (-100., -5010.12957880025)])
 def test_logei_against_high_precision_reference(z, expected):
-    # Reference evaluated with 100-decimal arithmetic, not ordinary floating EI.
+    # Reference values computed with 100-decimal arithmetic, not float64 EI.
     value = numerics.log_expected_improvement(np.array([-z]), np.ones(1), 0.)[0]
     assert value == pytest.approx(expected, abs=1e-8)
 
@@ -33,7 +32,7 @@ def test_logei_does_not_flatten_underflow_tail():
     assert result[0] < np.log(1e-300)
 
 
-def test_logei_agrees_with_ordinary_formula_in_well_conditioned_region():
+def test_logei_agrees_with_well_conditioned_formula():
     mean = np.linspace(-10, 3, 200)
     std, best = 2.3, 1.7
     z = (best-mean)/std
@@ -43,8 +42,7 @@ def test_logei_agrees_with_ordinary_formula_in_well_conditioned_region():
 
 
 def test_logei_tail_switch_is_continuous_and_monotone():
-    mean = np.array([20.-1e-8, 20., 20.+1e-8])
-    result = numerics.log_expected_improvement(mean, np.ones(3), 0.)
+    result = numerics.log_expected_improvement([20.-1e-8, 20., 20.+1e-8], np.ones(3), 0.)
     assert np.all(np.diff(result) < 0)
     assert np.max(abs(np.diff(result))) < 3e-7
 

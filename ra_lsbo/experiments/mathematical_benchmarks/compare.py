@@ -16,14 +16,11 @@ def run_default():
     """No arguments prepare a plan only; never implicitly authorize execution."""
     output = (Path(__file__).resolve().parents[3] / "runs" /
               f"mathematical_comparison_{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}")
-    print(f"Preparing mathematical pilot comparison: {output}", flush=True)
     plan = prepare(output, "pilot", "mathematical")
-    print(f"Methods: {', '.join(plan['arms'])}", flush=True)
     maximum = plan["budget"]["maximum_model_calls"]
-    print(f"Maximum model calls: {maximum}", flush=True)
-    print("Prepared only. After reviewing the full budget, execute:", flush=True)
-    print(f'python -m ra_lsbo.experiments.mathematical_benchmarks.compare run --output "{output}" '
-          f'--approved-call-limit {maximum}', flush=True)
+    print(f"Prepared only: {output}\nMethods: {', '.join(plan['arms'])}\nMaximum model calls: {maximum}", flush=True)
+    print(f'After reviewing the full budget: python -m ra_lsbo.experiments.mathematical_benchmarks.compare '
+          f'run --output "{output}" --approved-call-limit {maximum}', flush=True)
     return plan
 
 

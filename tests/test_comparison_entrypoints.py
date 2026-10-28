@@ -5,7 +5,6 @@ import sys
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -42,11 +41,9 @@ def test_default_entrypoint_only_prepares_pilot(monkeypatch, suite, plan_suite):
     assert calls[0][2:] == ("pilot", plan_suite)
 
 
-@pytest.mark.parametrize("suite,maximum", (("mathematical", 7716),
-                                           ("simplified_aircraft", 4820)))
+@pytest.mark.parametrize("suite,maximum", (("mathematical", 7716), ("simplified_aircraft", 4820)))
 def test_pilot_uses_twenty_seeds_and_declares_complete_budget(suite, maximum):
     from ra_lsbo.experiments.comparison.protocol import build_plan
-
     plan = build_plan("pilot", suite)
     assert plan["profile"]["seeds"] == tuple(range(9701, 9721))
     assert plan["profile"]["initial"] == 12
@@ -56,9 +53,7 @@ def test_pilot_uses_twenty_seeds_and_declares_complete_budget(suite, maximum):
 
 def test_runner_requires_explicit_complete_budget_before_execution(monkeypatch, tmp_path):
     from ra_lsbo.experiments.comparison import runner
-
-    monkeypatch.setattr(runner, "load_plan", lambda folder: {
-        "budget": {"maximum_model_calls": 7716}})
+    monkeypatch.setattr(runner, "load_plan", lambda folder: {"budget": {"maximum_model_calls": 7716}})
 
     def reached_execution(*args):
         raise RuntimeError("execution reached")

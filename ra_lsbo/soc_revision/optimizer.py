@@ -112,8 +112,8 @@ class RiskRefiningBO(RefiningLatentBO):
                         cache[identity] = candidate, float(score[0]), margins
                     return cache[identity]
 
-                # A local solver is optional candidate generation, never a model call.
-                # Keep the global pool and valid cached points if a local solve fails.
+                # Local search generates surrogate candidates, never model calls.
+                # Preserve valid cached points and the global pool on local failure.
                 result, endpoint, local_error = None, None, None
                 with record_slsqp_clipping() as clipping:
                     try:
@@ -160,7 +160,7 @@ class RiskRefiningBO(RefiningLatentBO):
             raise ValueError("A nonempty unique global pool is required")
         for candidate in global_pool:
             if digest(candidate) in seen or candidate != self.problem.canonical(candidate) or any(
-                    value > 0 for value in self.problem.precheck(candidate).values()):
+                    not np.isfinite(value) or value > 0 for value in self.problem.precheck(candidate).values()):
                 raise ValueError("Invalid or previously evaluated global candidate")
         model_records = records if self.settings.use_intervals else [without_intervals(record) for record in records]
         posterior = RiskPosterior(self.problem, self.base, model_records, self.seed, self.settings)

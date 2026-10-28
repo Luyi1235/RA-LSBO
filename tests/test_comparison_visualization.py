@@ -40,7 +40,15 @@ def test_report_embeds_generated_figures(monkeypatch, tmp_path):
     result = {"summaries": [sample], "charged_model_calls": 1, "maximum_model_calls": 1}
     monkeypatch.setattr(runner, "load_plan", lambda folder: plan)
     monkeypatch.setattr(runner, "read", lambda path: {"passed": True} if path.name == "audit.json" else result)
+    # This unit test isolates figure embedding. Real audit reconstruction and
+    # rejection of stale seals are covered by test_comparison_reliability.py.
+    audit_calls = []
+    def audit(folder, *, write=True):
+        audit_calls.append((folder, write))
+        return {"passed": True}
+    monkeypatch.setattr(runner, "audit", audit)
     output = runner.report(tmp_path)
+    assert audit_calls == [(tmp_path, False)]
     text = output.read_text(encoding="utf-8")
     assert "figures/aircraft_sparse_convergence.png" in text
     assert (tmp_path / "figures" / "aircraft_sparse_convergence.png").is_file()

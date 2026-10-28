@@ -27,7 +27,7 @@ def build_plan(profile_name="pilot", suite="mathematical"):
         raise ValueError("Choose a registered profile and one experiment package")
     if tuple(PROFILES[profile_name]["initial_policies"]) != ("random",):
         raise ValueError("External comparison supports only random initialization; "
-                         "confirm/anchored profiles require a separately implemented protocol")
+                         "confirm/anchored profiles need a separately implemented protocol")
     plan = build_core_plan(profile_name, suite)
     if profile_name == "pilot":
         expected = (("branin_sparse", "rosenbrock_sparse") if suite == "mathematical"
@@ -35,23 +35,20 @@ def build_plan(profile_name="pilot", suite="mathematical"):
         if tuple(plan["profile"]["cases"]) != expected:
             raise ValueError("The registered pilot must contain the sparse screening case set")
     plan.update({
-        "schema": SCHEMA,
-        "suite": suite,
+        "schema": SCHEMA, "suite": suite,
         "confirmation_requires_additional_authorization": True,
-        "arms": ARMS,
-        "budget": budget_for(plan["profile"], ARMS),
-        "methods": METHODS,
-        "adaptations": ADAPTATIONS,
+        "arms": ARMS, "budget": budget_for(plan["profile"], ARMS),
+        "methods": METHODS, "adaptations": ADAPTATIONS,
         "comparison_protocol": {
             "revision": "comparison_reliability_20261028",
             "same_initial_labels": True,
             "same_nominal_evaluation_budget": True,
-            "candidate_generation": "shared exact-screened pool; RA adds local candidates and NSGA-II may propose a validated offspring",
+            "candidate_generation": "shared exact-screened pool; RA adds local candidates and NSGA-II may propose validated offspring",
             "held_out_panels_and_flight_scenarios_are_optimizer_private": True,
             "new_rcaide_mda_calls": 0,
             "pilot_is_exploratory_only": True,
             "original_lsbo_in_primary_roster": False,
-            "reason_original_lsbo_omitted": "Retained as historical/secondary reference; this screen prioritizes external algorithms.",
+            "reason_original_lsbo_omitted": "Historical/secondary reference; this screen prioritizes external algorithms.",
             "explicit_execution_budget_required": True,
         },
         "registered_utc": datetime.now(timezone.utc).isoformat(),

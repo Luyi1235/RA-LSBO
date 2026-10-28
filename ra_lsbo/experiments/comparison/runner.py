@@ -18,7 +18,7 @@ from ...partial_bo.problems import candidate_pool
 from ...partial_bo.records import DesignRecord
 from . import ARMS
 from .methods import optimizer_for
-from .protocol import SCHEMA, sha, verify_plan
+from .protocol import sha, verify_plan
 
 
 def prepare(folder, profile="pilot", suite="mathematical"):
@@ -114,7 +114,7 @@ def run(folder, approved_call_limit=None):
     if (type(approved_call_limit) is not int or approved_call_limit < 1
             or maximum > approved_call_limit):
         raise ValueError(f"Complete prospective budget {maximum} exceeds approved limit "
-                         f"{approved_call_limit}; an explicit --approved-call-limit is required")
+                         f"{approved_call_limit}; explicit --approved-call-limit required")
     descriptor = os.open(str(folder/"execution.lock"), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     os.close(descriptor)
     ledger = Ledger(folder, maximum)
@@ -152,7 +152,7 @@ def run(folder, approved_call_limit=None):
 
 
 def evidence_hashes(folder):
-    """Bind all structured evidence, excluding the audit's own self-reference."""
+    """Seal structured evidence, excluding the audit's own self-reference."""
     folder = Path(folder)
     return {path.relative_to(folder).as_posix(): sha(path)
             for path in sorted(folder.rglob("*"))
@@ -160,11 +160,7 @@ def evidence_hashes(folder):
 
 
 def audit(folder, *, write=True):
-    """Reconstruct the full registered campaign without re-evaluating any model.
-
-    This verifies evidence and candidate-pool generation, NOT optimizer replay.
-    Repeated auditing is idempotent only when the sealed evidence is unchanged.
-    """
+    """Reconstruct a complete campaign without model calls or optimizer replay."""
     folder = Path(folder)
     plan = load_plan(folder)
     before = evidence_hashes(folder)
@@ -202,6 +198,7 @@ def audit(folder, *, write=True):
         row, start = settled[tag], starts[tag]
         values = list(problem.precheck(row.candidate).values())
         if (start["role"] != role or row.observation.contract_id != problem.contract_id
+                or row.observation.design_id != digest(row.candidate)
                 or row.candidate != problem.canonical(row.candidate)
                 or any(not np.isfinite(value) or value > 0 for value in values)
                 or (candidate is not None and row.candidate != candidate)):
@@ -314,8 +311,8 @@ def audit(folder, *, write=True):
     audit_result = {"passed": True, "settled_calls": len(starts), "checked_proposals": checked,
         "source_bindings": len(plan["sources"]), "algorithm_replay": False,
         "evidence_hashes": before,
-        "scope": "sources, full registered horizon, shared initialization, candidate pools, "
-                 "ledger, metrics, qualification, integration, scenarios and evidence seal"}
+        "scope": "sources, full horizon, shared initialization, candidate pools, ledger, "
+                 "metrics, qualification, integration, scenarios and structured-evidence seal"}
     if write:
         path = folder/"audit.json"
         if path.exists():
@@ -343,7 +340,7 @@ def report(folder):
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         for row in rows:
-            writer.writerow({**row, "explicit_violations": row["explicit_violations"]})
+            writer.writerow(row)
     grouped = {}
     for row in rows:
         grouped.setdefault((row["case"], row["method"]), []).append(row)

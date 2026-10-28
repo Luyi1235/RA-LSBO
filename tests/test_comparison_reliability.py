@@ -1,5 +1,4 @@
-"""Regression tests for evidence semantics, solver guards and complete audits."""
-
+"""Evidence semantics, local solver guards, and destructive audit tests."""
 from dataclasses import replace
 from types import SimpleNamespace
 import json
@@ -9,10 +8,9 @@ import numpy as np
 import pytest
 from scipy.optimize import OptimizeResult
 
-from ra_lsbo.budget import digest
 from ra_lsbo.experiments.comparison import methods, protocol, runner
 from ra_lsbo.experiments.core import protocol as core_protocol
-from ra_lsbo.experiments.core.problems import MathematicalCase
+from ra_lsbo.experiments.core.problems import MathematicalCase, AircraftCase
 from ra_lsbo.numerics import SLSQP_CLIP_MESSAGE
 from ra_lsbo.partial_bo.problems import candidate_pool
 from ra_lsbo.risk_core.observations import OutputObservation
@@ -103,7 +101,7 @@ def test_utb_eligibility_is_not_overridden_by_a_fixed_penalty(monkeypatch, eligi
 
 
 @pytest.mark.parametrize("endpoint_kind", ["roundoff", "nan", "material", "iteration_limit"])
-def test_local_solver_endpoints_are_guarded_and_diagnostics_retained(monkeypatch, endpoint_kind):
+def test_local_solver_endpoints_are_guarded(monkeypatch, endpoint_kind):
     problem = MathematicalCase(BASE)
     initial = problem.space.default().to_dict()
     settings = local_module.RevisionSettings(local_branches=1, local_starts=1, local_points=1)
@@ -146,22 +144,22 @@ def test_local_solver_endpoints_are_guarded_and_diagnostics_retained(monkeypatch
     json.dumps(info, allow_nan=False)
 
 
-def test_confirm_is_rejected_before_building_an_unimplemented_plan(monkeypatch):
-    monkeypatch.setattr(protocol, "build_core_plan", lambda *args: pytest.fail("Unsupported profile must fail before planning"))
+def test_confirm_rejected_before_building_unsupported_plan(monkeypatch):
+    monkeypatch.setattr(protocol, "build_core_plan", lambda *args: pytest.fail("Must reject before planning"))
     with pytest.raises(ValueError, match="only random"):
         protocol.build_plan("confirm", "mathematical")
 
 
-@pytest.fixture
-def toy_campaign(tmp_path, monkeypatch):
-    # Synthetic evidence fixture, not an optimization experiment or MDA call.
-    profile = {**core_protocol.PROFILES["smoke"], "cases": ("branin_sparse",),
-               "seeds": (9601,), "initial": 2, "horizon": 2, "pool": 8, "panel": 2}
+def make_toy_campaign(tmp_path, monkeypatch, aircraft=False):
+    # Synthetic labels exercise evidence plumbing; not research-model evaluations.
+    case = "aircraft_ordinary" if aircraft else "branin_sparse"
+    profile = {**core_protocol.PROFILES["smoke"], "cases": (case,), "seeds": (9601,),
+               "initial": 2, "horizon": 2, "pool": 8, "panel": 2, "scenarios": 2}
     monkeypatch.setitem(core_protocol.PROFILES, "smoke", profile)
     def evaluate(problem, raw):
-        return problem.record(raw, sum(raw["continuous"].values()),
-                              {"region": -.1, "resource": -.2}, {"termination_reason": "synthetic_fixture"})
-    monkeypatch.setattr(MathematicalCase, "evaluate", evaluate)
+        return problem.record(raw, 5000., {name: -.1 for name in problem.required_constraints},
+            {"termination_reason": "synthetic_fixture", "final_soc_exact": True, "final_soc": .8})
+    monkeypatch.setattr(AircraftCase if aircraft else MathematicalCase, "evaluate", evaluate)
     class PoolFirst:
         def __init__(self, method):
             self.method = method
@@ -171,28 +169,37 @@ def toy_campaign(tmp_path, monkeypatch):
             pass
     monkeypatch.setattr(runner, "optimizer_for", lambda problem, base, seed, method, profile: PoolFirst(method))
     folder = tmp_path/"campaign"
-    plan = runner.prepare(folder, "smoke", "mathematical")
+    plan = runner.prepare(folder, "smoke", "simplified_aircraft" if aircraft else "mathematical")
     result = runner.run(folder, plan["budget"]["maximum_model_calls"])
-    assert result["charged_model_calls"] == 18
+    assert result["charged_model_calls"] == (32 if aircraft else 18)
     return folder
+
+
+@pytest.fixture
+def toy_campaign(tmp_path, monkeypatch):
+    return make_toy_campaign(tmp_path, monkeypatch)
+
+
+@pytest.fixture
+def toy_aircraft(tmp_path, monkeypatch):
+    return make_toy_campaign(tmp_path, monkeypatch, aircraft=True)
 
 
 def overwrite_json(path, value):
     path.write_text(json.dumps(value, allow_nan=False), encoding="utf-8")
 
 
-def test_full_audit_is_idempotent_and_report_reaudits(toy_campaign, monkeypatch):
-    folder = toy_campaign
-    first = runner.audit(folder)
+def test_full_audit_idempotent_and_report_reaudits(toy_campaign, monkeypatch):
+    first = runner.audit(toy_campaign)
     assert first["settled_calls"] == 18 and first["checked_proposals"] == 12
     assert first["algorithm_replay"] is False
-    assert runner.audit(folder) == first
+    assert runner.audit(toy_campaign) == first
     from ra_lsbo.experiments.comparison import visualization
     monkeypatch.setattr(visualization, "make_figures", lambda *args: [])
-    assert runner.report(folder).is_file()
+    assert runner.report(toy_campaign).is_file()
 
 
-def test_missing_last_proposal_fails_even_with_a_summary(toy_campaign):
+def test_missing_last_proposal_fails(toy_campaign):
     path = toy_campaign/"optimization/branin_sparse/9601_ra_lsbo/proposals.jsonl"
     path.write_text(path.read_text().splitlines()[0]+"\n", encoding="utf-8")
     with pytest.raises(ValueError, match="horizon"):
@@ -217,7 +224,7 @@ def test_summary_trial_identity_is_checked(toy_campaign):
         runner.audit(toy_campaign)
 
 
-def test_report_rejects_stale_seal_before_creating_figures(toy_campaign, monkeypatch):
+def test_report_rejects_stale_seal_before_plotting(toy_campaign, monkeypatch):
     runner.audit(toy_campaign)
     overwrite_json(toy_campaign/"added_after_audit.json", {"changed": True})
     from ra_lsbo.experiments.comparison import visualization
@@ -227,17 +234,40 @@ def test_report_rejects_stale_seal_before_creating_figures(toy_campaign, monkeyp
     assert not (toy_campaign/"summary.csv").exists()
 
 
-def test_source_snapshot_tampering_is_detected(toy_campaign):
+def test_source_snapshot_tampering_detected(toy_campaign):
     snapshot = next((toy_campaign/"source_snapshot").glob("*.source"))
     snapshot.write_bytes(snapshot.read_bytes()+b"\n# tampered\n")
     with pytest.raises(ValueError, match="snapshot changed"):
         runner.audit(toy_campaign)
 
 
-def test_rewritten_candidate_pool_is_detected(toy_campaign):
+def test_rewritten_candidate_pool_detected(toy_campaign):
     path = toy_campaign/"optimization/branin_sparse/9601_ra_lsbo/proposals.jsonl"
     rows = runner.lines(path)
     rows[0]["pool"] = rows[0]["pool"][::-1]
     path.write_text("".join(json.dumps(row)+"\n" for row in rows), encoding="utf-8")
     with pytest.raises(ValueError, match="pool mismatch"):
         runner.audit(toy_campaign)
+
+
+def test_aircraft_audit_includes_integration_and_scenarios(toy_aircraft):
+    audited = runner.audit(toy_aircraft)
+    assert audited["passed"] and audited["settled_calls"] == 32
+
+
+def test_aircraft_scenario_risk_tampering_detected(toy_aircraft):
+    path = toy_aircraft/"flight_validation/aircraft_ordinary/9601_ra_lsbo.json"
+    payload = runner.read(path)
+    payload["summary"]["soc_failure_fraction_bounds"] = [.5, .5]
+    overwrite_json(path, payload)
+    with pytest.raises(ValueError, match="Flight scenario"):
+        runner.audit(toy_aircraft)
+
+
+def test_aircraft_integration_tampering_detected(toy_aircraft):
+    path = toy_aircraft/"qualification/aircraft_ordinary_integration.json"
+    payload = runner.read(path)
+    payload["relative_energy_error"] = .5
+    overwrite_json(path, payload)
+    with pytest.raises(ValueError, match="integration evidence"):
+        runner.audit(toy_aircraft)
