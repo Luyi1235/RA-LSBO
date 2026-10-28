@@ -26,7 +26,7 @@ def test_entrypoint_runs_as_script_and_module(suite, entrypoint, tmp_path):
 
 @pytest.mark.parametrize("suite,plan_suite", (("mathematical_benchmarks", "mathematical"),
                                              ("simplified_aircraft", "simplified_aircraft")))
-def test_default_entrypoint_runs_full_pilot(monkeypatch, suite, plan_suite):
+def test_default_entrypoint_only_prepares_pilot(monkeypatch, suite, plan_suite):
     module = importlib.import_module(f"ra_lsbo.experiments.{suite}.compare")
     calls = []
 
@@ -34,25 +34,12 @@ def test_default_entrypoint_runs_full_pilot(monkeypatch, suite, plan_suite):
         calls.append(("prepare", folder, profile, selected_suite))
         return {"arms": ("ra_lsbo", "random"), "budget": {"maximum_model_calls": 7716}}
 
-    def run(folder):
-        calls.append(("run", folder))
-        return {"charged_model_calls": 200}
-
-    def audit(folder):
-        calls.append(("audit", folder))
-
-    def report(folder):
-        calls.append(("report", folder))
-        return folder / "report.md"
-
-    for name, function in (("prepare", prepare), ("run", run), ("audit", audit), ("report", report)):
-        monkeypatch.setattr(module, name, function)
+    monkeypatch.setattr(module, "prepare", prepare)
+    for name in ("run", "audit", "report"):
+        monkeypatch.setattr(module, name, lambda *args: pytest.fail("No implicit execution"))
     module.main([])
-    assert [call[0] for call in calls] == ["prepare", "run", "audit", "report"]
-    folder = calls[0][1]
+    assert len(calls) == 1
     assert calls[0][2:] == ("pilot", plan_suite)
-    assert calls[1] == ("run", folder)
-    assert all(call[1] == folder for call in calls)
 
 
 @pytest.mark.parametrize("suite,maximum", (("mathematical", 7716),
@@ -67,7 +54,7 @@ def test_pilot_uses_twenty_seeds_and_declares_complete_budget(suite, maximum):
     assert plan["budget"]["maximum_model_calls"] == maximum
 
 
-def test_runner_accepts_registered_budget_or_enforces_explicit_limit(monkeypatch, tmp_path):
+def test_runner_requires_explicit_complete_budget_before_execution(monkeypatch, tmp_path):
     from ra_lsbo.experiments.comparison import runner
 
     monkeypatch.setattr(runner, "load_plan", lambda folder: {
@@ -77,7 +64,8 @@ def test_runner_accepts_registered_budget_or_enforces_explicit_limit(monkeypatch
         raise RuntimeError("execution reached")
 
     monkeypatch.setattr(runner.os, "open", reached_execution)
+    for cap in (None, 500, 7715, True, 7716.):
+        with pytest.raises(ValueError, match="approved limit"):
+            runner.run(tmp_path, cap)
     with pytest.raises(RuntimeError, match="execution reached"):
-        runner.run(tmp_path)
-    with pytest.raises(ValueError, match="exceeds approved limit"):
-        runner.run(tmp_path, 500)
+        runner.run(tmp_path, 7716)

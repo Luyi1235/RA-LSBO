@@ -2,11 +2,11 @@
 import zlib
 
 import numpy as np
-from scipy.stats import norm
 from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern, RBF, WhiteKernel
 
 from ...budget import digest
+from ...numerics import log_expected_improvement
 from ...soc_revision.optimizer import RiskRefiningBO
 from ..core.methods import settings_for
 
@@ -21,16 +21,19 @@ METHODS = {
 }
 
 ADAPTATIONS = {
-    "logcei": "Objective GP uses completed usable observations; constraint and completion GPCs "
+    "logcei": "Stable log-EI; objective GP uses all trusted completed exact objectives, including "
+              "explicitly infeasible designs. Constraint and completion GPCs "
               "use only exact/sign-resolved evidence. Interval overlaps and unknown outputs are omitted.",
-    "scbo_adapted": "Single-point, candidate-pool implementation; hierarchical categories use Hamming "
-                    "distance and active continuous coordinates define the trust region. This is not "
+    "scbo_adapted": "Single-point, candidate-pool implementation; hierarchical categories use exact "
+                    "equality and active continuous coordinates define the trust region; best-so-far includes "
+                    "shared initial labels and never regresses. This is not "
                     "a reference-code reproduction of SCBO.",
     "sego_utb_adapted": "Independent exact-value GPs and a fixed 1.96 upper-confidence feasibility "
-                       "bound; unresolved interval values are not converted to fabricated numbers. "
+                       "bound, with completion/sign evidence weighting and explicit restoration if no candidate "
+                       "is eligible. Unresolved intervals are not fabricated as exact values. "
                        "This is an adaptation, not a claim of full SEGO-UTB reproduction.",
     "nsga2_adapted": "Sequential mixed-variable evolutionary adapter with nondominated sorting on "
-                     "constraint-violation/completion and objective. Missing objective values remain "
+                     "a declared evidence-first constraint ordering, then objective. Missing objective values remain "
                      "missing and are ranked through observed completion/constraint evidence only.",
 }
 
@@ -59,6 +62,8 @@ def _class_label(observation):
 def _classifier(problem, records, name=None):
     x, y = [], []
     for record in records:
+        if record.observation.status in {"unknown", "infrastructure_error"}:
+            continue
         if name == "__completion__":
             label = record.observation.completion_label()
         else:
@@ -92,9 +97,11 @@ def _probability(model, rate, x):
 def _regressor(problem, records, output):
     x, y = [], []
     for record in records:
+        if record.observation.status in {"unknown", "infrastructure_error"}:
+            continue
         if output == "__objective__":
             observation = record.observation.objective
-            valid = record.usable_feasible
+            valid = record.observation.status == "completed"
         else:
             try:
                 observation = record.observation.constraint(output)
@@ -136,16 +143,32 @@ def _joint_probability(problem, records, pool):
     return np.clip(probability, 1e-9, 1.)
 
 
-def _violation(record):
-    if record.observation.status != "completed":
-        return 1e6
-    values = []
+def _constraint_key(record):
+    """Declared ordering of evidence, NOT an imputed physical violation.
+
+    Usable feasible < completed known-infeasible < unresolved < hidden failure
+    < unknown/infrastructure. Within known-infeasible records compare the
+    number of known violations, unresolved constraints, then the observed
+    violation lower bound. A sign-only (0,+inf) has one violation even though
+    its numeric infimum is zero. Missing objectives are never assigned a penalty.
+    """
+    status = record.observation.status
+    if status in {"unknown", "infrastructure_error"}:
+        return (4, 0, 0, 0.)
+    if record.usable_feasible:
+        return (0, 0, 0, 0.)
+    if status == "hidden_failure":
+        return (3, 0, 0, 0.)
+    violations, unresolved, lower_bound = 0, 0, 0.
     for _, observation in record.observation.constraints:
-        if observation.kind == "exact":
-            values.append(max(0., float(observation.value)))
-        elif observation.kind == "interval" and observation.constraint_satisfaction() is False:
-            values.append(max(0., float(observation.lower or 0.)))
-    return float(sum(values)) if values else (0. if record.usable_feasible else 1e3)
+        label = observation.constraint_satisfaction()
+        unresolved += int(label is None)
+        if label is False:
+            violations += 1
+            bound = observation.value if observation.kind == "exact" else observation.lower
+            if bound is not None:
+                lower_bound += max(0., float(bound))
+    return (1 if violations else 2, violations, unresolved, lower_bound)
 
 
 class ExternalOptimizer:
@@ -162,7 +185,7 @@ class ExternalOptimizer:
         feasible = [row for row in records if row.usable_feasible]
         if feasible:
             return min(feasible, key=lambda row: row.observation.objective.value)
-        return min(records, key=_violation) if records else None
+        return min(records, key=_constraint_key) if records else None
 
     def _within_scbo_region(self, center, candidates):
         if center is None:
@@ -188,11 +211,9 @@ class ExternalOptimizer:
         if not feasible_values:
             return np.log(probability), {"phase": "feasibility_search", "joint_probability": probability.tolist()}
         mean, std = _predict(objective, self.problem, pool, min(feasible_values))
-        improvement = min(feasible_values)-mean
-        z = improvement/std
-        ei = improvement*norm.cdf(z)+std*norm.pdf(z)
-        score = np.log(np.maximum(ei, 1e-300))+np.log(probability)
-        return score, {"phase": "log_constrained_ei", "ei": ei.tolist(),
+        log_ei = log_expected_improvement(mean, std, min(feasible_values))
+        score = log_ei+np.log(probability)
+        return score, {"phase": "log_constrained_ei", "log_ei": log_ei.tolist(),
                        "joint_probability": probability.tolist()}
 
     def _scbo(self, records, pool, iteration):
@@ -226,9 +247,8 @@ class ExternalOptimizer:
             probability = _joint_probability(self.problem, records, pool)
             return np.log(probability), {"phase": "feasibility_search", "utb_beta": 1.96}
         mean, std = _predict(objective, self.problem, pool, min(feasible_values))
-        improvement = min(feasible_values)-mean
-        z = improvement/std
-        ei = improvement*norm.cdf(z)+std*norm.pdf(z)
+        log_ei = log_expected_improvement(mean, std, min(feasible_values))
+        probability = _joint_probability(self.problem, records, pool)
         upper_violation = np.zeros(len(pool))
         names = sorted({name for row in records for name, _ in row.observation.constraints})
         details = {}
@@ -241,17 +261,32 @@ class ExternalOptimizer:
             upper_violation += np.maximum(upper, 0.)
             details[name] = upper.tolist()
         eligible = upper_violation <= 1e-12
-        score = np.where(eligible, np.log(np.maximum(ei, 1e-300)), -1e6-upper_violation)
-        return score, {"phase": "utb_feasible_set", "utb_beta": 1.96,
+        if eligible.any():
+            score = np.where(eligible, log_ei+np.log(probability), -np.inf)
+            phase = "utb_feasible_set"
+        else:
+            least = np.isclose(upper_violation, upper_violation.min(), rtol=1e-10, atol=1e-12)
+            score = np.where(least, np.log(probability), -np.inf)
+            phase = "utb_support_restoration"
+        return score, {"phase": phase, "utb_beta": 1.96,
+                       "joint_probability": probability.tolist(), "eligible": eligible.tolist(),
                        "upper_violation": upper_violation.tolist(), "upper_bounds": details}
 
     def _nsga2(self, records, pool):
         if not records:
             return {"phase": "random_initial_population", "population": 0,
                     "crowding_order": []}
-        values = np.asarray([
-            [_violation(row), row.observation.objective.value if row.usable_feasible else 1e12]
-            for row in records], dtype=float)
+        keys = [_constraint_key(row) for row in records]
+        objectives = np.asarray([row.observation.objective.value if row.usable_feasible else np.nan
+                                 for row in records], float)
+        values = np.column_stack((np.asarray(keys, float), objectives))
+
+        def better(i, j):
+            if keys[i] != keys[j]:
+                return keys[i] < keys[j]
+            return (records[i].usable_feasible and records[j].usable_feasible
+                    and objectives[i] < objectives[j])
+
         count = len(records)
         domination_count = np.zeros(count, dtype=int)
         dominates = [[] for _ in range(count)]
@@ -260,9 +295,9 @@ class ExternalOptimizer:
             for j in range(count):
                 if i == j:
                     continue
-                if np.all(values[i] <= values[j]) and np.any(values[i] < values[j]):
+                if better(i, j):
                     dominates[i].append(j)
-                elif np.all(values[j] <= values[i]) and np.any(values[j] < values[i]):
+                elif better(j, i):
                     domination_count[i] += 1
             if domination_count[i] == 0:
                 first.append(i)
@@ -284,18 +319,20 @@ class ExternalOptimizer:
                 crowding[front] = np.inf
                 continue
             for objective in range(values.shape[1]):
+                if not np.isfinite(values[front, objective]).all():
+                    continue
                 ordered = sorted(front, key=lambda index: values[index, objective])
-                crowding[ordered[0]] = crowding[ordered[-1]] = np.inf
                 low, high = values[ordered[0], objective], values[ordered[-1], objective]
                 if high <= low or not np.isfinite(high-low):
                     continue
+                crowding[ordered[0]] = crowding[ordered[-1]] = np.inf
                 for position in range(1, len(ordered)-1):
                     crowding[ordered[position]] += (
                         values[ordered[position+1], objective]-values[ordered[position-1], objective]
                     )/(high-low)
         return {"phase": "parent_nondominated_sorting",
             "population": count, "front_sizes": [len(front) for front in fronts],
-            "best_observed_violation": float(values[:, 0].min()),
+            "best_constraint_key": list(min(keys)),
             "best_observed_objective": min((row.observation.objective.value for row in records
                 if row.usable_feasible), default=None),
             "crowding_order": sorted(range(count), key=lambda index: (rank[index], -crowding[index]))}
@@ -338,9 +375,15 @@ class ExternalOptimizer:
         if self.pending is not None or iteration != self.next_iteration:
             raise ValueError("Settle each comparison proposal before continuing")
         seen = {row.observation.design_id for row in records}
-        if not pool or any(self.problem.canonical(candidate) != candidate
-                           or digest(candidate) in seen for candidate in pool):
+        if (not pool or len({digest(candidate) for candidate in pool}) != len(pool)
+                or any(self.problem.canonical(candidate) != candidate
+                       or digest(candidate) in seen
+                       or any(not np.isfinite(value) or value > 0
+                              for value in self.problem.precheck(candidate).values()) for candidate in pool)):
             raise ValueError("Candidate pool must be canonical, unseen and nonempty")
+        if self.method == "scbo_adapted":
+            self.best_before = min((row.observation.objective.value for row in records
+                                    if row.usable_feasible), default=None)
         metadata = {"method": self.method, "adaptation": ADAPTATIONS.get(self.method)}
         if self.method == "random":
             index = int(self.rng.integers(len(pool)))
@@ -387,7 +430,8 @@ class ExternalOptimizer:
         return candidate, metadata
 
     def accept(self, record):
-        if self.pending is None or record.candidate != self.pending[0]:
+        if (self.pending is None or record.candidate != self.pending[0]
+                or record.observation.contract_id != self.problem.contract_id):
             raise ValueError("Feedback does not match the pending comparison proposal")
         _, optimizer, _ = self.pending
         if optimizer is not None:
@@ -407,8 +451,8 @@ class ExternalOptimizer:
                 if self.failures >= 4:
                     self.radius = max(.05, self.radius*.5)
                     self.failures = 0
-            self.best_before = min((row.observation.objective.value for row in [record]
-                                    if row.usable_feasible), default=self.best_before)
+            if value is not None:
+                self.best_before = value if incumbent is None else min(incumbent, value)
         self.pending = None
         self.next_iteration += 1
 
@@ -419,4 +463,3 @@ def optimizer_for(problem, base_project, seed, method, profile):
     optimizer = ExternalOptimizer(problem, seed, method, profile)
     optimizer.base_project = base_project
     return optimizer
-
