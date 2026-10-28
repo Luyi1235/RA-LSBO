@@ -18,7 +18,7 @@ from ...partial_bo.problems import candidate_pool
 from ...partial_bo.records import DesignRecord
 from . import ARMS
 from .methods import optimizer_for
-from .protocol import SCHEMA, sha, verify_plan
+from .protocol import sha, verify_plan
 
 
 def prepare(folder, profile="pilot", suite="mathematical"):
@@ -44,8 +44,10 @@ def load_plan(folder):
     folder = Path(folder)
     plan = read(folder/"plan.json")
     registration = read(folder/"registration.json")
-    if sha(folder/"plan.json") != registration["plan_sha256"]:
-        raise ValueError("Prospective comparison plan changed")
+    if (sha(folder/"plan.json") != registration["plan_sha256"]
+            or registration["maximum_model_calls"] != plan["budget"]["maximum_model_calls"]
+            or registration["new_model_calls"] != 0):
+        raise ValueError("Prospective comparison plan or registration changed")
     verify_plan(plan)
     for identity in plan["sources"].values():
         if sha(folder/"source_snapshot"/(identity+".source")) != identity:
@@ -109,9 +111,10 @@ def run(folder, approved_call_limit=None):
     folder = Path(folder)
     plan = load_plan(folder)
     maximum = plan["budget"]["maximum_model_calls"]
-    if approved_call_limit is not None and (type(approved_call_limit) is not int
-            or approved_call_limit < 1 or maximum > approved_call_limit):
-        raise ValueError(f"Complete prospective budget {maximum} exceeds approved limit")
+    if (type(approved_call_limit) is not int or approved_call_limit < 1
+            or maximum > approved_call_limit):
+        raise ValueError(f"Complete prospective budget {maximum} exceeds approved limit "
+                         f"{approved_call_limit}; explicit --approved-call-limit required")
     descriptor = os.open(str(folder/"execution.lock"), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     os.close(descriptor)
     ledger = Ledger(folder, maximum)
@@ -148,16 +151,25 @@ def run(folder, approved_call_limit=None):
     return summary
 
 
-def audit(folder):
+def evidence_hashes(folder):
+    """Seal structured evidence, excluding the audit's own self-reference."""
+    folder = Path(folder)
+    return {path.relative_to(folder).as_posix(): sha(path)
+            for path in sorted(folder.rglob("*"))
+            if path.is_file() and path.suffix in {".json", ".jsonl"} and path != folder/"audit.json"}
+
+
+def audit(folder, *, write=True):
+    """Reconstruct a complete campaign without model calls or optimizer replay."""
     folder = Path(folder)
     plan = load_plan(folder)
+    before = evidence_hashes(folder)
     events = lines(folder/"calls.jsonl")
     if len(events) % 2 or any(events[index]["event"] != "started"
                               or events[index+1]["event"] != "settled"
                               for index in range(0, len(events), 2)):
         raise ValueError("Unsettled comparison call ledger")
-    settled = {}
-    starts, roles = [], Counter()
+    settled, starts, roles = {}, {}, Counter()
     for number in range(0, len(events), 2):
         start, end = events[number], events[number+1]
         payload = {name: start[name] for name in
@@ -167,56 +179,147 @@ def audit(folder):
                 or end["call_id"] != start["call_id"] or start["tag"] != end["tag"]
                 or record.candidate != start["candidate"]
                 or record.observation.contract_id != start["contract"]
-                or digest(record.to_dict()) != end["record_digest"] or start["tag"] in settled):
+                or digest(record.to_dict()) != end["record_digest"] or start["tag"] in settled
+                or start["new_rcaide_mda"] is not False):
             raise ValueError("Call identity or settled record mismatch")
-        settled[start["tag"]] = record
-        starts.append(start)
+        settled[start["tag"]], starts[start["tag"]] = record, start
         roles[start["role"]] += 1
     if (len(settled) > plan["budget"]["maximum_model_calls"] or any(
             count > plan["budget"].get(role, -1) for role, count in roles.items())):
         raise ValueError("Comparison budget exceeded")
+    expected_tags, reconstructed, qualifications, integrations = set(), [], {}, {}
+
+    def claim(tag, role, problem, candidate=None):
+        if tag not in settled:
+            raise ValueError("Missing registered call: "+tag)
+        if tag in expected_tags:
+            raise ValueError("Repeated registered call: "+tag)
+        expected_tags.add(tag)
+        row, start = settled[tag], starts[tag]
+        values = list(problem.precheck(row.candidate).values())
+        if (start["role"] != role or row.observation.contract_id != problem.contract_id
+                or row.observation.design_id != digest(row.candidate)
+                or row.candidate != problem.canonical(row.candidate)
+                or any(not np.isfinite(value) or value > 0 for value in values)
+                or (candidate is not None and row.candidate != candidate)):
+            raise ValueError("Registered call role, contract or candidate changed: "+tag)
+        return row
+
     checked = 0
     for case in plan["profile"]["cases"]:
+        task, problem = plan["tasks"][case], make_problem(BASE, case)
+        anchors = [claim(f"{case}/anchor/{i}", "qualification_anchors", problem, raw)
+                   for i, raw in enumerate(task["anchors"])]
+        panel = [claim(f"{case}/panel/{i}", "independent_panel", problem, raw)
+                 for i, raw in enumerate(task["panel"])]
+        qualifications[case] = {**qualification(panel),
+                               "anchors_usable": [bool(row.usable_feasible) for row in anchors]}
+        expected = {"summary": qualifications[case], "anchors": [row.to_dict() for row in anchors],
+                    "panel": [row.to_dict() for row in panel]}
+        if read(folder/"qualification"/(case+".json")) != plain(expected):
+            raise ValueError("Qualification evidence or statistics changed")
+        if case.startswith("aircraft_"):
+            records = [claim(f"{case}/integration/{step}", "aircraft_step_convergence",
+                             make_problem(BASE, case, integration_step=step), task["anchors"][0])
+                       for step in (20., 5.)]
+            exact = all(row.observation.objective.kind == "exact" for row in records)
+            relative = (abs(records[0].observation.objective.value-records[1].observation.objective.value)
+                        /max(abs(records[1].observation.objective.value), 1.)) if exact else None
+            same = (records[0].diagnostics["termination_reason"] == records[1].diagnostics["termination_reason"]
+                    and records[0].physical_feasible == records[1].physical_feasible)
+            integration = {"steps_s": [20., 5.], "same_status_and_physical_label": same,
+                "both_objectives_exact": exact, "relative_energy_error": relative,
+                "status": "passed" if exact and same and relative <= .01
+                else "inconclusive" if not exact and same else "failed"}
+            if (integration["status"] == "failed"
+                    or read(folder/"qualification"/(case+"_integration.json")) != integration):
+                raise ValueError("Aircraft integration evidence failed or changed")
+            integrations[case] = integration
         for seed in plan["profile"]["seeds"]:
-            initial_spec = plan["tasks"][case]["initial"][str(seed)]["random"]["random_candidates"]
-            initial = [settled[f"{case}/{seed}/random/initial/{i}"] for i in range(len(initial_spec))]
-            if [row.candidate for row in initial] != initial_spec:
-                raise ValueError("Shared initial design set changed")
+            specification = task["initial"][str(seed)]["random"]
+            initial = [claim(f"{case}/{seed}/random/initial/{i}", "shared_initial", problem, raw)
+                       for i, raw in enumerate(specification["random_candidates"])]
             for method in ARMS:
                 output = folder/"optimization"/case/f"{seed}_{method}"
-                manifest = read(output/"manifest.json")
-                if manifest["initial_digest"] != digest([row.to_dict() for row in initial]):
-                    raise ValueError("Methods do not share identical starting labels")
+                expected_manifest = {"case": case, "seed": seed, "method": method,
+                    "contract": problem.contract_id, "initial": [row.to_dict() for row in initial],
+                    "initial_digest": digest([row.to_dict() for row in initial])}
+                if read(output/"manifest.json") != plain(expected_manifest):
+                    raise ValueError("Methods do not share identical starting labels or trial identity")
                 history, online = list(initial), []
-                for iteration, proposal in enumerate(lines(output/"proposals.jsonl")):
-                    record = settled[f"{case}/{seed}/random/{method}/online/{iteration}"]
-                    if (proposal["candidate"] != record.candidate
-                            or proposal["prefix_digest"] != digest([row.to_dict() for row in history])):
-                        raise ValueError("Proposal/evaluation/history mismatch")
+                proposals = lines(output/"proposals.jsonl")
+                if len(proposals) != plan["profile"]["horizon"]:
+                    raise ValueError("Incomplete registered trial horizon")
+                for iteration, proposal in enumerate(proposals):
+                    record = claim(f"{case}/{seed}/random/{method}/online/{iteration}", "online", problem)
+                    seen = {row.observation.design_id for row in history}
+                    pool, rejected = candidate_pool(problem,
+                        seed*10000+iteration+100000000*plan["profile"]["cases"].index(case),
+                        plan["profile"]["pool"], seen)
+                    if (proposal["iteration"] != iteration or proposal["candidate"] != record.candidate
+                            or proposal["prefix_digest"] != digest([row.to_dict() for row in history])
+                            or record.observation.design_id in seen or proposal["pool"] != pool
+                            or proposal["exact_screen_rejections"] != rejected
+                            or proposal["metadata"]["method"] != method):
+                        raise ValueError("Proposal/evaluation/history/pool mismatch")
                     history.append(record)
                     online.append(record)
                     checked += 1
                 if lines(output/"observations.jsonl") != plain([row.to_dict() for row in online]):
                     raise ValueError("Trial observations differ from ledger")
                 saved = read(output/"summary.json")
-                expected = trajectory_metrics(initial, online, plan["profile"]["horizon"])
+                expected = {"case": case, "seed": seed, "initial_policy": "random", "method": method,
+                            **trajectory_metrics(initial, online, plan["profile"]["horizon"])}
                 if any(saved[key] != value for key, value in expected.items()):
                     raise ValueError("Trial metrics differ from settled evidence")
+                if case.startswith("aircraft_"):
+                    incumbent = min((row for row in history if row.usable_feasible),
+                                    key=lambda row: row.observation.objective.value, default=None)
+                    records = []
+                    if incumbent is not None:
+                        for i, scenario in enumerate(task["flight_scenarios"][str(seed)]):
+                            flight_problem = make_problem(BASE, case, scenario=FlightScenario(**scenario),
+                                                          full_trajectory=True)
+                            records.append(claim(f"{case}/{seed}/random/{method}/flight/{i}",
+                                "held_out_flight_scenarios", flight_problem, incumbent.candidate))
+                    risk = flight_risk(records)
+                    if incumbent is not None:
+                        risk.update(incumbent_design_id=incumbent.observation.design_id,
+                                    nominal_objective_Wh=incumbent.observation.objective.value)
+                        expected_flight = {"summary": risk, "records": [row.to_dict() for row in records]}
+                        if read(folder/"flight_validation"/case/f"{seed}_{method}.json") != plain(expected_flight):
+                            raise ValueError("Flight scenario evidence or risk statistics changed")
+                    elif (folder/"flight_validation"/case/f"{seed}_{method}.json").exists():
+                        raise ValueError("Flight validation without a nominal feasible incumbent")
+                    if saved["flight_risk"] != risk:
+                        raise ValueError("Trial flight-risk summary differs from scenario evidence")
+                reconstructed.append(saved)
+    if set(settled) != expected_tags:
+        raise ValueError("Unregistered or unconsumed call ledger entries")
     result = read(folder/"results.json")
-    reconstructed = []
-    for case in plan["profile"]["cases"]:
-        for seed in plan["profile"]["seeds"]:
-            for method in ARMS:
-                reconstructed.append(read(folder/"optimization"/case/f"{seed}_{method}"/"summary.json"))
-    if (result["charged_model_calls"] != len(starts)
-            or result["charged_by_role"] != dict(roles)
-            or result["summaries"] != reconstructed
-            or result["paired_comparisons"] != paired_comparisons(reconstructed)):
-        raise ValueError("Call count differs from results")
+    expected_result = {"profile": plan["profile"]["name"], "suite": plan["suite"],
+        "summaries": reconstructed, "qualifications": qualifications, "integration": integrations,
+        "paired_comparisons": paired_comparisons(reconstructed),
+        "charged_model_calls": len(starts), "charged_by_role": dict(roles),
+        "maximum_model_calls": plan["budget"]["maximum_model_calls"],
+        "unused_calls_not_reassigned": plan["budget"]["maximum_model_calls"]-len(starts),
+        "new_rcaide_mda_calls": 0, "publication_confirmation": False}
+    if result != plain(expected_result):
+        raise ValueError("Results differ from reconstructed campaign evidence")
+    if evidence_hashes(folder) != before:
+        raise ValueError("Evidence changed while being audited")
     audit_result = {"passed": True, "settled_calls": len(starts), "checked_proposals": checked,
         "source_bindings": len(plan["sources"]), "algorithm_replay": False,
-        "scope": "source hashes, shared initialization, proposal/evaluation pairing, metrics and budget"}
-    save(folder/"audit.json", audit_result)
+        "evidence_hashes": before,
+        "scope": "sources, full horizon, shared initialization, candidate pools, ledger, "
+                 "metrics, qualification, integration, scenarios and structured-evidence seal"}
+    if write:
+        path = folder/"audit.json"
+        if path.exists():
+            if read(path) != audit_result:
+                raise ValueError("Evidence differs from the existing audit seal; do not overwrite history")
+        else:
+            save(path, audit_result)
     return audit_result
 
 
@@ -224,8 +327,8 @@ def report(folder):
     folder = Path(folder)
     plan = load_plan(folder)
     audit_result = read(folder/"audit.json")
-    if not audit_result["passed"]:
-        raise ValueError("Comparison audit must pass before reporting")
+    if not audit_result["passed"] or audit_result != audit(folder, write=False):
+        raise ValueError("Comparison audit must pass on unchanged evidence before reporting")
     result = read(folder/"results.json")
     rows = result["summaries"]
     from .visualization import make_figures
@@ -237,7 +340,7 @@ def report(folder):
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         for row in rows:
-            writer.writerow({**row, "explicit_violations": row["explicit_violations"]})
+            writer.writerow(row)
     grouped = {}
     for row in rows:
         grouped.setdefault((row["case"], row["method"]), []).append(row)
@@ -262,4 +365,3 @@ def report(folder):
     with (folder/"report.md").open("x", encoding="utf-8") as stream:
         stream.write("\n".join(text)+"\n")
     return folder/"report.md"
-
