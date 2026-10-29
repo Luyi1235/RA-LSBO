@@ -49,3 +49,10 @@ jobs:
           path: |
             /tmp/math-diagnosis/
             /tmp/math-diagnosis.log
+      - name: Transfer exact existing archive for local read-only analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-pilot-archive-${{ github.sha }}
+          retention-days: 3
+          compression-level: 0
+          path: runs/math_v2_pilot_20261028_213606_7a30fd87_full_records.zip
