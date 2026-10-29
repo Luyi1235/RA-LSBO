@@ -60,11 +60,13 @@ def test_raw_feasible_incumbent_survives_exact_feedback_ablation(monkeypatch):
 
 
 def test_native_missing_objective_stop_consumes_only_settled_labels(monkeypatch, tmp_path):
-    problem, _, _, bad = samples()
+    problem, pool, _, bad = samples()
     monkeypatch.setattr(problem, 'evaluate', lambda *a: pytest.fail('Native adapter cannot call true evaluator'))
     profile = {**core_protocol.PROFILES['smoke'], 'horizon': 6}
     opt = methods.NativeLSBO(problem, BASE, 1701, profile, tmp_path)
-    history = [bad]
+    # Native settings require at least four initial labels; do not weaken that rule.
+    history = [bad]+[replace(bad, candidate=c,
+        observation=replace(bad.observation, design_id=digest(c))) for c in pool[:3]]
     for step in range(5):
         candidate, metadata = opt.propose(history, [], step)
         row = replace(bad, candidate=candidate,
