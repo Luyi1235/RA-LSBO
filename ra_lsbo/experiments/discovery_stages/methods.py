@@ -12,17 +12,26 @@ from .optimizer import DiscoveryBO
 from .policies import COVERAGE_PERIOD, NEAR_TOLERANCE, optimistic_bound
 
 STAGES = {
+    'phase': ('random', 'ra_v2', 'ra_coverage', 'ra_discovery',
+              'ra_guard_only', 'ra_phase_coverage', 'ra_phase_discovery'),
     'discovery': ('random', 'ra_v2', 'ra_cold_global', 'ra_coverage', 'ra_discovery'),
     'representation': ('random', 'random_then_local', 'latent_exact', 'latent_sign',
                        'latent_interval', 'onehot_exact', 'onehot_sign', 'onehot_interval'),
     'baselines': ('random', 'ra_discovery', 'original_lsbo', 'logcei', 'scbo_adapted',
                   'sego_conservative_v2', 'sego_utb_v3', 'nsga2_adapted'),
 }
-REFERENCE = {'discovery': 'ra_discovery', 'representation': 'latent_interval', 'baselines': 'ra_discovery'}
+REFERENCE = {'phase': 'ra_phase_discovery', 'discovery': 'ra_discovery', 'representation': 'latent_interval', 'baselines': 'ra_discovery'}
 
 
 def specification(method, profile):
     settings = settings_for('ra_lsbo', profile)
+    if method in {'ra_guard_only', 'ra_phase_coverage', 'ra_phase_discovery'}:
+        return {'engine': 'phase_discovery_v1',
+                'cold_global': method == 'ra_phase_discovery', 'protect': True,
+                'feedback': 'interval', 'random_discovery': False,
+                'coverage_scope': 'none' if method == 'ra_guard_only' else 'cold',
+                'settings': asdict(settings), 'near_tolerance': NEAR_TOLERANCE,
+                'coverage_period': COVERAGE_PERIOD}
     if method in {'ra_cold_global', 'ra_coverage', 'ra_discovery', 'random_then_local'} or method.startswith(('latent_', 'onehot_')):
         feedback = method.split('_', 1)[1] if method.startswith(('latent_', 'onehot_')) else 'interval'
         if method == 'random_then_local':
@@ -133,10 +142,11 @@ class NativeLSBO:
 
 def optimizer_for(problem, base, seed, method, profile, output):
     spec = specification(method, profile)
-    if spec['engine'] == 'discovery_bo_v1':
+    if spec['engine'] in {'discovery_bo_v1', 'phase_discovery_v1'}:
         settings = replace(settings_for('ra_lsbo', profile), latent=spec['settings']['latent'])
         engine = DiscoveryBO(problem, base, seed, settings, **{key: spec[key] for key in
-                             ('cold_global', 'protect', 'feedback', 'random_discovery')})
+                             ('cold_global', 'protect', 'feedback', 'random_discovery')},
+                             coverage_scope=spec.get('coverage_scope', 'all'))
     elif method == 'original_lsbo':
         return NativeLSBO(problem, base, seed, profile, output)
     elif method == 'sego_utb_v3':

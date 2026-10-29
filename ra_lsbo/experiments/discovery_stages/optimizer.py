@@ -10,15 +10,17 @@ from ...soc_revision.acquisition import choose_acquisition
 from ...soc_revision.optimizer import RiskRefiningBO
 from ...soc_revision.posterior import RiskPosterior
 from .policies import (COVERAGE_PERIOD, NEAR_TOLERANCE, coverage_pick, feedback_view,
-                       filter_near, nearest_distance)
+                       filter_near, nearest_distance, coverage_enabled)
 
 
 class DiscoveryBO(RiskRefiningBO):
     def __init__(self, problem, base, seed, settings, *, cold_global=True, protect=True,
-                 feedback='interval', random_discovery=False):
+                 feedback='interval', random_discovery=False, coverage_scope='all'):
         super().__init__(problem, base, seed, settings)
         self.cold_global, self.protect = cold_global, protect
         self.feedback, self.random_discovery = feedback, random_discovery
+        coverage_enabled(coverage_scope, False)  # validate even before a proposal
+        self.coverage_scope = coverage_scope
 
     def _finish(self, candidate, records, metadata, prefix):
         prior = min((r.observation.objective.value for r in records
@@ -53,10 +55,12 @@ class DiscoveryBO(RiskRefiningBO):
                                     else (list(global_pool), list(range(len(global_pool))), []))
         if not pool:
             raise RuntimeError('No novel global candidates; no automatic tolerance relaxation or repeat')
-        scheduled = self.protect and iteration % COVERAGE_PERIOD == 0
+        coverage_active = self.protect and coverage_enabled(self.coverage_scope, cold)
+        scheduled = coverage_active and iteration % COVERAGE_PERIOD == 0
         common = {'global_pool_size': len(global_pool), 'novel_global_pool_size': len(pool),
                   'global_near_rejections': rejected_global, 'local_reports': [],
-                  'coverage_scheduled': scheduled, 'local_enabled': False,
+                  'coverage_scheduled': scheduled, 'coverage_scope': self.coverage_scope,
+                  'coverage_active': coverage_active, 'local_enabled': False,
                   'coverage_reason': None, 'selected_from_local_augmentation': False}
         if scheduled or (self.random_discovery and cold):
             if self.random_discovery and cold:
@@ -103,7 +107,7 @@ class DiscoveryBO(RiskRefiningBO):
         eligible = int(sum(selection['eligible']))
         metadata['model_eligible_count'] = eligible
         # Coverage is outside learned gates. Do not label a singleton as entropy search.
-        if self.protect and eligible <= 1:
+        if coverage_active and eligible <= 1:
             coverage_index, rule = coverage_pick(self.problem, pool, records, self.seed, iteration)
             candidate = pool[coverage_index]
             metadata.update(model_mode=metadata['mode'], mode='degenerate_gate_coverage',

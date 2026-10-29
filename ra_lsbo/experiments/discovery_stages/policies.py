@@ -12,6 +12,13 @@ NEAR_TOLERANCE = 1e-8  # normalized decision resolution, NOT physical equivalenc
 COVERAGE_PERIOD = 5
 
 
+def coverage_enabled(scope, cold):
+    """Scope controls coverage only; near-duplicate protection stays independent."""
+    if scope not in {'all', 'cold', 'none'} or type(cold) is not bool:
+        raise ValueError('Invalid coverage scope or raw feasibility phase')
+    return scope == 'all' or (scope == 'cold' and cold)
+
+
 def active_distance(problem, left, right):
     """L-infinity distance on active unit coordinates, within one canonical branch."""
     if left['discrete'] != right['discrete']:
