@@ -1,0 +1,51 @@
+name: Mathematical pilot offline diagnosis
+
+on:
+  push:
+    branches: [analysis/math-pilot-diagnosis-20261029]
+    paths:
+      - 'tools/analyze_math_archive.py'
+      - 'tools/diagnose_math_mechanisms.py'
+      - '.github/workflows/math-pilot-offline-diagnosis.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax and independent primitive checks
+        run: |
+          python -m py_compile tools/analyze_math_archive.py
+          python - <<'PY'
+          import importlib.util
+          spec = importlib.util.spec_from_file_location('diagnosis', 'tools/analyze_math_archive.py')
+          m = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          assert m.satisfaction({'kind':'interval','lower':0,'upper':None,'lower_inclusive':False}) is False
+          assert m.satisfaction({'kind':'interval','lower':0,'upper':None,'lower_inclusive':True}) is None
+          assert m.satisfaction({'kind':'exact','value':0}) is True
+          assert m.satisfaction({'kind':'missing'}) is None
+          assert m.median([None,1,3]) == 2
+          PY
+      - name: Verify archive identity and reconstruct all recorded trials
+        run: |
+          set -o pipefail
+          python tools/analyze_math_archive.py runs/math_v2_pilot_20261028_213606_7a30fd87_full_records.zip /tmp/math-diagnosis | tee /tmp/math-diagnosis.log
+      - name: Optional mechanism diagnostics from recorded forecasts only
+        if: hashFiles('tools/diagnose_math_mechanisms.py') != ''
+        run: python tools/diagnose_math_mechanisms.py runs/math_v2_pilot_20261028_213606_7a30fd87_full_records.zip /tmp/math-diagnosis
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-math-diagnosis-${{ github.sha }}
+          retention-days: 30
+          path: |
+            /tmp/math-diagnosis/
+            /tmp/math-diagnosis.log
