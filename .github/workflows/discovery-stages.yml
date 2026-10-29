@@ -1,0 +1,73 @@
+name: Staged discovery regression
+on:
+  push:
+    branches: [research/discovery-stages-20261029]
+    paths:
+      - 'ra_lsbo/experiments/discovery_stages/**'
+      - 'tests/test_discovery_stages*.py'
+      - 'docs/DISCOVERY_STAGES_PROTOCOL_20261029.md'
+      - '.github/workflows/discovery-stages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: staged-discovery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Isolated CPU dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          mkdir -p runs/staged_ci
+          python -m pip freeze > runs/staged_ci/environment.txt
+      - name: New policy tests plus affected historical regressions
+        run: |
+          python -m pytest -q tests/test_discovery_stages.py tests/test_numerical_safeguards.py tests/test_external_comparison.py tests/test_comparison_reliability.py tests/test_comparison_entrypoints.py tests/test_comparison_visualization.py tests/test_paper_experiments.py tests/test_grouped_partial_gp.py --junitxml=runs/staged_ci/pytest.xml
+      - name: Three tiny mathematical smokes only (combined ceiling 360, no MDA)
+        run: |
+          for stage in discovery representation baselines; do
+            case "$stage" in discovery) cap=104;; *) cap=128;; esac
+            folder="runs/staged_ci/$stage"
+            python -m ra_lsbo.experiments.discovery_stages.compare prepare --stage "$stage" --profile smoke --output "$folder"
+            python -m ra_lsbo.experiments.discovery_stages.compare run --output "$folder" --approved-call-limit "$cap"
+            python -m ra_lsbo.experiments.discovery_stages.compare audit --output "$folder"
+            python -m ra_lsbo.experiments.discovery_stages.compare report --output "$folder"
+          done
+      - name: Validation counts
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib, xml.etree.ElementTree as ET
+          root = pathlib.Path('runs/staged_ci')
+          if (root/'pytest.xml').exists():
+              tests = ET.parse(root/'pytest.xml').getroot()
+              print('REGRESSION', {k:sum(int(s.get(k,0)) for s in tests.iter('testsuite')) for k in ('tests','failures','errors','skipped')})
+          for folder in root.iterdir():
+              if folder.is_dir() and (folder/'results.json').exists():
+                  r=json.loads((folder/'results.json').read_text())
+                  print('SMOKE', folder.name, r['charged_model_calls'], r['maximum_model_calls'], 'MDA', r['new_rcaide_mda_calls'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staged-validation-${{ github.sha }}
+          retention-days: 14
+          path: runs/staged_ci/
