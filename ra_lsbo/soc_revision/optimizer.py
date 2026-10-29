@@ -6,6 +6,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from ..budget import digest
+from ..numerics import InvalidLocalPoint, bounded_point, record_slsqp_clipping
 from ..partial_bo.records import without_intervals
 from ..partial_bo.selector import PartialBOSettings
 from ..partial_refinement.optimizer import RefinementSettings, RefiningLatentBO, serial
@@ -38,8 +39,10 @@ class RiskRefiningBO(RefiningLatentBO):
 
         def add(candidate):
             key = digest(candidate)
+            geometry = np.asarray(list(self.problem.precheck(candidate).values()), float)
             reason = ("seen" if key in seen else "duplicate" if key in keys else
-                      "exact_precheck" if any(value > 0 for value in self.problem.precheck(candidate).values()) else None)
+                      "invalid_candidate" if candidate != self.problem.canonical(candidate) else
+                      "exact_precheck" if not np.isfinite(geometry).all() or np.any(geometry > 0) else None)
             if reason:
                 rejected[reason] = rejected.get(reason, 0)+1
             else:
@@ -88,9 +91,14 @@ class RiskRefiningBO(RefiningLatentBO):
                 if not active.any():
                     continue
                 cache = {}
+                bound_projections, max_bound_excess = 0, 0.
 
                 def forecast(values):
-                    identity = tuple(np.round(values, 14))
+                    nonlocal bound_projections, max_bound_excess
+                    values, excess = bounded_point(values, low[active], high[active])
+                    bound_projections += int(excess > 0)
+                    max_bound_excess = max(max_bound_excess, excess)
+                    identity = tuple(values)
                     if identity not in cache:
                         complete = unit.copy()
                         complete[active] = values
@@ -99,25 +107,42 @@ class RiskRefiningBO(RefiningLatentBO):
                             mode, metadata["kappa"], .5)
                         geometry = np.asarray([-value for value in self.problem.precheck(candidate).values()])
                         margins = geometry if restoration else np.r_[support[0], geometry]
+                        if not np.isfinite(score[0]) or not np.isfinite(margins).all():
+                            raise InvalidLocalPoint("Nonfinite local acquisition or support")
                         cache[identity] = candidate, float(score[0]), margins
                     return cache[identity]
 
-                result = minimize(lambda values: -forecast(values)[1], unit[active], method="SLSQP",
-                    bounds=list(zip(low[active], high[active])),
-                    constraints={"type": "ineq", "fun": lambda values: forecast(values)[2]},
-                    options={"maxiter": settings.local_maxiter, "ftol": 1e-7})
-                endpoint = forecast(result.x)
-                add(endpoint[0])
+                # Local search generates surrogate candidates, never model calls.
+                # Preserve valid cached points and the global pool on local failure.
+                result, endpoint, local_error = None, None, None
+                with record_slsqp_clipping() as clipping:
+                    try:
+                        result = minimize(lambda values: -forecast(values)[1], unit[active], method="SLSQP",
+                            bounds=list(zip(low[active], high[active])),
+                            constraints={"type": "ineq", "fun": lambda values: forecast(values)[2]},
+                            options={"maxiter": settings.local_maxiter, "ftol": 1e-7})
+                        endpoint = forecast(result.x)
+                    except InvalidLocalPoint as error:
+                        local_error = str(error)
+                if endpoint is not None:
+                    add(endpoint[0])
                 eligible = [entry for entry in cache.values() if np.all(entry[2] >= -1e-7)]
                 if eligible:
                     add(max(eligible, key=lambda entry: entry[1])[0])
                 reports.append({"branch": discrete, "radius": radius, "has_feasible_center": center is not None,
-                    "start": self._candidate(unit, discrete), "endpoint": endpoint[0],
+                    "start": self._candidate(unit, discrete),
+                    "endpoint": None if endpoint is None else endpoint[0],
                     "active_dimensions": np.flatnonzero(active).tolist(),
                     "bounds": [low[active].tolist(), high[active].tolist()],
-                    "success": bool(result.success), "status": int(result.status), "message": str(result.message),
-                    "nfev": int(result.nfev), "unique_posterior_queries": len(cache),
-                    "endpoint_raw_score": endpoint[1], "endpoint_support": endpoint[2].tolist(),
+                    "success": bool(result is not None and result.success and local_error is None),
+                    "status": None if result is None else int(result.status),
+                    "message": local_error if result is None else str(result.message),
+                    "nfev": 0 if result is None else int(result.nfev),
+                    "unique_posterior_queries": len(cache),
+                    "endpoint_raw_score": None if endpoint is None else endpoint[1],
+                    "endpoint_support": None if endpoint is None else endpoint[2].tolist(),
+                    "local_error": local_error, "bound_projections": bound_projections,
+                    "max_callback_bound_excess": max_bound_excess, **clipping,
                     "local_mode": mode})
         return pool, {"local_reports": reports, "local_rejections": rejected,
                       "global_pool_size": len(global_pool), "augmented_pool_size": len(pool)}
@@ -135,7 +160,7 @@ class RiskRefiningBO(RefiningLatentBO):
             raise ValueError("A nonempty unique global pool is required")
         for candidate in global_pool:
             if digest(candidate) in seen or candidate != self.problem.canonical(candidate) or any(
-                    value > 0 for value in self.problem.precheck(candidate).values()):
+                    not np.isfinite(value) or value > 0 for value in self.problem.precheck(candidate).values()):
                 raise ValueError("Invalid or previously evaluated global candidate")
         model_records = records if self.settings.use_intervals else [without_intervals(record) for record in records]
         posterior = RiskPosterior(self.problem, self.base, model_records, self.seed, self.settings)

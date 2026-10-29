@@ -1,0 +1,76 @@
+name: Publish existing validation evidence
+
+on:
+  push:
+    branches: [fix/comparison-reliability-20261028]
+    paths: ['.github/workflows/publish-validation-evidence.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read completed validation artifact without rerunning experiments
+        uses: actions/download-artifact@v4
+        with:
+          name: comparison-validation-aea7607f0edc25f4a424d1d735d85bbb27ebfd68
+          run-id: 40690256091
+          github-token: ${{ github.token }}
+          path: validation
+      - name: Extract counts and evidence identities
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('validation')
+          junit = next(root.rglob('pytest.xml'))
+          xml = ET.parse(junit).getroot()
+          counts = {k: sum(int(s.get(k, 0)) for s in xml.iter('testsuite'))
+                    for k in ('tests', 'failures', 'errors', 'skipped')}
+          evidence = {'code_commit': 'aea7607f0edc25f4a424d1d735d85bbb27ebfd68',
+                      'source_run': 40690256091, 'regression': counts,
+                      'junit_sha256': hashlib.sha256(junit.read_bytes()).hexdigest(),
+                      'research_smoke': {}}
+          for path in root.rglob('results.json'):
+              data = json.loads(path.read_text())
+              audit_path = path.parent/'audit.json'
+              audit = json.loads(audit_path.read_text())
+              evidence['research_smoke'][data['suite']] = {
+                  'charged_model_calls': data['charged_model_calls'],
+                  'maximum_model_calls': data['maximum_model_calls'],
+                  'charged_by_role': data['charged_by_role'],
+                  'audit_passed': audit['passed'],
+                  'checked_proposals': audit['checked_proposals'],
+                  'trial_count': len(data['summaries']),
+                  'new_rcaide_mda_calls': data['new_rcaide_mda_calls'],
+                  'results_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                  'audit_sha256': hashlib.sha256(audit_path.read_bytes()).hexdigest()}
+          text = '## Verified CI artifact summary\n\n'
+          text += 'Read from completed run https://github.com/Luyi1235/RA-LSBO/actions/runs/40690256091. '
+          text += 'This publishing job performs **zero new model evaluations**.\n\n'
+          text += '```json\n'+json.dumps(evidence, ensure_ascii=False, indent=2)+'\n```\n'
+          text += '\nUnit tests may use cheap evaluators and synthetic fixtures; they are not included in the smoke ledger. '
+          text += 'Smoke is software validation, not evidence of algorithm superiority.\n'
+          Path('evidence-summary.md').write_text(text)
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(text)
+          print(text)
+          PY
+      - name: Publish to this revision PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pulls = await github.rest.pulls.list({owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', head: `${context.repo.owner}:fix/comparison-reliability-20261028`});
+            const body = fs.readFileSync('evidence-summary.md', 'utf8');
+            for (const pr of pulls.data) {
+              await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: pr.number, body});
+            }
