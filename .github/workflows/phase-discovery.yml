@@ -1,0 +1,80 @@
+name: Phase discovery validation
+on:
+  push:
+    branches: [research/discovery-review-20261029]
+    paths:
+      - 'ra_lsbo/experiments/discovery_stages/**'
+      - 'tests/test_discovery_stages*.py'
+      - 'docs/PHASE_DISCOVERY_PROTOCOL_20261029.md'
+      - '.github/workflows/phase-discovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: phase-discovery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-models.txt
+      - name: CPU test environment
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          mkdir -p runs/phase_ci
+          python -m pip freeze > runs/phase_ci/environment.txt
+          git rev-parse HEAD > runs/phase_ci/commit.txt
+      - name: Regression tests
+        run: |
+          python -m pytest -q tests/test_discovery_stages.py tests/test_discovery_stages_evidence.py tests/test_discovery_stages_phase.py tests/test_numerical_safeguards.py tests/test_external_comparison.py tests/test_comparison_reliability.py tests/test_comparison_entrypoints.py tests/test_comparison_visualization.py tests/test_paper_experiments.py tests/test_grouped_partial_gp.py --junitxml=runs/phase_ci/pytest.xml
+      - name: One bounded phase smoke (120 calls, no MDA)
+        run: |
+          python -m ra_lsbo.experiments.discovery_stages.compare prepare --stage phase --profile smoke --output runs/phase_ci/smoke
+          python -m ra_lsbo.experiments.discovery_stages.compare run --output runs/phase_ci/smoke --approved-call-limit 120
+          python -m ra_lsbo.experiments.discovery_stages.compare audit --output runs/phase_ci/smoke
+          python -m ra_lsbo.experiments.discovery_stages.compare report --output runs/phase_ci/smoke
+      - name: Verify reviewed Windows evidence and prepare only a new pilot (zero evaluations)
+        run: |
+          curl --fail --location --max-time 180 'https://github.com/Luyi1235/RA-LSBO/releases/download/discovery-pilot-20261029-134131-9366a4b6/discovery_pilot_20261029_134131_9366a4b6_full_records.zip' -o /tmp/reviewed.zip
+          echo '0867c1fe7eaeaa06e0930700bea658d6f4e10fd4e48466439e58efee6655494f  /tmp/reviewed.zip' | sha256sum --check
+          python - <<'PY'
+          import json, zipfile
+          from pathlib import Path, PurePosixPath
+          from ra_lsbo.experiments.discovery_stages.reviewed_evidence import verify_reviewed_discovery
+          from ra_lsbo.experiments.discovery_stages.runner import prepare
+          with zipfile.ZipFile('/tmp/reviewed.zip') as z:
+              for name in z.namelist():
+                  p=PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts or '\\' in name:
+                      raise ValueError('Unsafe archive member')
+              z.extractall('/tmp/reviewed')
+          parent=Path('/tmp/reviewed/runs/discovery_pilot_20261029_134131_9366a4b6')
+          receipt=verify_reviewed_discovery(parent)
+          Path('runs/phase_ci/prerequisite_receipt.json').write_text(json.dumps(receipt,indent=2))
+          p=prepare('/tmp/phase-pilot-prepared-only','phase','pilot',parent)
+          assert p['budget']['maximum_model_calls']==8916
+          assert not Path('/tmp/phase-pilot-prepared-only/calls.jsonl').exists()
+          print('Prepared-only pilot budget',p['budget'],'new evaluations',0)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-validation-${{ github.sha }}
+          path: runs/phase_ci/
+          retention-days: 14

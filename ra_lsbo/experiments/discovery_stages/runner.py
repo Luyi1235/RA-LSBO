@@ -16,7 +16,8 @@ from ..core.problems import make_problem
 from ..core.runner import Ledger, NATIVE_STOP, append, lines, plain, read, save
 from .methods import STAGES, optimizer_for, specification
 from .metrics import decision_diagnostics, lexicographic_pairs
-from .policies import COVERAGE_PERIOD, NEAR_TOLERANCE, coverage_pick, filter_near, nearest_distance
+from .phase_metrics import phase_diagnostics, warm_pairs
+from .policies import COVERAGE_PERIOD, NEAR_TOLERANCE, coverage_pick, filter_near, nearest_distance, coverage_enabled
 from .protocol import BASE, build_plan, sha, verify_plan
 
 
@@ -25,19 +26,13 @@ def prepare(folder, stage='discovery', profile='pilot', prerequisite=None):
     if folder.exists():
         raise FileExistsError('Use a new result directory')
     plan = build_plan(stage, profile)
-    if profile == 'pilot' and stage != 'discovery':
+    if profile == 'pilot' and stage in {'representation', 'baselines'}:
+        raise ValueError('Later pilot prerequisite is not scientifically approved: run phase review first')
+    if profile == 'pilot' and stage == 'phase':
+        from .reviewed_evidence import verify_reviewed_discovery
         if prerequisite is None:
-            raise ValueError('Later pilot stages require --prerequisite: review the preceding stage first')
-        previous = Path(prerequisite).resolve()
-        old_plan = load_plan(previous)
-        expected = 'discovery' if stage == 'representation' else 'representation'
-        if old_plan['stage'] != expected or old_plan['profile']['name'] != 'pilot':
-            raise ValueError('Prerequisite must be the preceding complete pilot, not a smoke')
-        if read(previous/'audit.json') != audit(previous, write=False):
-            raise ValueError('Prerequisite audit seal changed')
-        plan['prerequisite'] = {'stage': expected, 'plan_sha256': sha(previous/'plan.json'),
-            'audit_sha256': sha(previous/'audit.json'), 'results_sha256': sha(previous/'results.json'),
-            'meaning': 'provenance gate only; manual scientific review is still required'}
+            raise ValueError('phase pilot requires --prerequisite pointing to the reviewed discovery evidence')
+        plan['prerequisite'] = verify_reviewed_discovery(prerequisite)
     elif prerequisite is not None:
         raise ValueError('Prerequisite is only used by later pilot stages')
     verify_plan(plan)
@@ -93,7 +88,7 @@ def discovery_summary(rows):
 
 
 def result_packet(plan, summaries, qualifications, count, roles):
-    return {'schema': plan['schema'], 'stage': plan['stage'], 'suite': 'mathematical',
+    packet = {'schema': plan['schema'], 'stage': plan['stage'], 'suite': 'mathematical',
         'profile': plan['profile']['name'], 'summaries': summaries, 'qualifications': qualifications,
         'discovery_summary': discovery_summary(summaries),
         'paired_comparisons': paired_comparisons(summaries, reference=plan['reference']),
@@ -102,11 +97,16 @@ def result_packet(plan, summaries, qualifications, count, roles):
         'maximum_model_calls': plan['budget']['maximum_model_calls'],
         'unused_calls_not_reassigned': plan['budget']['maximum_model_calls']-count,
         'new_rcaide_mda_calls': 0, 'publication_confirmation': False}
+    if plan['stage'] == 'phase':
+        packet['warm_pairs'] = warm_pairs(summaries)
+    return packet
 
 
 def run(folder, approved_call_limit=None):
     folder = Path(folder)
     plan = load_plan(folder)
+    if plan['profile']['name'] == 'pilot' and plan['stage'] in {'representation', 'baselines'}:
+        raise ValueError('Later pilot prerequisite is not scientifically approved: phase review required')
     maximum = plan['budget']['maximum_model_calls']
     if type(approved_call_limit) is not int or approved_call_limit < maximum:
         raise ValueError(f'Explicit complete-call cap required: {maximum}')
@@ -152,6 +152,8 @@ def run(folder, approved_call_limit=None):
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], bool(optimizer.stop_reason)),
                     'stop_reason': optimizer.stop_reason, 'optimization_seconds': time.monotonic()-start,
                     'decision_diagnostics': decision_diagnostics(problem, initial, lines(output/'proposals.jsonl'), online)}
+                if plan['stage'] == 'phase':
+                    summary['phase_diagnostics'] = phase_diagnostics(initial, lines(output/'proposals.jsonl'), online)
                 save(output/'summary.json', summary)
                 summaries.append(summary)
                 print(f"{case} {seed} {method}: feasible={summary['has_feasible']} calls={len(online)}", flush=True)
@@ -166,7 +168,7 @@ def validate_decision(problem, plan, method, seed, history, proposal):
     if metadata.get('method') != method:
         raise ValueError('Wrong proposal method')
     spec = plan['methods'][method]
-    if spec['engine'] != 'discovery_bo_v1':
+    if spec['engine'] not in {'discovery_bo_v1', 'phase_discovery_v1'}:
         return
     candidate, iteration = proposal['candidate'], proposal['iteration']
     cold = not any(r.usable_feasible for r in history)
@@ -180,6 +182,10 @@ def validate_decision(problem, plan, method, seed, history, proposal):
         raise ValueError('Cold-local isolation violated')
     if metadata['pool'][metadata['selected_index']] != candidate:
         raise ValueError('Selected pool index changed')
+    scope = spec.get('coverage_scope', 'all')
+    active = spec['protect'] and coverage_enabled(scope, cold)
+    if metadata.get('coverage_scope') != scope or metadata.get('coverage_active') != active:
+        raise ValueError('Coverage phase policy changed')
     if spec['protect']:
         distance = nearest_distance(problem, candidate, [r.candidate for r in history])
         if distance is not None and distance <= NEAR_TOLERANCE:
@@ -193,10 +199,15 @@ def validate_decision(problem, plan, method, seed, history, proposal):
             eligible_count = sum(metadata['eligible'])
             if metadata['model_eligible_count'] != eligible_count:
                 raise ValueError('Eligible count changed')
-            if eligible_count <= 1 and metadata['coverage_reason'] != 'eligible_at_most_one':
+            if active and eligible_count <= 1 and metadata['coverage_reason'] != 'eligible_at_most_one':
                 raise ValueError('Singleton gate was not escaped')
-        scheduled = iteration % COVERAGE_PERIOD == 0
+        scheduled = active and iteration % COVERAGE_PERIOD == 0
         reason = metadata['coverage_reason']
+        if not active and not (spec['random_discovery'] and cold) and reason is not None:
+            raise ValueError('Coverage escaped its registered phase')
+        if not active and (metadata['posterior_fit_skipped'] or
+                           metadata['selected_index'] != metadata['model_selected_index']):
+            raise ValueError('Model development was bypassed outside coverage phase')
         if metadata['coverage_scheduled'] != scheduled:
             raise ValueError('Coverage schedule changed')
         if spec['random_discovery'] and cold:
@@ -300,6 +311,8 @@ def audit(folder, write=True):
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], reason is not None),
                     'stop_reason': reason,
                     'decision_diagnostics': decision_diagnostics(problem, initial, proposals, online)}
+                if plan['stage'] == 'phase':
+                    expected['phase_diagnostics'] = phase_diagnostics(initial, proposals, online)
                 if (set(saved) != set(expected)|{'optimization_seconds'}
                         or any(saved[k] != v for k,v in expected.items())
                         or not np.isfinite(saved['optimization_seconds']) or saved['optimization_seconds'] < 0
@@ -344,6 +357,15 @@ def report(folder):
     for row in result['discovery_summary']:
         text.append(f"| {row['case']} | {row['method']} | {row['feasible_runs']}/{row['runs']} | "
                     f"{row['cold_discovered']}/{row['cold_n']} | {row['warm_improved']}/{row['warm_n']} |")
+    if plan['stage'] == 'phase':
+        text += ['', '## Paired warm-start objective (left minus right; negative is better)', '',
+                 '| Case | Left | Right | n | Left better/tie/worse | Median paired difference |',
+                 '|---|---|---|---:|---:|---:|']
+        for row in result['warm_pairs']:
+            text.append(f"| {row['case']} | {row['left']} | {row['right']} | {row['n']} | "
+                        f"{row['better']}/{row['ties']}/{row['worse']} | {row['median_difference']} |")
+        text += ['', 'Improvement over initialization is not preservation of baseline development.',
+                 'Per-trial phase_diagnostics retain coverage/discovery channels; attribution is descriptive, not counterfactual.']
     text += ['', '0/0 means no runs in that stratum, not a zero success probability.',
              'Paired objective summaries in results.json condition on both methods feasible and retain denominators.',
              'Current math intervals mainly encode signs; sign and interval arms may be identical by construction.',

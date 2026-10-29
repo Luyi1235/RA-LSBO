@@ -10,6 +10,8 @@ from .methods import REFERENCE, STAGES, specification
 
 SCHEMA = 'ra_lsbo_discovery_stages_v1'
 DOCUMENT = 'docs/DISCOVERY_STAGES_PROTOCOL_20261029.md'
+PHASE_DOCUMENT = 'docs/PHASE_DISCOVERY_PROTOCOL_20261029.md'
+PHASE_SCHEMA = 'ra_lsbo_phase_discovery_v1'
 
 
 def code_identity():
@@ -21,7 +23,7 @@ def build_plan(stage='discovery', profile='pilot'):
     if stage not in STAGES or profile not in {'smoke', 'pilot'}:
         raise ValueError('Only exploratory math stages and smoke/pilot are implemented; no confirm or MDA')
     plan = legacy_plan(profile, 'mathematical')
-    plan.update(schema=SCHEMA, stage=stage, arms=list(STAGES[stage]),
+    plan.update(schema=PHASE_SCHEMA if stage == 'phase' else SCHEMA, stage=stage, arms=list(STAGES[stage]),
                 budget=budget_for(plan['profile'], STAGES[stage]),
                 reference=REFERENCE[stage], methods={m: specification(m, plan['profile']) for m in STAGES[stage]},
                 settings={}, adaptations={}, source_commit=code_identity(),
@@ -41,17 +43,29 @@ def build_plan(stage='discovery', profile='pilot'):
     plan['comparison_protocol'].pop('reason_original_lsbo_omitted', None)
     plan['comparison_protocol']['candidate_generation'] = (
         'common screened global stream; registered RA variants may augment; native LSBO has original search')
-    for path in [ROOT/DOCUMENT, *sorted((ROOT/'tests').glob('test_discovery_stages*.py'))]:
+    if stage == 'phase':
+        plan['staged_policy'].update(coverage_scope='per-arm all/cold/none; guards always active',
+            promotion_status='discovery gate withheld: warm objective regression',
+            manual_review='docs/DISCOVERY_PILOT_REVIEW_20261029.md')
+        plan['statistical_endpoints']['secondary'].append('paired_warm_objective_not_just_initial_improvement')
+    for path in [ROOT/DOCUMENT, ROOT/PHASE_DOCUMENT, *sorted((ROOT/'tests').glob('test_discovery_stages*.py'))]:
         plan['sources'][str(path)] = sha(path)
     return plan
 
 
 def verify_plan(plan):
-    if plan.get('schema') != SCHEMA:
+    if plan.get('schema') != (PHASE_SCHEMA if plan.get('stage') == 'phase' else SCHEMA):
         raise ValueError('Wrong staged schema; never reuse an old plan')
     # Rebuild the full prospective specification, not just a few asserted keys.
     expected = build_plan(plan['stage'], plan['profile']['name'])
     omit = {'registered_utc', 'prerequisite'}
     if digest({k:v for k,v in plan.items() if k not in omit}) != digest({k:v for k,v in expected.items() if k not in omit}):
         raise ValueError('Staged specification, source, runtime, commit or task changed')
+    if plan['stage'] == 'phase':
+        from .reviewed_evidence import prerequisite_receipt
+        if plan['profile']['name'] == 'pilot':
+            if plan.get('prerequisite') != prerequisite_receipt():
+                raise ValueError('Reviewed discovery prerequisite receipt missing or changed')
+        elif 'prerequisite' in plan:
+            raise ValueError('Smoke cannot claim reviewed-pilot authorization')
     return None
