@@ -1,0 +1,30 @@
+name: Discovery review evidence
+on:
+  push:
+    branches: [research/discovery-review-20261029]
+    paths: ['.github/workflows/discovery-review-evidence.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch immutable-by-hash public evidence; never execute archived code
+        run: |
+          mkdir -p /tmp/discovery-evidence
+          curl --fail --location --retry 2 --max-time 180 'https://github.com/Luyi1235/RA-LSBO/releases/download/discovery-pilot-20261029-134131-9366a4b6/discovery_pilot_20261029_134131_9366a4b6_full_records.zip' -o /tmp/discovery-evidence/pilot.zip
+          echo '0867c1fe7eaeaa06e0930700bea658d6f4e10fd4e48466439e58efee6655494f  /tmp/discovery-evidence/pilot.zip' | sha256sum --check
+          git rev-parse HEAD > /tmp/discovery-evidence/source_commit.txt
+          git archive HEAD ra_lsbo tests docs tools requirements-models.txt .gitattributes .gitignore README.md runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base | gzip > /tmp/discovery-evidence/source.tar.gz
+          sha256sum /tmp/discovery-evidence/* > /tmp/discovery-evidence/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: discovery-review-inputs-${{ github.sha }}
+          path: /tmp/discovery-evidence/
+          compression-level: 0
+          retention-days: 7
