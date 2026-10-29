@@ -15,6 +15,7 @@ from ..core.metrics import binomial_interval, paired_comparisons, qualification,
 from ..core.problems import make_problem
 from ..core.runner import Ledger, NATIVE_STOP, append, lines, plain, read, save
 from .methods import STAGES, optimizer_for, specification
+from .metrics import decision_diagnostics, lexicographic_pairs
 from .policies import COVERAGE_PERIOD, NEAR_TOLERANCE, coverage_pick, filter_near, nearest_distance
 from .protocol import BASE, build_plan, sha, verify_plan
 
@@ -96,6 +97,7 @@ def result_packet(plan, summaries, qualifications, count, roles):
         'profile': plan['profile']['name'], 'summaries': summaries, 'qualifications': qualifications,
         'discovery_summary': discovery_summary(summaries),
         'paired_comparisons': paired_comparisons(summaries, reference=plan['reference']),
+        'lexicographic_pairs': lexicographic_pairs(summaries, plan['reference']),
         'charged_model_calls': count, 'charged_by_role': dict(roles),
         'maximum_model_calls': plan['budget']['maximum_model_calls'],
         'unused_calls_not_reassigned': plan['budget']['maximum_model_calls']-count,
@@ -148,7 +150,8 @@ def run(folder, approved_call_limit=None):
                         break
                 summary = {'case': case, 'seed': seed, 'method': method, 'initial_policy': 'random',
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], bool(optimizer.stop_reason)),
-                    'stop_reason': optimizer.stop_reason, 'optimization_seconds': time.monotonic()-start}
+                    'stop_reason': optimizer.stop_reason, 'optimization_seconds': time.monotonic()-start,
+                    'decision_diagnostics': decision_diagnostics(problem, initial, lines(output/'proposals.jsonl'), online)}
                 save(output/'summary.json', summary)
                 summaries.append(summary)
                 print(f"{case} {seed} {method}: feasible={summary['has_feasible']} calls={len(online)}", flush=True)
@@ -169,6 +172,8 @@ def validate_decision(problem, plan, method, seed, history, proposal):
     cold = not any(r.usable_feasible for r in history)
     if metadata['cold_start'] != cold or metadata['raw_history_digest'] != digest([r.to_dict() for r in history]):
         raise ValueError('Staged phase or history changed')
+    if digest(metadata['settings']) != digest(spec['settings']):
+        raise ValueError('Model settings changed')
     if metadata['feedback_view'] != spec['feedback'] or metadata['protection_enabled'] != spec['protect']:
         raise ValueError('Staged policy changed')
     if cold and spec['cold_global'] and (metadata['local_enabled'] or metadata.get('local_reports')):
@@ -184,6 +189,12 @@ def validate_decision(problem, plan, method, seed, history, proposal):
         novel, _, rejected = filter_near(problem, proposal['pool'], history)
         if metadata['global_near_rejections'] != rejected:
             raise ValueError('Near rejection evidence changed')
+        if not metadata['posterior_fit_skipped']:
+            eligible_count = sum(metadata['eligible'])
+            if metadata['model_eligible_count'] != eligible_count:
+                raise ValueError('Eligible count changed')
+            if eligible_count <= 1 and metadata['coverage_reason'] != 'eligible_at_most_one':
+                raise ValueError('Singleton gate was not escaped')
         scheduled = iteration % COVERAGE_PERIOD == 0
         reason = metadata['coverage_reason']
         if metadata['coverage_scheduled'] != scheduled:
@@ -287,7 +298,8 @@ def audit(folder, write=True):
                         raise ValueError('Unsupported or unsubstantiated native stop')
                 expected = {'case': case, 'seed': seed, 'method': method, 'initial_policy': 'random',
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], reason is not None),
-                    'stop_reason': reason}
+                    'stop_reason': reason,
+                    'decision_diagnostics': decision_diagnostics(problem, initial, proposals, online)}
                 if (set(saved) != set(expected)|{'optimization_seconds'}
                         or any(saved[k] != v for k,v in expected.items())
                         or not np.isfinite(saved['optimization_seconds']) or saved['optimization_seconds'] < 0

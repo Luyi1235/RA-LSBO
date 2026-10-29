@@ -84,7 +84,8 @@ constraint intervals to g<=0 or g>0 and omits overlapping intervals; interval re
 all valid bounds. Missing/infrastructure evidence is never fabricated. Objective
 intervals are omitted in exact/sign because there is no universal objective sign
 threshold. Original evaluator records remain byte-exact; only model views change.
-Raw usable-feasibility still defines incumbents and phase transitions for every arm.
+Raw usable-feasibility still defines incumbents and phase transitions for every arm;
+coarsening a training view cannot erase an already known raw feasible incumbent.
 
 random_then_local uses uniform novel common-pool discovery until first feasible,
 then the SAME hierarchical-onehot, exact+sign RA local development as onehot_sign.
@@ -121,7 +122,11 @@ nominal horizon, costs and stop reasons reported, never replaced by successful s
 Primary development endpoint: cold-start discovery at nominal horizon per task;
 secondary: censored first-feasible cost, warm improvement, full paired success table,
 conditional paired objective with denominators, unknown/failed/stopped counts and
-time. Cold/warm is assigned after evaluating shared initialization, not resampled.
+time. The declared feasibility-first paired win/loss/tie rule uses rtol1e-10/atol1e-12
+for objective ties and retains both-no-solution ties and cold denominators. It is a
+descriptive decision rule, not a test of significance. Per-trial decision_diagnostics
+reconstruct near-repeat calls, cold-phase counts, coverage, singleton escapes, local
+selection and solver warnings from saved proposals without new evaluations. Cold/warm is assigned after evaluating shared initialization, not resampled.
 Reports never replace missing objectives with penalty numbers. Current bootstrap
 intervals condition on both arms feasible and are exploratory, not a confirmatory
 family of tests. No multi-comparison-adjusted superiority claim is made.

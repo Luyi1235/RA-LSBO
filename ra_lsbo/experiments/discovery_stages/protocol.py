@@ -38,6 +38,7 @@ def build_plan(stage='discovery', profile='pilot'):
                     'inference': 'development seeds already inspected; no confirmatory superiority claim'})
     plan['runtime']['platform'] = platform.platform()
     plan['comparison_protocol']['original_lsbo_in_primary_roster'] = 'original_lsbo' in STAGES[stage]
+    plan['comparison_protocol'].pop('reason_original_lsbo_omitted', None)
     plan['comparison_protocol']['candidate_generation'] = (
         'common screened global stream; registered RA variants may augment; native LSBO has original search')
     for path in [ROOT/DOCUMENT, *sorted((ROOT/'tests').glob('test_discovery_stages*.py'))]:

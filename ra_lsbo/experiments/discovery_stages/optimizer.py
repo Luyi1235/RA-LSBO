@@ -72,6 +72,8 @@ class DiscoveryBO(RiskRefiningBO):
                 'selected_index': index, 'augmented_pool_size': len(pool)}, prefix)
         training = feedback_view(records, self.feedback)
         posterior = RiskPosterior(self.problem, self.base, training, self.seed, self.settings)
+        # Information ablations must not discard the already known raw incumbent.
+        posterior.best = min((r.observation.objective.value for r in records if r.usable_feasible), default=None)
         acquisition = PartialBOSettings(horizon=self.settings.horizon,
                                         boundary_fraction=self.settings.boundary_fraction)
         _, before = choose_acquisition(posterior.predict(pool), posterior.best, iteration,
