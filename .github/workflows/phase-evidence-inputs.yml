@@ -1,0 +1,29 @@
+name: Phase evidence inputs
+on:
+  push:
+    branches: [research/phase-evidence-20261030]
+    paths: ['.github/workflows/phase-evidence-inputs.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read fixed evidence without executing any experiment
+        run: |
+          mkdir -p /tmp/phase-inputs
+          curl --fail --location --retry 2 --max-time 300 'https://github.com/Luyi1235/RA-LSBO/releases/download/phase-pilot-20261029-205231-7f4f459f/phase_pilot_20261029_205231_7f4f459f_full_records.zip' -o /tmp/phase-inputs/phase.zip
+          echo '916b486e79a13bb010d197e208e71cd8c08ffe09944177bfaab4f11d0a437bd6  /tmp/phase-inputs/phase.zip' | sha256sum -c -
+          git archive HEAD README.md requirements-models.txt ra_lsbo tests tools docs configs .github .gitattributes .gitignore runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base | gzip > /tmp/phase-inputs/source.tar.gz
+          git rev-parse HEAD > /tmp/phase-inputs/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-inputs-${{ github.sha }}
+          path: /tmp/phase-inputs/
+          compression-level: 0
+          retention-days: 7
