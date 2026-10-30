@@ -22,6 +22,9 @@ class DiscoveryBO(RiskRefiningBO):
         coverage_enabled(coverage_scope, False)  # validate even before a proposal
         self.coverage_scope = coverage_scope
 
+    def _build_posterior(self, records):
+        return RiskPosterior(self.problem, self.base, records, self.seed, self.settings)
+
     def _finish(self, candidate, records, metadata, prefix):
         prior = min((r.observation.objective.value for r in records
                      if r.usable_feasible and self._branch(r.candidate) == self._branch(candidate)), default=None)
@@ -75,7 +78,7 @@ class DiscoveryBO(RiskRefiningBO):
                 'coverage_rule': rule, 'posterior_fit_skipped': True, 'pool': pool,
                 'selected_index': index, 'augmented_pool_size': len(pool)}, prefix)
         training = feedback_view(records, self.feedback)
-        posterior = RiskPosterior(self.problem, self.base, training, self.seed, self.settings)
+        posterior = self._build_posterior(training)
         # Information ablations must not discard the already known raw incumbent.
         posterior.best = min((r.observation.objective.value for r in records if r.usable_feasible), default=None)
         acquisition = PartialBOSettings(horizon=self.settings.horizon,
