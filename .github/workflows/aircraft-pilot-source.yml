@@ -1,0 +1,27 @@
+name: Aircraft pilot source review
+on:
+  push:
+    branches: [research/aircraft-nominal-pilot-20261030]
+    paths: ['.github/workflows/aircraft-pilot-source.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Acquire exact tracked source and previously published evidence only
+        run: |
+          mkdir -p /tmp/aircraft-pilot-inputs
+          git rev-parse HEAD > /tmp/aircraft-pilot-inputs/commit.txt
+          git archive HEAD | gzip > /tmp/aircraft-pilot-inputs/source.tar.gz
+          curl --fail --location --retry 2 --output /tmp/aircraft-pilot-inputs/qualification.zip 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-transition-20261030-1955/aircraft_entry_20261030_01_full_records.zip'
+          echo 'ea1359fb7c76ea8641c54432e8e901fc4de065be6dc643590c585f6c1d7d7789  /tmp/aircraft-pilot-inputs/qualification.zip' | sha256sum --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aircraft-pilot-inputs-${{ github.sha }}
+          path: /tmp/aircraft-pilot-inputs/
+          retention-days: 14
