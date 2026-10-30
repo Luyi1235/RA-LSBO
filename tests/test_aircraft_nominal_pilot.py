@@ -79,7 +79,8 @@ def test_held_out_changed_label_is_reported_not_used_to_replace():
     nominal=row(prob,c,5);refined=row(prob,c,5,margin=.01)
     result=p.verification_result(nominal,refined)
     assert not result['verified_usable'] and result['screen']['status']=='needs_review'
-    assert result['nominal_objective_Wh']==5 and result['record']==refined.to_dict()
+    assert result['nominal_objective_Wh']==5 and result['record']==p.plain(refined.to_dict())
+    assert p.DesignRecord.from_dict(result['record']).to_dict()==refined.to_dict()
     assert p.incumbent([nominal]) is nominal
 
 
