@@ -59,7 +59,8 @@ def test_no_qualification_no_pilot(tmp_path):
 
 def test_prepare_imports_only_reviewed_receipt(monkeypatch,tmp_path):
     seen=[]
-    monkeypatch.setattr(p.q,'verify',lambda f:seen.append(f) or p.q.receipt())
+    monkeypatch.setattr(p,'qualification_report',lambda f:seen.append(f) or
+                        {'receipt':p.q.receipt(),'cases':{},'new_model_calls':0})
     out=tmp_path/'new';plan=p.prepare(out,'pilot','old')
     assert seen==['old'] and plan['reviewed_qualification']==p.q.receipt()
     assert not (out/'calls.jsonl').exists() and not (out/'execution.lock').exists()
@@ -206,3 +207,52 @@ def test_numeric_failure_is_settled_and_campaign_halts(monkeypatch,tmp_path):
     events=p.lines(out/'calls.jsonl')
     assert len(events)==2 and events[-1]['event']=='settled'
     assert (out/'execution.lock').exists() and not (out/'results.json').exists()
+
+
+def test_output_must_not_be_inside_old_qualification(tmp_path):
+    old=tmp_path/'old';old.mkdir()
+    with pytest.raises(ValueError):p.prepare(old/'new','pilot',old)
+    assert not (old/'new').exists()
+
+
+def test_qualification_diagnostic_seal_checked(monkeypatch,tmp_path):
+    monkeypatch.setattr(p,'qualification_report',lambda f:{'receipt':p.q.receipt(),'new_model_calls':0})
+    out=tmp_path/'new';p.prepare(out,'pilot',tmp_path/'old')
+    (out/'qualification_diagnostics.json').write_text('{}')
+    with pytest.raises(ValueError):p.load_plan(out)
+
+
+def test_validated_incumbent_is_never_received_by_any_optimizer(monkeypatch,tmp_path):
+    from ra_lsbo.experiments.core.problems import AircraftCase
+    seen=setup_fake(monkeypatch)
+    def evaluate(self,c):
+        fine=self.settings['integration_step_s']==5.
+        return row(self,c,objective=1. if fine else 10.,margin=.1 if fine else -.1)
+    monkeypatch.setattr(AircraftCase,'evaluate',evaluate)
+    out=tmp_path/'new';p.prepare(out);result=p.run(out,54);p.audit(out)
+    assert len(seen)==28
+    for r in result['summaries']:
+        assert r['best_feasible']==10. and not r['step_verification']['verified_usable']
+        assert r['step_verification']['refined_objective_Wh']==1.
+
+
+def test_runtime_change_before_run_refused(monkeypatch,tmp_path):
+    out=tmp_path/'new';p.prepare(out)
+    old=p.runtime()
+    monkeypatch.setattr(p,'runtime',lambda:{**old,'platform':'changed'})
+    with pytest.raises(ValueError):p.run(out,54)
+    assert not (out/'execution.lock').exists()
+
+
+def test_observations_stay_raw_under_sign_ablation():
+    from ra_lsbo.experiments.discovery_stages.policies import feedback_view
+    prob=p.problem_for('aircraft_sparse');r=row(prob,prob.anchors()[0],partial=True)
+    constraints=dict(r.observation.constraints)
+    constraints['soc']=OutputObservation('interval','soc-unit',lower=.003)
+    r=replace(r,observation=replace(r.observation,constraints=tuple(sorted(constraints.items()))))
+    original=deepcopy(r.to_dict());view=feedback_view([r],'sign')[0]
+    assert r.to_dict()==original
+    assert view.observation.objective.kind=='missing'
+    assert view.observation.constraint('soc').lower==0.
+    assert not view.observation.constraint('soc').lower_inclusive
+    assert view.observation.constraint('stall').kind=='exact'

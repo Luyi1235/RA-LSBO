@@ -1,4 +1,4 @@
-# Nominal aircraft pilot v1 (2026-10-30)
+# Nominal aircraft pilot v2 (2026-10-30)
 
 Prospective development protocol written AFTER inspection of the 352-call transition.
 Not independent confirmation or a guarantee of publishability. Historical algorithms,
@@ -106,3 +106,25 @@ No requirement to beat Random on every metric. No case selection based on winner
 If a numerical issue appears, fix that before interpreting rank. If no core increment
 appears, retain negative evidence and revise scientific scope rather than add modules.
 RCAIDE engineering MDA and chance/CVaR/safety claims remain outside this protocol.
+
+
+## Additional numerical evidence (no new evaluations)
+
+Preparation imports a read-only diagnostic of all 28 fixed-design step comparisons
+from the sealed qualification ledger. It distinguishes termination/label agreement,
+exact-constraint differences, interval-bound changes, terminal times, and comparable
+completed-stage SOC values. A common completed-stage endpoint is compared only at
+matching times; the last stage of an aborted trajectory is not called completed.
+No step-order, event error bound or full convergence certificate is inferred. In the
+fixed evidence, all labels/reasons agree, but16 comparisons remain partial/uncertified.
+The diagnostic is copied and sealed with the new pilot; the old data are never edited.
+It is not a training file and it adds zero physical calls. Missing traces stay missing.
+
+The same diagnostic accompanies each nominal20 s versus refined5 s incumbent check.
+The pilot stops on numerical/unknown outcomes; nominal/refined physical disagreements
+are retained as findings, not corrected by selecting another design.
+
+The earlier discussion's40-call smoke excluded its fine-step checks. This executable
+protocol includes up to14 such checks, hence54 smoke+3664 pilot=3718, not3704.
+The complete cap must be approved before creating the execution lock. No result is
+hidden to reach that cap; native early stops and absent incumbents reduce actual calls.

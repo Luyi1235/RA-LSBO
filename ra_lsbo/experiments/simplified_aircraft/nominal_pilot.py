@@ -29,9 +29,10 @@ from ..discovery_stages.runner import validate_decision, discovery_summary
 from ..discovery_stages.metrics import decision_diagnostics, lexicographic_pairs
 from ..discovery_stages.phase_metrics import phase_diagnostics, warm_pairs
 from . import reviewed_qualification as q
+from .numerical_checks import qualification_report, sensitivity
 from .transition import problem_for, runtime, physical_state, convergence
 
-SCHEMA = 'ra_lsbo_aircraft_nominal_pilot_v1'
+SCHEMA = 'ra_lsbo_aircraft_nominal_pilot_v2'
 DOCUMENT = 'docs/AIRCRAFT_NOMINAL_PILOT_PROTOCOL_20261030.md'
 CASES = ('aircraft_ordinary', 'aircraft_sparse')
 ARMS = ('random', 'ev_latent', 'ev_onehot', 'phase_exact', 'phase_sign',
@@ -84,7 +85,8 @@ def build_plan(profile_name):
         if hashlib.sha256((ROOT/relative).read_bytes().replace(b'\r\n',b'\n')).hexdigest() != expected:
             raise ValueError('Reviewed aircraft equations changed; new qualification required')
     sources = set((ROOT/'ra_lsbo').rglob('*.py')) | set(BASE.rglob('*.py'))
-    sources |= {ROOT/DOCUMENT,ROOT/'requirements-models.txt',ROOT/'tests/test_aircraft_nominal_pilot.py'}
+    sources |= {ROOT/DOCUMENT, ROOT/'requirements-models.txt',
+                ROOT/'tests/test_aircraft_nominal_pilot.py', ROOT/'tests/test_aircraft_numerical_checks.py'}
     tasks = {}
     for case in CASES:
         problem = problem_for(case)
@@ -115,9 +117,16 @@ def prepare(folder, profile='smoke', qualification=None):
     folder = Path(folder)
     if folder.exists():
         raise FileExistsError('Use a new write-once result directory')
+    diagnostic = None
     if profile == 'pilot':
-        if qualification is None or q.verify(qualification) != q.receipt():
+        if qualification is None:
             raise ValueError('A complete fixed reviewed qualification directory is required')
+        source, destination = Path(qualification).resolve(), folder.resolve()
+        if source == destination or source in destination.parents or destination in source.parents:
+            raise ValueError('New output must be separate from historical qualification')
+        diagnostic = qualification_report(qualification)
+        if diagnostic['receipt'] != q.receipt():
+            raise ValueError('Not the reviewed qualification receipt')
     elif qualification is not None:
         raise ValueError('The smoke has no qualification-directory prerequisite')
     plan = build_plan(profile)
@@ -125,6 +134,11 @@ def prepare(folder, profile='smoke', qualification=None):
     for path,identity in plan['sources'].items():
         target=folder/'source_snapshot'/(identity+'.source')
         if not target.exists():target.write_bytes(Path(path).read_bytes())
+    if diagnostic is not None:
+        save(folder/'qualification_diagnostics.json', diagnostic)
+        plan['qualification_diagnostics_sha256'] = sha(folder/'qualification_diagnostics.json')
+    else:
+        plan['qualification_diagnostics_sha256'] = None
     save(folder/'plan.json',plan)
     save(folder/'registration.json',{'plan_sha256':sha(folder/'plan.json'),
                                    'maximum_model_calls':plan['budget']['maximum_model_calls']})
@@ -140,6 +154,14 @@ def load_plan(folder):
         raise ValueError('Registration changed')
     expected=build_plan(plan['profile']['name'])
     expected.pop('registered_utc')
+    expected['qualification_diagnostics_sha256'] = plan.get('qualification_diagnostics_sha256')
+    if plan['profile']['name']=='pilot':
+        if sha(folder/'qualification_diagnostics.json') != plan.get('qualification_diagnostics_sha256'):
+            raise ValueError('Qualification diagnostics changed')
+        if read(folder/'qualification_diagnostics.json')['receipt'] != q.receipt():
+            raise ValueError('Qualification receipt changed')
+    elif plan.get('qualification_diagnostics_sha256') is not None:
+        raise ValueError('Unregistered smoke diagnostics')
     if digest(expected) != digest({k:v for k,v in plan.items() if k!='registered_utc'}):
         raise ValueError('Registered code, environment, commit, configuration or receipt changed')
     for h in plan['sources'].values():
@@ -175,6 +197,7 @@ def verification_result(best, refined):
         'nominal_design_id':best.observation.design_id,'nominal_objective_Wh':best.observation.objective.value,
         'refined_objective_Wh':refined.observation.objective.value if refined.observation.objective.kind=='exact' else None,
         'screen':convergence([best,refined]),'absolute_constraint_differences':exact_deltas,
+        'step_sensitivity':sensitivity([best,refined], (20.,5.)),
         'record':refined.to_dict(),'not_optimizer_feedback':True})
 
 
@@ -261,6 +284,10 @@ def run(folder,approved_call_limit):
                     save(output/'verification.json',refined.to_dict());ensure_trusted(refined)
                 summary=summary_for(problem,plan,case,seed,method,initial,online,proposals,engine.stop_reason,refined)
                 save(output/'summary.json',summary);summaries.append(summary)
+                print(f"{case} {seed} {method}: online={len(online)}, nominal={summary['has_feasible']}, "
+                      f"verified={summary['step_verification']['verified_usable']}, "
+                      f"charged={ledger.count}/{maximum}", flush=True)
+    load_plan(folder)  # refuse source/environment drift during execution
     result=packet(plan,summaries,ledger.count,ledger.roles,timings)
     save(folder/'results.json',result);return result
 
@@ -326,6 +353,8 @@ def audit(folder,write=True):
                     or any(len(timing[k])!=len(online) for k in ('proposal_seconds','accept_seconds'))
                     or any(not np.isfinite(x) or x<0 for x in [timing['optimization_seconds'],*timing['proposal_seconds'],*timing['accept_seconds']])):
                     raise ValueError('Invalid timing evidence')
+                if sum(timing['proposal_seconds'])+sum(timing['accept_seconds']) > timing['optimization_seconds']+1e-6:
+                    raise ValueError('Component timings exceed recorded optimization duration')
                 timings.append(timing)
     if claimed!=set(settled) or roles['shared_initial']!=plan['budget']['shared_initial']:
         raise ValueError('Unclaimed or missing calls')
@@ -361,7 +390,13 @@ def report(folder):
              'All native stops, missing objectives and unused calls are retained. Paired objective analyses condition on both arms feasible.',
              'Full raw/phase diagnostics, timing and paired tables are in results.json.',
              f"Calls {result['charged_model_calls']}/{result['maximum_model_calls']}; new RCAIDE MDA 0."]
-    with (folder/'report.md').open('x',encoding='utf-8') as stream:stream.write('\n\n'.join(text)+'\n')
+    text += ['', '## Paired warm final objective (left minus right)',
+             '| Case | Left | Right | n | Better/tie/worse | Median difference Wh |',
+             '|---|---|---|---:|---:|---:|']
+    for item in result['warm_pairs']:
+        text.append(f"| {item['case']} | {item['left']} | {item['right']} | {item['n']} | "
+                    f"{item['better']}/{item['ties']}/{item['worse']} | {item['median_difference']} |")
+    with (folder/'report.md').open('x',encoding='utf-8') as stream:stream.write('\n'.join(text)+'\n')
     return folder/'report.md'
 
 
