@@ -12,6 +12,31 @@ SCHEMA = 'ra_lsbo_discovery_stages_v1'
 DOCUMENT = 'docs/DISCOVERY_STAGES_PROTOCOL_20261029.md'
 PHASE_DOCUMENT = 'docs/PHASE_DISCOVERY_PROTOCOL_20261029.md'
 PHASE_SCHEMA = 'ra_lsbo_phase_discovery_v1'
+TRANSFER_SCHEMA = 'ra_lsbo_constraint_evidence_transfer_v1'
+TRANSFER_DOCUMENT = 'docs/EVIDENCE_TRANSFER_PROTOCOL_20261030.md'
+
+def schema_for(stage):
+    return TRANSFER_SCHEMA if stage == 'transfer' else PHASE_SCHEMA if stage == 'phase' else SCHEMA
+
+def transfer_profile(plan):
+    # Fresh development seeds, fixed before running any of these algorithms.
+    # No label-based initial rejection or task-specific winner selection.
+    from ...partial_bo.problems import candidate_pool
+    from ..core.problems import make_problem
+    plan['profile']['seeds'] = tuple(range(9801, 9809))
+    for number, case in enumerate(plan['profile']['cases']):
+        problem = make_problem(BASE, case)
+        task = plan['tasks'][case]
+        identities = {digest(c) for c in task['anchors']}
+        panel, rejected = candidate_pool(problem, 30100000+10000*number, plan['profile']['panel'], identities)
+        identities.update(digest(c) for c in panel)
+        task.update(panel=panel, panel_exact_screen_rejections=rejected, initial={})
+        for seed in plan['profile']['seeds']:
+            rows, rejected = candidate_pool(problem, seed+100000*number, plan['profile']['initial'], identities)
+            identities.update(digest(c) for c in rows)
+            task['initial'][str(seed)] = {'random': {'random_candidates': rows,
+                'exact_screen_rejections': rejected, 'shared_anchor_index': None}}
+
 
 
 def code_identity():
@@ -23,7 +48,9 @@ def build_plan(stage='discovery', profile='pilot'):
     if stage not in STAGES or profile not in {'smoke', 'pilot'}:
         raise ValueError('Only exploratory math stages and smoke/pilot are implemented; no confirm or MDA')
     plan = legacy_plan(profile, 'mathematical')
-    plan.update(schema=PHASE_SCHEMA if stage == 'phase' else SCHEMA, stage=stage, arms=list(STAGES[stage]),
+    if stage == 'transfer' and profile == 'pilot':
+        transfer_profile(plan)
+    plan.update(schema=schema_for(stage), stage=stage, arms=list(STAGES[stage]),
                 budget=budget_for(plan['profile'], STAGES[stage]),
                 reference=REFERENCE[stage], methods={m: specification(m, plan['profile']) for m in STAGES[stage]},
                 settings={}, adaptations={}, source_commit=code_identity(),
@@ -48,13 +75,22 @@ def build_plan(stage='discovery', profile='pilot'):
             promotion_status='discovery gate withheld: warm objective regression',
             manual_review='docs/DISCOVERY_PILOT_REVIEW_20261029.md')
         plan['statistical_endpoints']['secondary'].append('paired_warm_objective_not_just_initial_improvement')
+    if stage == 'transfer':
+        plan['staged_policy'].update(coverage_scope='cold only, then latent development for portfolio arms',
+            representation_transfer='constraint-wise prequential likelihood weights; not calibrated probabilities',
+            formal_cbob_implementation=False, risk_supervised_encoder=False)
+        plan['statistical_endpoints']['secondary'] += ['paired_warm_objective', 'prequential_constraint_scores', 'weight_trajectory']
+        plan['statistical_endpoints']['inference'] = 'fresh exploratory development seeds, small cold strata; no independent confirmation or multiplicity-adjusted superiority'
     for path in [ROOT/DOCUMENT, ROOT/PHASE_DOCUMENT, *sorted((ROOT/'tests').glob('test_discovery_stages*.py'))]:
         plan['sources'][str(path)] = sha(path)
+    if stage == 'transfer':
+        for path in [ROOT/TRANSFER_DOCUMENT, *sorted((ROOT/'tests').glob('test_evidence_transfer*.py'))]:
+            plan['sources'][str(path)] = sha(path)
     return plan
 
 
 def verify_plan(plan):
-    if plan.get('schema') != (PHASE_SCHEMA if plan.get('stage') == 'phase' else SCHEMA):
+    if plan.get('schema') != schema_for(plan.get('stage')):
         raise ValueError('Wrong staged schema; never reuse an old plan')
     # Rebuild the full prospective specification, not just a few asserted keys.
     expected = build_plan(plan['stage'], plan['profile']['name'])
@@ -67,5 +103,11 @@ def verify_plan(plan):
             if plan.get('prerequisite') != prerequisite_receipt():
                 raise ValueError('Reviewed discovery prerequisite receipt missing or changed')
         elif 'prerequisite' in plan:
+            raise ValueError('Smoke cannot claim reviewed-pilot authorization')
+    if plan['stage'] == 'transfer':
+        from .reviewed_phase import prerequisite_receipt
+        if plan['profile']['name'] == 'pilot' and plan.get('prerequisite') != prerequisite_receipt():
+            raise ValueError('Reviewed phase prerequisite receipt missing or changed')
+        if plan['profile']['name'] == 'smoke' and 'prerequisite' in plan:
             raise ValueError('Smoke cannot claim reviewed-pilot authorization')
     return None

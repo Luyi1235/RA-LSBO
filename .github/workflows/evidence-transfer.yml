@@ -1,0 +1,81 @@
+name: Evidence transfer validation
+on:
+  push:
+    branches: [research/phase-evidence-20261030]
+    paths:
+      - 'ra_lsbo/experiments/discovery_stages/**'
+      - 'tests/test_evidence_transfer*.py'
+      - 'docs/EVIDENCE_TRANSFER_PROTOCOL_20261030.md'
+      - '.github/workflows/evidence-transfer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: evidence-transfer-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-models.txt
+      - name: Isolated CPU dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          mkdir -p runs/transfer_ci
+          python -m pip freeze > runs/transfer_ci/environment.txt
+          git rev-parse HEAD > runs/transfer_ci/commit.txt
+      - name: Affected regressions and new evidence tests
+        run: |
+          python -m pytest -q tests/test_evidence_transfer.py tests/test_discovery_stages.py tests/test_discovery_stages_evidence.py tests/test_discovery_stages_phase.py tests/test_numerical_safeguards.py tests/test_external_comparison.py tests/test_comparison_reliability.py tests/test_comparison_entrypoints.py tests/test_comparison_visualization.py tests/test_paper_experiments.py tests/test_grouped_partial_gp.py --junitxml=runs/transfer_ci/pytest.xml
+      - name: Bounded transfer smoke, 112 mathematical calls, no MDA
+        run: |
+          python -m ra_lsbo.experiments.discovery_stages.compare prepare --stage transfer --profile smoke --output runs/transfer_ci/smoke
+          python -m ra_lsbo.experiments.discovery_stages.compare run --output runs/transfer_ci/smoke --approved-call-limit 112
+          python -m ra_lsbo.experiments.discovery_stages.compare audit --output runs/transfer_ci/smoke
+          python -m ra_lsbo.experiments.discovery_stages.compare report --output runs/transfer_ci/smoke
+      - name: Pinned old evidence and new pilot preparation only, zero calls
+        run: |
+          curl --fail --location --max-time 300 'https://github.com/Luyi1235/RA-LSBO/releases/download/phase-pilot-20261029-205231-7f4f459f/phase_pilot_20261029_205231_7f4f459f_full_records.zip' -o /tmp/phase.zip
+          echo '916b486e79a13bb010d197e208e71cd8c08ffe09944177bfaab4f11d0a437bd6  /tmp/phase.zip' | sha256sum -c -
+          python - <<'PY'
+          import json, zipfile
+          from pathlib import Path, PurePosixPath
+          from ra_lsbo.experiments.discovery_stages.runner import prepare
+          from ra_lsbo.experiments.discovery_stages.reviewed_phase import verify_reviewed_phase
+          root=Path('/tmp/phase-reviewed'); root.mkdir()
+          with zipfile.ZipFile('/tmp/phase.zip') as archive:
+              names=archive.namelist()
+              assert len(names)==len(set(names))
+              for name in names:
+                  p=PurePosixPath(name)
+                  assert not p.is_absolute() and '..' not in p.parts and '\\' not in name and ':' not in name
+              archive.extractall(root)
+          source=root/'runs/phase_pilot_20261029_205231_7f4f459f'
+          receipt=verify_reviewed_phase(source)
+          Path('runs/transfer_ci/prerequisite_import.json').write_text(json.dumps(receipt,indent=2))
+          folder=Path('runs/transfer_ci/prepared_pilot')
+          plan=prepare(folder,'transfer','pilot',source)
+          assert plan['budget']['maximum_model_calls']==3108 and not (folder/'calls.jsonl').exists()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfer-validation-${{ github.sha }}
+          path: runs/transfer_ci/
+          retention-days: 14

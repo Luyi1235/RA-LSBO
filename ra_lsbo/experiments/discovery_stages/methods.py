@@ -12,6 +12,7 @@ from .optimizer import DiscoveryBO
 from .policies import COVERAGE_PERIOD, NEAR_TOLERANCE, optimistic_bound
 
 STAGES = {
+    'transfer': ('random', 'ev_latent', 'ev_onehot', 'ev_random_then_latent', 'ev_equal', 'ev_prequential'),
     'phase': ('random', 'ra_v2', 'ra_coverage', 'ra_discovery',
               'ra_guard_only', 'ra_phase_coverage', 'ra_phase_discovery'),
     'discovery': ('random', 'ra_v2', 'ra_cold_global', 'ra_coverage', 'ra_discovery'),
@@ -20,11 +21,19 @@ STAGES = {
     'baselines': ('random', 'ra_discovery', 'original_lsbo', 'logcei', 'scbo_adapted',
                   'sego_conservative_v2', 'sego_utb_v3', 'nsga2_adapted'),
 }
-REFERENCE = {'phase': 'ra_phase_discovery', 'discovery': 'ra_discovery', 'representation': 'latent_interval', 'baselines': 'ra_discovery'}
+REFERENCE = {'transfer': 'ev_latent', 'phase': 'ra_phase_discovery', 'discovery': 'ra_discovery', 'representation': 'latent_interval', 'baselines': 'ra_discovery'}
 
 
 def specification(method, profile):
     settings = settings_for('ra_lsbo', profile)
+    if method.startswith('ev_'):
+        if method not in STAGES['transfer']:
+            raise ValueError('Unregistered evidence-transfer method')
+        return {'engine': 'phase_discovery_v1', 'cold_global': True, 'protect': True,
+                'feedback': 'interval', 'random_discovery': method == 'ev_random_then_latent',
+                'coverage_scope': 'cold', 'settings': asdict(replace(settings, latent=method != 'ev_onehot')),
+                'near_tolerance': NEAR_TOLERANCE, 'coverage_period': COVERAGE_PERIOD,
+                'transfer_mode': {'ev_equal': 'equal', 'ev_prequential': 'prequential'}.get(method)}
     if method in {'ra_guard_only', 'ra_phase_coverage', 'ra_phase_discovery'}:
         return {'engine': 'phase_discovery_v1',
                 'cold_global': method == 'ra_phase_discovery', 'protect': True,
@@ -142,7 +151,11 @@ class NativeLSBO:
 
 def optimizer_for(problem, base, seed, method, profile, output):
     spec = specification(method, profile)
-    if spec['engine'] in {'discovery_bo_v1', 'phase_discovery_v1'}:
+    if spec.get('transfer_mode') is not None:
+        from .evidence_transfer import EvidenceTransferBO
+        engine = EvidenceTransferBO(problem, base, seed, settings_for('ra_lsbo', profile),
+                                    mode=spec['transfer_mode'])
+    elif spec['engine'] in {'discovery_bo_v1', 'phase_discovery_v1'}:
         settings = replace(settings_for('ra_lsbo', profile), latent=spec['settings']['latent'])
         engine = DiscoveryBO(problem, base, seed, settings, **{key: spec[key] for key in
                              ('cold_global', 'protect', 'feedback', 'random_discovery')},

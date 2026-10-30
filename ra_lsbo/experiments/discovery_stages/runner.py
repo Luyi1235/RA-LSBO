@@ -33,6 +33,11 @@ def prepare(folder, stage='discovery', profile='pilot', prerequisite=None):
         if prerequisite is None:
             raise ValueError('phase pilot requires --prerequisite pointing to the reviewed discovery evidence')
         plan['prerequisite'] = verify_reviewed_discovery(prerequisite)
+    elif profile == 'pilot' and stage == 'transfer':
+        from .reviewed_phase import verify_reviewed_phase
+        if prerequisite is None:
+            raise ValueError('transfer pilot requires --prerequisite with the reviewed complete phase evidence')
+        plan['prerequisite'] = verify_reviewed_phase(prerequisite)
     elif prerequisite is not None:
         raise ValueError('Prerequisite is only used by later pilot stages')
     verify_plan(plan)
@@ -97,7 +102,7 @@ def result_packet(plan, summaries, qualifications, count, roles):
         'maximum_model_calls': plan['budget']['maximum_model_calls'],
         'unused_calls_not_reassigned': plan['budget']['maximum_model_calls']-count,
         'new_rcaide_mda_calls': 0, 'publication_confirmation': False}
-    if plan['stage'] == 'phase':
+    if plan['stage'] in {'phase', 'transfer'}:
         packet['warm_pairs'] = warm_pairs(summaries)
     return packet
 
@@ -152,8 +157,12 @@ def run(folder, approved_call_limit=None):
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], bool(optimizer.stop_reason)),
                     'stop_reason': optimizer.stop_reason, 'optimization_seconds': time.monotonic()-start,
                     'decision_diagnostics': decision_diagnostics(problem, initial, lines(output/'proposals.jsonl'), online)}
-                if plan['stage'] == 'phase':
+                if plan['stage'] in {'phase', 'transfer'}:
                     summary['phase_diagnostics'] = phase_diagnostics(initial, lines(output/'proposals.jsonl'), online)
+                if plan['methods'][method].get('transfer_mode') is not None:
+                    from .evidence_transfer import audit_transfer
+                    summary['transfer_diagnostics'] = audit_transfer(problem, plan['methods'][method], initial,
+                        lines(output/'proposals.jsonl'), online)
                 save(output/'summary.json', summary)
                 summaries.append(summary)
                 print(f"{case} {seed} {method}: feasible={summary['has_feasible']} calls={len(online)}", flush=True)
@@ -170,8 +179,17 @@ def validate_decision(problem, plan, method, seed, history, proposal):
     spec = plan['methods'][method]
     if spec['engine'] not in {'discovery_bo_v1', 'phase_discovery_v1'}:
         return
+    special = {'selection_posterior_fit_skipped', 'weight_only_fit_on_coverage', 'evidence_transfer'}
+    if spec.get('transfer_mode') is None and special.intersection(metadata):
+        raise ValueError('Unregistered expert-fitting metadata')
     candidate, iteration = proposal['candidate'], proposal['iteration']
     cold = not any(r.usable_feasible for r in history)
+    if spec.get('transfer_mode') is not None and cold:
+        selection_skipped = metadata.get('selection_posterior_fit_skipped')
+        if (type(selection_skipped) is not bool or metadata['posterior_fit_skipped'] is not False
+                or metadata.get('weight_only_fit_on_coverage') != selection_skipped
+                or selection_skipped != (metadata['coverage_reason'] == 'scheduled_coverage')):
+            raise ValueError('Expert fitting/selection accounting changed')
     if metadata['cold_start'] != cold or metadata['raw_history_digest'] != digest([r.to_dict() for r in history]):
         raise ValueError('Staged phase or history changed')
     if digest(metadata['settings']) != digest(spec['settings']):
@@ -195,7 +213,7 @@ def validate_decision(problem, plan, method, seed, history, proposal):
         novel, _, rejected = filter_near(problem, proposal['pool'], history)
         if metadata['global_near_rejections'] != rejected:
             raise ValueError('Near rejection evidence changed')
-        if not metadata['posterior_fit_skipped']:
+        if not metadata.get('selection_posterior_fit_skipped', metadata['posterior_fit_skipped']):
             eligible_count = sum(metadata['eligible'])
             if metadata['model_eligible_count'] != eligible_count:
                 raise ValueError('Eligible count changed')
@@ -205,7 +223,7 @@ def validate_decision(problem, plan, method, seed, history, proposal):
         reason = metadata['coverage_reason']
         if not active and not (spec['random_discovery'] and cold) and reason is not None:
             raise ValueError('Coverage escaped its registered phase')
-        if not active and (metadata['posterior_fit_skipped'] or
+        if not active and (metadata.get('selection_posterior_fit_skipped', metadata['posterior_fit_skipped']) or
                            metadata['selected_index'] != metadata['model_selected_index']):
             raise ValueError('Model development was bypassed outside coverage phase')
         if metadata['coverage_scheduled'] != scheduled:
@@ -311,8 +329,11 @@ def audit(folder, write=True):
                     **trajectory_metrics(initial, online, plan['profile']['horizon'], reason is not None),
                     'stop_reason': reason,
                     'decision_diagnostics': decision_diagnostics(problem, initial, proposals, online)}
-                if plan['stage'] == 'phase':
+                if plan['stage'] in {'phase', 'transfer'}:
                     expected['phase_diagnostics'] = phase_diagnostics(initial, proposals, online)
+                if plan['methods'][method].get('transfer_mode') is not None:
+                    from .evidence_transfer import audit_transfer
+                    expected['transfer_diagnostics'] = audit_transfer(problem, plan['methods'][method], initial, proposals, online)
                 if (set(saved) != set(expected)|{'optimization_seconds'}
                         or any(saved[k] != v for k,v in expected.items())
                         or not np.isfinite(saved['optimization_seconds']) or saved['optimization_seconds'] < 0
@@ -357,7 +378,7 @@ def report(folder):
     for row in result['discovery_summary']:
         text.append(f"| {row['case']} | {row['method']} | {row['feasible_runs']}/{row['runs']} | "
                     f"{row['cold_discovered']}/{row['cold_n']} | {row['warm_improved']}/{row['warm_n']} |")
-    if plan['stage'] == 'phase':
+    if plan['stage'] in {'phase', 'transfer'}:
         text += ['', '## Paired warm-start objective (left minus right; negative is better)', '',
                  '| Case | Left | Right | n | Left better/tie/worse | Median paired difference |',
                  '|---|---|---|---:|---:|---:|']
