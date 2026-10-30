@@ -1,0 +1,6127 @@
+{
+  "schema": "ra_lsbo_nominal_pilot_public_summary_v1",
+  "derived_summary": true,
+  "source_commit": "e4fbcd37ca4d096bbdac03fc57b0f122f006aea3",
+  "runtime": {
+    "packages": {
+      "botorch": "0.10.0",
+      "gpytorch": "1.11",
+      "numpy": "2.0.2",
+      "scikit-learn": "1.6.1",
+      "scipy": "1.13.1",
+      "torch": "2.8.0"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.9.25 (main, Nov  3 2025, 22:44:01) [MSC v.1929 64 bit (AMD64)]"
+  },
+  "profile": {
+    "encoder_epochs": 30,
+    "horizon": 30,
+    "initial": 12,
+    "name": "pilot",
+    "native_gp_steps": 15,
+    "pool": 128,
+    "seeds": [
+      9911,
+      9912,
+      9913,
+      9914,
+      9915,
+      9916,
+      9917,
+      9918
+    ]
+  },
+  "arms": [
+    "random",
+    "ev_latent",
+    "ev_onehot",
+    "phase_exact",
+    "phase_sign",
+    "ev_random_then_latent",
+    "original_lsbo"
+  ],
+  "task_labels": {
+    "aircraft_ordinary": "100 km ordinary",
+    "aircraft_sparse": "140 km constrained; historical sparse identifier"
+  },
+  "reviewed_qualification": {
+    "algorithm_replay": false,
+    "decision": "bounded_nominal_exploration_only",
+    "evidence_files": 4,
+    "headers_sha256": {
+      "audit.json": "9ec4fe8e3e2e9d76e80de1f48dc488761a83c4a79c2390152847b9569f9e7ece",
+      "plan.json": "99fced2b8e9593a0e4d15c7c0a85476c38c9311c4ea7385574a8e130dab689bd",
+      "registration.json": "cab9089f302bab150a8b7e9a44b2f9c79c83b934283bdedfc752d2f3cbe453a3",
+      "results.json": "7e854b5e06e66ec0c22098b3a12879014c984cab38d2bc76de5809a597adb459"
+    },
+    "kind": "reviewed_aircraft_qualification_v1",
+    "new_evaluations": 0,
+    "physical_validation": false,
+    "result_commit": "59643c3d544aaca5d97144e83b95b5ec782b8c60",
+    "settled_calls": 316,
+    "source_bindings": 156,
+    "source_commit": "b8a94c324cd23a0ef9f15c668fe9a247e4ad9a00",
+    "sparse_below_10pct_supported": false
+  },
+  "research_accounting": {
+    "smoke_calls": 54,
+    "pilot_calls": 3664,
+    "total_calls": 3718,
+    "maximum_total": 3718,
+    "charged_by_role": {
+      "incumbent_step_verification": 112,
+      "online": 3360,
+      "shared_initial": 192
+    },
+    "unsettled": 0,
+    "new_rcaide_mda_calls": 0,
+    "unused_calls": 0
+  },
+  "validation": {
+    "regression_tests": 327,
+    "regression_failures": 0,
+    "regression_skipped": 0,
+    "launcher_tests": 6,
+    "smoke_passed": true,
+    "pilot_passed": true,
+    "trial_count": 112,
+    "proposal_count": 3360,
+    "algorithm_replay": false,
+    "physical_validation": false,
+    "confirmed_superiority": false
+  },
+  "original_evidence_sha256": {
+    "plan.json": "ffac91d0ff9bb64696ec2ee9aef41ded28c5e523c74d94baf75ae3cadad5a18a",
+    "registration.json": "e8a029ace925471990a9f7b1f64f33bb16a715bcee01dfe1dcfd98b6572851a6",
+    "audit.json": "2f1afe6d959c2edbad4d097a30d4b8772d59961b7b5eb23d33548d6fcb112328",
+    "results.json": "3be38a03d81144ae6f0c89fa6f71e4cb4e1972edfe7cb33f800e8073fff998f9",
+    "calls.jsonl": "9e1c8a3c88d745e2345749aac2d170cb7d0dd19e28e9e25896f39317fad5de09",
+    "qualification_diagnostics.json": "5be44428626a0f4e2e514ce3cf9cb448e472e6f5c103d6ac7caad8a9f5ed2044"
+  },
+  "discovery_summary": [
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "ev_latent",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "ev_onehot",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "ev_random_then_latent",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "original_lsbo",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "phase_exact",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "phase_sign",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 7,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_ordinary",
+      "cold_binomial_95": [
+        0.025000000000000022,
+        1
+      ],
+      "cold_discovered": 1,
+      "cold_discovery_fraction": 1,
+      "cold_n": 1,
+      "feasible_runs": 8,
+      "method": "random",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 7
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "ev_latent",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "ev_onehot",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "ev_random_then_latent",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "original_lsbo",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "phase_exact",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 4,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "phase_sign",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 6,
+      "warm_n": 6
+    },
+    {
+      "case": "aircraft_sparse",
+      "cold_binomial_95": [
+        0.15811388300841903,
+        1
+      ],
+      "cold_discovered": 2,
+      "cold_discovery_fraction": 1,
+      "cold_n": 2,
+      "feasible_runs": 8,
+      "method": "random",
+      "runs": 8,
+      "stopped_runs": 0,
+      "unknown_online": 0,
+      "warm_improved": 3,
+      "warm_n": 6
+    }
+  ],
+  "warm_pairs": [
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 1973.342321731263,
+      "n": 7,
+      "right": "ev_onehot",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 7
+    },
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 0,
+      "n": 7,
+      "right": "ev_random_then_latent",
+      "rtol": 1e-10,
+      "ties": 7,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 1973.1996468852994,
+      "n": 7,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 7
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": -151.70553260739325,
+      "n": 7,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 3,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 697.4227590662122,
+      "n": 7,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 4
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": -1893.333729453887,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 1
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -1973.342321731263,
+      "n": 7,
+      "right": "ev_random_then_latent",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 5,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -13.256130237412435,
+      "n": 7,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 2
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -3164.0212821222594,
+      "n": 7,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -1102.2265095918956,
+      "n": 7,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -3865.5399210819887,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": 1973.1996468852994,
+      "n": 7,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 7
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": -151.70553260739325,
+      "n": 7,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 3,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": 697.4227590662122,
+      "n": 7,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 4
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": -1893.333729453887,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 1
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -3143.2294460218727,
+      "n": 7,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 1
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -1088.9703793544832,
+      "n": 7,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 7,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -3832.913853000475,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_exact",
+      "median_difference": -349.04319488402325,
+      "n": 7,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_exact",
+      "median_difference": -180.13960502132613,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_ordinary",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_sign",
+      "median_difference": -974.548668510597,
+      "n": 7,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 2878.87671859701,
+      "n": 6,
+      "right": "ev_onehot",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 6
+    },
+    {
+      "atol": 1e-12,
+      "better": 0,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 0,
+      "n": 6,
+      "right": "ev_random_then_latent",
+      "rtol": 1e-10,
+      "ties": 6,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 1,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": 1752.9086766345645,
+      "n": 6,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 5
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": -2446.7024065302357,
+      "n": 6,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 5,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": -2114.210165510747,
+      "n": 6,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 1
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_latent",
+      "median_difference": -2760.674582486976,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -2878.87671859701,
+      "n": 6,
+      "right": "ev_random_then_latent",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 4,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -1025.6267291376862,
+      "n": 6,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 2
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -5974.190483530223,
+      "n": 6,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -5862.635810554522,
+      "n": 6,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_onehot",
+      "median_difference": -5518.573305165828,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 1,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": 1752.9086766345645,
+      "n": 6,
+      "right": "original_lsbo",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 5
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": -2446.7024065302357,
+      "n": 6,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 5,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": -2114.210165510747,
+      "n": 6,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 1
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "ev_random_then_latent",
+      "median_difference": -2760.674582486976,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -5492.902859318263,
+      "n": 6,
+      "right": "phase_exact",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -4711.624245399424,
+      "n": 6,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 6,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "original_lsbo",
+      "median_difference": -4835.2992150289065,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 0
+    },
+    {
+      "atol": 1e-12,
+      "better": 1,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_exact",
+      "median_difference": 725.3822244364965,
+      "n": 6,
+      "right": "phase_sign",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 5
+    },
+    {
+      "atol": 1e-12,
+      "better": 2,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_exact",
+      "median_difference": 229.07033080409383,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 1,
+      "worse": 3
+    },
+    {
+      "atol": 1e-12,
+      "better": 3,
+      "case": "aircraft_sparse",
+      "inference": "descriptive paired warm final objective; no superiority claim",
+      "left": "phase_sign",
+      "median_difference": -750.5651003669227,
+      "n": 6,
+      "right": "random",
+      "rtol": 1e-10,
+      "ties": 0,
+      "worse": 3
+    }
+  ],
+  "paired_comparisons": [
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "ev_onehot",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 2036.9996408197085,
+      "conditional_paired_bootstrap_95": [
+        1263.5517454040453,
+        2864.3699373931872
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "ev_random_then_latent",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 24.66063632249461,
+      "conditional_paired_bootstrap_95": [
+        0,
+        73.98190896748383
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "original_lsbo",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 1580.0613517842735,
+      "conditional_paired_bootstrap_95": [
+        125.34353272878487,
+        2833.908035362624
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "phase_exact",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": -317.19950991581845,
+      "conditional_paired_bootstrap_95": [
+        -1775.4932261028064,
+        989.9583880401058
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "phase_sign",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 91.72015631886234,
+      "conditional_paired_bootstrap_95": [
+        -1554.6166086569838,
+        1631.4846626050296
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_ordinary",
+      "comparator": "random",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": -1309.5703983682238,
+      "conditional_paired_bootstrap_95": [
+        -2234.949077096496,
+        -328.8273856646784
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "ev_onehot",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 5110.359137141122,
+      "conditional_paired_bootstrap_95": [
+        2431.653769339501,
+        8262.963810237354
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "ev_random_then_latent",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 1663.037382959721,
+      "conditional_paired_bootstrap_95": [
+        0,
+        4002.503177823204
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "original_lsbo",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": 3824.793057994949,
+      "conditional_paired_bootstrap_95": [
+        1145.625831950623,
+        6927.155741363868
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "phase_exact",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": -2485.706713207316,
+      "conditional_paired_bootstrap_95": [
+        -5687.03928461305,
+        277.05953036721166
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "phase_sign",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": -1671.2488461056982,
+      "conditional_paired_bootstrap_95": [
+        -4673.096928220864,
+        607.2820444171085
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    },
+    {
+      "both_feasible": 8,
+      "case": "aircraft_sparse",
+      "comparator": "random",
+      "comparator_only_feasible": 0,
+      "conditional_objective_difference_mean": -2963.3303141337783,
+      "conditional_paired_bootstrap_95": [
+        -4383.8834400918695,
+        -1611.0262505756104
+      ],
+      "inference": "objective difference conditions on both methods feasible; no replacement for failed runs",
+      "initial_policy": "random",
+      "neither_feasible": 0,
+      "paired_seeds": 8,
+      "reference": "ev_latent",
+      "reference_only_feasible": 0
+    }
+  ],
+  "lexicographic_pairs": [
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 1,
+      "cold_n": 1,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "ev_onehot",
+      "comparator_wins": 8,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 0,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 1,
+      "cold_n": 1,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "ev_random_then_latent",
+      "comparator_wins": 1,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 0,
+      "rtol": 1e-10,
+      "ties": 7
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 0,
+      "cold_n": 1,
+      "cold_reference_wins": 1,
+      "cold_ties": 0,
+      "comparator": "original_lsbo",
+      "comparator_wins": 7,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 1,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 1,
+      "cold_n": 1,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "phase_exact",
+      "comparator_wins": 4,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 4,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 1,
+      "cold_n": 1,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "phase_sign",
+      "comparator_wins": 5,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 3,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_ordinary",
+      "cold_comparator_wins": 0,
+      "cold_n": 1,
+      "cold_reference_wins": 1,
+      "cold_ties": 0,
+      "comparator": "random",
+      "comparator_wins": 1,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 7,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 2,
+      "cold_n": 2,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "ev_onehot",
+      "comparator_wins": 8,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 0,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 2,
+      "cold_n": 2,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "ev_random_then_latent",
+      "comparator_wins": 2,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 0,
+      "rtol": 1e-10,
+      "ties": 6
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 2,
+      "cold_n": 2,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "original_lsbo",
+      "comparator_wins": 7,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 1,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 1,
+      "cold_n": 2,
+      "cold_reference_wins": 1,
+      "cold_ties": 0,
+      "comparator": "phase_exact",
+      "comparator_wins": 1,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 7,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 2,
+      "cold_n": 2,
+      "cold_reference_wins": 0,
+      "cold_ties": 0,
+      "comparator": "phase_sign",
+      "comparator_wins": 3,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 5,
+      "rtol": 1e-10,
+      "ties": 0
+    },
+    {
+      "atol": 1e-12,
+      "case": "aircraft_sparse",
+      "cold_comparator_wins": 0,
+      "cold_n": 2,
+      "cold_reference_wins": 2,
+      "cold_ties": 0,
+      "comparator": "random",
+      "comparator_wins": 0,
+      "inference": "development-only descriptive decision rule",
+      "initial_policy": "random",
+      "paired_n": 8,
+      "reference": "ev_latent",
+      "reference_wins": 8,
+      "rtol": 1e-10,
+      "ties": 0
+    }
+  ],
+  "trials": [
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 30610.45720719664,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30610.45720719664,
+        "refined_objective_Wh": 30610.457207196825,
+        "screen": {
+          "energy_Wh": [
+            30610.45720719664,
+            30610.457207196825
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.061226655512214e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.8922952094158063e-9,
+          "packing": 0,
+          "power": 0.00003410456376795601,
+          "root_bending": 0,
+          "soc": 3.197859124171032e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.3589537406488716e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 28181.155511491183,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 28181.155511491183,
+        "refined_objective_Wh": 28181.155511491394,
+        "screen": {
+          "energy_Wh": [
+            28181.155511491183,
+            28181.155511491394
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.487371152161558e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 5.541611614034991e-10,
+          "packing": 0,
+          "power": 0.00044456469283171707,
+          "root_bending": 0,
+          "soc": 8.45521004322336e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.4819301159293445e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 26244.256570980695,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26244.256570980695,
+        "refined_objective_Wh": 26244.256570980448,
+        "screen": {
+          "energy_Wh": [
+            26244.256570980695,
+            26244.256570980448
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 9.426159899525575e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.331399435144931e-10,
+          "packing": 0,
+          "power": 0.00004600296338297394,
+          "root_bending": 0,
+          "soc": 4.3394039084265756e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.5626319954952237e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 26997.439885688567,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 15,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26997.439885688567,
+        "refined_objective_Wh": 26997.439885688604,
+        "screen": {
+          "energy_Wh": [
+            26997.439885688567,
+            26997.439885688604
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.347527329441416e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.380737746359273e-10,
+          "packing": 0,
+          "power": 0.000046932210590266976,
+          "root_bending": 0,
+          "soc": 2.982068640355884e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.5716519152775277e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 27346.48308057259,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 27346.48308057259,
+        "refined_objective_Wh": 27346.483080572198,
+        "screen": {
+          "energy_Wh": [
+            27346.48308057259,
+            27346.483080572198
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.4367540791562874e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0827572172189548e-10,
+          "packing": 0,
+          "power": 0.0020459724347184904,
+          "root_bending": 0,
+          "soc": 4.517763790845564e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.382815389445625e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 28181.155511491183,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 28181.155511491183,
+        "refined_objective_Wh": 28181.155511491394,
+        "screen": {
+          "energy_Wh": [
+            28181.155511491183,
+            28181.155511491394
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.487371152161558e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 5.541611614034991e-10,
+          "packing": 0,
+          "power": 0.00044456469283171707,
+          "root_bending": 0,
+          "soc": 8.45521004322336e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.4819301159293445e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9911,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 30610.45720719664,
+      "best_feasible": 26257.512701218107,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 25,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26257.512701218107,
+        "refined_objective_Wh": 26257.512701218024,
+        "screen": {
+          "energy_Wh": [
+            26257.512701218107,
+            26257.512701218024
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.1866503699426176e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.3739331894413453e-10,
+          "packing": 0,
+          "power": 0.000046020517001976735,
+          "root_bending": 0,
+          "soc": 1.9405005780015472e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1459647364375769e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 30108.615138729245,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 14,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30108.615138729245,
+        "refined_objective_Wh": 30108.615138729,
+        "screen": {
+          "energy_Wh": [
+            30108.615138729245,
+            30108.615138729
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.09550950623477e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.162848677933482e-9,
+          "packing": 0,
+          "power": 0.0015878474753397986,
+          "root_bending": 0,
+          "soc": 0.000001150361031154734,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.328018386485667e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 26850.141185771765,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26850.141185771765,
+        "refined_objective_Wh": 26850.141185771805,
+        "screen": {
+          "energy_Wh": [
+            26850.141185771765,
+            26850.141185771805
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.4904117859616587e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.409665800229277e-10,
+          "packing": 0,
+          "power": 0.000046603007008316766,
+          "root_bending": 0,
+          "soc": 3.028712906583131e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.7896188397870105e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 26243.075217647256,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26243.075217647256,
+        "refined_objective_Wh": 26243.075217647354,
+        "screen": {
+          "energy_Wh": [
+            26243.075217647256,
+            26243.075217647354
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.7429084425831244e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.3007050991831193e-10,
+          "packing": 0,
+          "power": 0.000045990409869633986,
+          "root_bending": 0,
+          "soc": 2.2775840657907054e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.345023825649605e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 31055.411209820126,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 29,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 31055.411209820126,
+        "refined_objective_Wh": 31055.411209820268,
+        "screen": {
+          "energy_Wh": [
+            31055.411209820126,
+            31055.411209820268
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 4.568645783434723e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.1878819584107987e-9,
+          "packing": 0,
+          "power": 0.000638859005927972,
+          "root_bending": 0,
+          "soc": 3.829343439010202e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.6602892932992006e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 31478.070140892058,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 25,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 31478.070140892058,
+        "refined_objective_Wh": 31478.07014089196,
+        "screen": {
+          "energy_Wh": [
+            31478.070140892058,
+            31478.07014089196
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.120439955557356e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.5917330786763273e-9,
+          "packing": 0,
+          "power": 0.00006802937540140164,
+          "root_bending": 0,
+          "soc": 0.0000011278307416595634,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.798811318959764e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 26850.141185771765,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26850.141185771765,
+        "refined_objective_Wh": 26850.141185771805,
+        "screen": {
+          "energy_Wh": [
+            26850.141185771765,
+            26850.141185771805
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.4904117859616587e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.409665800229277e-10,
+          "packing": 0,
+          "power": 0.000046603007008316766,
+          "root_bending": 0,
+          "soc": 3.028712906583131e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.7896188397870105e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9912,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33222.742871760354,
+      "best_feasible": 26275.70128572877,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 25,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26275.70128572877,
+        "refined_objective_Wh": 26275.701285728537,
+        "screen": {
+          "energy_Wh": [
+            26275.70128572877,
+            26275.701285728537
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.861062969243373e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.613609908143417e-11,
+          "packing": 0,
+          "power": 0.000045851774924665634,
+          "root_bending": 0,
+          "soc": 2.481477435201107e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.4654979962891446e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 29805.938879304493,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 15,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29805.938879304493,
+        "refined_objective_Wh": 29805.938879304827,
+        "screen": {
+          "energy_Wh": [
+            29805.938879304493,
+            29805.938879304827
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1229106105589778e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.5886310045232221e-9,
+          "packing": 0,
+          "power": 0.00027932374843198104,
+          "root_bending": 0,
+          "soc": 3.966347411621385e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.8491099984530024e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 29346.6776669458,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29346.6776669458,
+        "refined_objective_Wh": 29346.67766694543,
+        "screen": {
+          "energy_Wh": [
+            29346.6776669458,
+            29346.67766694543
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2644492250014147e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.194583817593525e-10,
+          "packing": 0,
+          "power": 0.000056552131349585366,
+          "root_bending": 0,
+          "soc": 2.8833700466135426e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.998304451031004e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 26241.050789065393,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26241.050789065393,
+        "refined_objective_Wh": 26241.050789065463,
+        "screen": {
+          "energy_Wh": [
+            26241.050789065393,
+            26241.050789065463
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.6341017320672704e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.2183332120940804e-10,
+          "packing": 0,
+          "power": 0.00004595699059306568,
+          "root_bending": 0,
+          "soc": 1.2427477269483234e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.339003182949e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 26250.202635547663,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26250.202635547663,
+        "refined_objective_Wh": 26250.202635547656,
+        "screen": {
+          "energy_Wh": [
+            26250.202635547663,
+            26250.202635547656
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.771771980278136e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0442979814229147e-10,
+          "packing": 0,
+          "power": 0.00004588566556629203,
+          "root_bending": 0,
+          "soc": 1.5663331348614307e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.249881127715298e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 29971.350382036184,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 23,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29971.350382036184,
+        "refined_objective_Wh": 29971.350382035882,
+        "screen": {
+          "energy_Wh": [
+            29971.350382036184,
+            29971.350382035882
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.0074695905914043e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.96190648171779e-8,
+          "packing": 0,
+          "power": 0.0000627179080904261,
+          "root_bending": 0,
+          "soc": 1.0179685511202408e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.755835547598508e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 29346.6776669458,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29346.6776669458,
+        "refined_objective_Wh": 29346.67766694543,
+        "screen": {
+          "energy_Wh": [
+            29346.6776669458,
+            29346.67766694543
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2644492250014147e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.194583817593525e-10,
+          "packing": 0,
+          "power": 0.000056552131349585366,
+          "root_bending": 0,
+          "soc": 2.8833700466135426e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.998304451031004e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9913,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32014.791695957476,
+      "best_feasible": 26263.69859059516,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26263.69859059516,
+        "refined_objective_Wh": 26263.698590595322,
+        "screen": {
+          "energy_Wh": [
+            26263.69859059516,
+            26263.698590595322
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.2332822528563854e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6007961622932498e-10,
+          "packing": 0,
+          "power": 0.0000461124572620486,
+          "root_bending": 0,
+          "soc": 2.2591307358155177e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.3341481119866216e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 32002.554660977734,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 32002.554660977734,
+        "refined_objective_Wh": 32002.554660978072,
+        "screen": {
+          "energy_Wh": [
+            32002.554660977734,
+            32002.554660978072
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.0572031909442229e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.254939485662021e-10,
+          "packing": 0,
+          "power": 0.000044914874954393724,
+          "root_bending": 0,
+          "soc": 1.5243438000744902e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.983825106056997e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 30109.220931523847,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30109.220931523847,
+        "refined_objective_Wh": 30109.220931523578,
+        "screen": {
+          "energy_Wh": [
+            30109.220931523847,
+            30109.220931523578
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.941129109153747e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.784166313636206e-10,
+          "packing": 0,
+          "power": 0.000038231124628751445,
+          "root_bending": 0,
+          "soc": 7.281965763716869e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.086637945237669e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 26257.5822950033,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26257.5822950033,
+        "refined_objective_Wh": 26257.58229500305,
+        "screen": {
+          "energy_Wh": [
+            26257.5822950033,
+            26257.58229500305
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 9.55992577188261e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.544823158283748e-10,
+          "packing": 0,
+          "power": 0.000046089810912475215,
+          "root_bending": 0,
+          "soc": 1.9567313735979752e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1555594725543017e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 30324.84326959093,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30324.84326959093,
+        "refined_objective_Wh": 30324.843269590867,
+        "screen": {
+          "energy_Wh": [
+            30324.84326959093,
+            30324.843269590867
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.0394380663651003e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.796512407371893e-10,
+          "packing": 0,
+          "power": 0.00004003637280269867,
+          "root_bending": 0,
+          "soc": 9.175782783588105e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.87722447481309e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 26381.396708048414,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26381.396708048414,
+        "refined_objective_Wh": 26381.396708048476,
+        "screen": {
+          "energy_Wh": [
+            26381.396708048414,
+            26381.396708048476
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.3442898192608264e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.785305733420955e-11,
+          "packing": 0,
+          "power": 0.00004709799374580381,
+          "root_bending": 0,
+          "soc": 5.537962560753229e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.271153770079138e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 30109.220931523847,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30109.220931523847,
+        "refined_objective_Wh": 30109.220931523578,
+        "screen": {
+          "energy_Wh": [
+            30109.220931523847,
+            30109.220931523578
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.941129109153747e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.784166313636206e-10,
+          "packing": 0,
+          "power": 0.000038231124628751445,
+          "root_bending": 0,
+          "soc": 7.281965763716869e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.086637945237669e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9914,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 35039.20302482464,
+      "best_feasible": 26241.62329368499,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26241.62329368499,
+        "refined_objective_Wh": 26241.6232936852,
+        "screen": {
+          "energy_Wh": [
+            26241.62329368499,
+            26241.6232936852
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.040766702953745e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.289169268176465e-11,
+          "packing": 0,
+          "power": 0.000045755970373484445,
+          "root_bending": 0,
+          "soc": 1.535918581208051e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.070242557029928e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 27783.70402330326,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 13,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 27783.70402330326,
+        "refined_objective_Wh": 27783.704023302835,
+        "screen": {
+          "energy_Wh": [
+            27783.70402330326,
+            27783.704023302835
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.531989831423245e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 6.98450186575883e-10,
+          "packing": 0,
+          "power": 0.000056194281970012305,
+          "root_bending": 0,
+          "soc": 1.6829163018705628e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.915538640685838e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 28217.64785768394,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 28217.64785768394,
+        "refined_objective_Wh": 28217.647857684275,
+        "screen": {
+          "energy_Wh": [
+            28217.64785768394,
+            28217.647857684275
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1861160502833803e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.4817883586815128e-9,
+          "packing": 0,
+          "power": 0.0007347023630858152,
+          "root_bending": 0,
+          "soc": 5.5668538556652436e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.949524624540345e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 26244.305535952677,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 15,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26244.305535952677,
+        "refined_objective_Wh": 26244.305535952757,
+        "screen": {
+          "energy_Wh": [
+            26244.305535952677,
+            26244.305535952757
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.0496342776673945e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.384726777686751e-10,
+          "packing": 0,
+          "power": 0.0000460246571393208,
+          "root_bending": 0,
+          "soc": 4.315290519363302e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.5483981813678724e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 27997.271646678826,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 27997.271646678826,
+        "refined_objective_Wh": 27997.27164667836,
+        "screen": {
+          "energy_Wh": [
+            27997.271646678826,
+            27997.27164667836
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.6632380939982987e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1067944338805091e-9,
+          "packing": 0,
+          "power": 0.00003316311880041667,
+          "root_bending": 0,
+          "soc": 1.3078554222945016e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.594790374376714e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 26809.155354792663,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26809.155354792663,
+        "refined_objective_Wh": 26809.155354792507,
+        "screen": {
+          "energy_Wh": [
+            26809.155354792663,
+            26809.155354792507
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.835062188073713e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.252884545583811e-10,
+          "packing": 0,
+          "power": 0.0000463741200925627,
+          "root_bending": 0,
+          "soc": 2.1860119386873933e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.2916309155563965e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 28217.64785768394,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 28217.64785768394,
+        "refined_objective_Wh": 28217.647857684275,
+        "screen": {
+          "energy_Wh": [
+            28217.64785768394,
+            28217.647857684275
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1861160502833803e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.4817883586815128e-9,
+          "packing": 0,
+          "power": 0.0007347023630858152,
+          "root_bending": 0,
+          "soc": 5.5668538556652436e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.949524624540345e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9915,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 33792.40297633028,
+      "best_feasible": 26244.44821079864,
+      "has_feasible": true,
+      "first_feasible_total_call": 1,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 30,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26244.44821079864,
+        "refined_objective_Wh": 26244.448210798982,
+        "screen": {
+          "energy_Wh": [
+            26244.44821079864,
+            26244.448210798982
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.30301847125865e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1461520621480759e-10,
+          "packing": 0,
+          "power": 0.00004592726587904217,
+          "root_bending": 0,
+          "soc": 4.849381102234318e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.8637779259099716e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "random",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26802.87405952752,
+      "has_feasible": true,
+      "first_feasible_total_call": 18,
+      "first_feasible_online_call": 6,
+      "first_feasible_censored": false,
+      "online_usable": 7,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26802.87405952752,
+        "refined_objective_Wh": 26802.87405952766,
+        "screen": {
+          "energy_Wh": [
+            26802.87405952752,
+            26802.87405952766
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.2935059561697295e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.0725021698808632e-10,
+          "packing": 0,
+          "power": 0.00004673213132733167,
+          "root_bending": 0,
+          "soc": 9.333513256715165e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.51673413617948e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "ev_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26766.030615729196,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26766.030615729196,
+        "refined_objective_Wh": 26766.030615729345,
+        "screen": {
+          "energy_Wh": [
+            26766.030615729196,
+            26766.030615729345
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.572627978804838e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.2835845981414877e-10,
+          "packing": 0,
+          "power": 0.00004842971001939311,
+          "root_bending": 0,
+          "soc": 9.623261715274722e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.687091819694956e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "ev_onehot",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26237.961506097785,
+      "has_feasible": true,
+      "first_feasible_total_call": 15,
+      "first_feasible_online_call": 3,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26237.961506097785,
+        "refined_objective_Wh": 26237.96150609788,
+        "screen": {
+          "energy_Wh": [
+            26237.961506097785,
+            26237.96150609788
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.604984669346427e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.682465940130669e-11,
+          "packing": 0,
+          "power": 0.00004585455551897599,
+          "root_bending": 0,
+          "soc": 6.924691942078454e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.089322303002518e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "phase_exact",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26607.268942639785,
+      "has_feasible": true,
+      "first_feasible_total_call": 16,
+      "first_feasible_online_call": 4,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26607.268942639785,
+        "refined_objective_Wh": 26607.2689426397,
+        "screen": {
+          "energy_Wh": [
+            26607.268942639785,
+            26607.2689426397
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.144761408752392e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.600197834823348e-10,
+          "packing": 0,
+          "power": 0.00004799788480380762,
+          "root_bending": 0,
+          "soc": 1.0362275637554319e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 6.122670148656084e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "phase_sign",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26242.706339085318,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 23,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26242.706339085318,
+        "refined_objective_Wh": 26242.70633908542,
+        "screen": {
+          "energy_Wh": [
+            26242.706339085318,
+            26242.70633908542
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.8815892416878675e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.3166567836009335e-10,
+          "packing": 0,
+          "power": 0.00004599710273389679,
+          "root_bending": 0,
+          "soc": 1.5894367655366892e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.386401655930854e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "ev_random_then_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 26568.74552514924,
+      "has_feasible": true,
+      "first_feasible_total_call": 13,
+      "first_feasible_online_call": 1,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26568.74552514924,
+        "refined_objective_Wh": 26568.745525149545,
+        "screen": {
+          "energy_Wh": [
+            26568.74552514924,
+            26568.745525149545
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1501868596183328e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 6.510747496690783e-11,
+          "packing": 0,
+          "power": 0.00004713279318846464,
+          "root_bending": 0,
+          "soc": 6.794793450115577e-9,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.014123256013136e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9916,
+      "method": "original_lsbo",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 29828.79938190282,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29828.79938190282,
+        "refined_objective_Wh": 29828.79938190317,
+        "screen": {
+          "energy_Wh": [
+            29828.79938190282,
+            29828.79938190317
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1708348063539173e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.3360870449760114e-11,
+          "packing": 0,
+          "power": 0.00004961052489882434,
+          "root_bending": 0,
+          "soc": 5.783084044974629e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.6937008623661995e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 29287.90164518534,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 8,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29287.90164518534,
+        "refined_objective_Wh": 29287.90164518525,
+        "screen": {
+          "energy_Wh": [
+            29287.90164518534,
+            29287.90164518525
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.981145335297675e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6771362076895002e-9,
+          "packing": 0,
+          "power": 0.0005414866903230564,
+          "root_bending": 0,
+          "soc": 2.7861589180222524e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.597912553616084e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 29259.074989053024,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 29,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29259.074989053024,
+        "refined_objective_Wh": 29259.074989053104,
+        "screen": {
+          "energy_Wh": [
+            29259.074989053024,
+            29259.074989053104
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.7354088871901084e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.09237094317416e-8,
+          "packing": 0,
+          "power": 0.00006333276520165132,
+          "root_bending": 0,
+          "soc": 8.35395471354694e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.875641356148151e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 26246.759239538158,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26246.759239538158,
+        "refined_objective_Wh": 26246.759239537943,
+        "screen": {
+          "energy_Wh": [
+            26246.759239538158,
+            26246.759239537943
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.177800072744892e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1987766335153083e-10,
+          "packing": 0,
+          "power": 0.0000459489397156565,
+          "root_bending": 0,
+          "soc": 9.201142564529974e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.4336999344428705e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 29410.780521660417,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29410.780521660417,
+        "refined_objective_Wh": 29410.78052166024,
+        "screen": {
+          "energy_Wh": [
+            29410.780521660417,
+            29410.78052166024
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.061075509920915e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6424529070135918e-8,
+          "packing": 0,
+          "power": 0.00010757455799426108,
+          "root_bending": 0,
+          "soc": 3.61721122665859e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.24389507139e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 30464.44826128684,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 26,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30464.44826128684,
+        "refined_objective_Wh": 30464.448261287154,
+        "screen": {
+          "energy_Wh": [
+            30464.44826128684,
+            30464.448261287154
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.0269878342338586e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1032190716520063e-9,
+          "packing": 0,
+          "power": 0.00004035786334444236,
+          "root_bending": 0,
+          "soc": 3.7480876130535634e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.584904190110592e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 29259.074989053024,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 29,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 29259.074989053024,
+        "refined_objective_Wh": 29259.074989053104,
+        "screen": {
+          "energy_Wh": [
+            29259.074989053024,
+            29259.074989053104
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.7354088871901084e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.09237094317416e-8,
+          "packing": 0,
+          "power": 0.00006333276520165132,
+          "root_bending": 0,
+          "soc": 8.35395471354694e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.875641356148151e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9917,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 31344.204611871664,
+      "best_feasible": 26267.551075638545,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26267.551075638545,
+        "refined_objective_Wh": 26267.55107563893,
+        "screen": {
+          "energy_Wh": [
+            26267.551075638545,
+            26267.55107563893
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.4680689206286874e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.581202498054608e-11,
+          "packing": 0,
+          "power": 0.000045850383479040246,
+          "root_bending": 0,
+          "soc": 1.9203083906349505e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1340849148666621e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 30336.080789309297,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30336.080789309297,
+        "refined_objective_Wh": 30336.080789309817,
+        "screen": {
+          "energy_Wh": [
+            30336.080789309297,
+            30336.080789309817
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.7148918247786313e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.2978637053961961e-9,
+          "packing": 0,
+          "power": 0.0008447692408237728,
+          "root_bending": 0,
+          "soc": 4.000134352089013e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.870893300282006e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 27531.61445838898,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 23,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 27531.61445838898,
+        "refined_objective_Wh": 27531.614458389104,
+        "screen": {
+          "energy_Wh": [
+            27531.61445838898,
+            27531.614458389104
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 4.4926998243442466e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6127369439900008e-9,
+          "packing": 0,
+          "power": 0.0023582677357461,
+          "root_bending": 0,
+          "soc": 1.2451368125443452e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 6.571765975849075e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 26250.574935744804,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26250.574935744804,
+        "refined_objective_Wh": 26250.57493574496,
+        "screen": {
+          "energy_Wh": [
+            26250.574935744804,
+            26250.57493574496
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.9592252393653816e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1015310885653662e-10,
+          "packing": 0,
+          "power": 0.00004590934163517524,
+          "root_bending": 0,
+          "soc": 1.6061690799595851e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 9.485144580878568e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 30155.94118428797,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 23,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 30155.94118428797,
+        "refined_objective_Wh": 30155.94118428752,
+        "screen": {
+          "energy_Wh": [
+            30155.94118428797,
+            30155.94118428752
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.495922045087483e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 6.73541222795393e-10,
+          "packing": 0,
+          "power": 0.0001628143871278409,
+          "root_bending": 0,
+          "soc": 6.657094306916633e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.050783532465573e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 26834.191699322768,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26834.191699322768,
+        "refined_objective_Wh": 26834.191699322768,
+        "screen": {
+          "energy_Wh": [
+            26834.191699322768,
+            26834.191699322768
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 0,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.1451396214899887e-10,
+          "packing": 0,
+          "power": 0.00004670445844934257,
+          "root_bending": 0,
+          "soc": 2.0845138298808408e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.2321176923180133e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 27531.61445838898,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 23,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 27531.61445838898,
+        "refined_objective_Wh": 27531.614458389104,
+        "screen": {
+          "energy_Wh": [
+            27531.61445838898,
+            27531.614458389104
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 4.4926998243442466e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6127369439900008e-9,
+          "packing": 0,
+          "power": 0.0023582677357461,
+          "root_bending": 0,
+          "soc": 1.2451368125443452e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 6.571765975849075e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_ordinary",
+      "seed": 9918,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 32904.55027190694,
+      "best_feasible": 26241.73786274652,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 25,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 26241.73786274652,
+        "refined_objective_Wh": 26241.737862746522,
+        "screen": {
+          "energy_Wh": [
+            26241.73786274652,
+            26241.737862746522
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.386333034084715e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.290434922424538e-11,
+          "packing": 0,
+          "power": 0.00004575598824596572,
+          "root_bending": 0,
+          "soc": 1.3299576384628864e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.853957040282467e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 39162.72610543904,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 3,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39162.72610543904,
+        "refined_objective_Wh": 39162.72610543873,
+        "screen": {
+          "energy_Wh": [
+            39162.72610543904,
+            39162.72610543873
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.988876376163149e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.8922952094158063e-9,
+          "packing": 0,
+          "power": 5.203598274494681e-8,
+          "root_bending": 0,
+          "soc": 3.3525325515704196e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.2508670260990016e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 33387.298604237076,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33387.298604237076,
+        "refined_objective_Wh": 33387.298604236654,
+        "screen": {
+          "energy_Wh": [
+            33387.298604237076,
+            33387.298604236654
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2639703098623518e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.459211192108796e-11,
+          "packing": 0,
+          "power": 0.00004584530259943431,
+          "root_bending": 0,
+          "soc": 5.504330999328566e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.065133607511484e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 33332.005723599555,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 14,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33332.005723599555,
+        "refined_objective_Wh": 33332.00572360009,
+        "screen": {
+          "energy_Wh": [
+            33332.005723599555,
+            33332.00572360009
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.5934981838171326e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.276956814905589e-11,
+          "packing": 0,
+          "power": 0.00004575544076534932,
+          "root_bending": 0,
+          "soc": 2.528744831309382e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.8674065072055157e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 35546.26387595155,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 6,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35546.26387595155,
+        "refined_objective_Wh": 35546.263875951554,
+        "screen": {
+          "energy_Wh": [
+            35546.26387595155,
+            35546.263875951554
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.0468979917481278e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1370244745734226e-9,
+          "packing": 0,
+          "power": 0.00003320500815751082,
+          "root_bending": 0,
+          "soc": 1.006577654560914e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.231344024636542e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 35528.3978791616,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 8,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35528.3978791616,
+        "refined_objective_Wh": 35528.397879161326,
+        "screen": {
+          "energy_Wh": [
+            35528.3978791616,
+            35528.397879161326
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.782123761373977e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.061736698559912e-9,
+          "packing": 0,
+          "power": 0.00003310039605330939,
+          "root_bending": 0,
+          "soc": 5.664113705838858e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.943642840591565e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 33387.298604237076,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33387.298604237076,
+        "refined_objective_Wh": 33387.298604236654,
+        "screen": {
+          "energy_Wh": [
+            33387.298604237076,
+            33387.298604236654
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2639703098623518e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.459211192108796e-11,
+          "packing": 0,
+          "power": 0.00004584530259943431,
+          "root_bending": 0,
+          "soc": 5.504330999328566e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.065133607511484e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9911,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39162.72610543904,
+      "best_feasible": 33344.70592549566,
+      "has_feasible": true,
+      "first_feasible_total_call": 2,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33344.70592549566,
+        "refined_objective_Wh": 33344.705925495626,
+        "screen": {
+          "energy_Wh": [
+            33344.70592549566,
+            33344.705925495626
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.0910214098814666e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0929190885633489e-10,
+          "packing": 0,
+          "power": 0.00004590555960348741,
+          "root_bending": 0,
+          "soc": 2.199016844728341e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.6239330191680779e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 44445.9709477849,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 1,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 44445.9709477849,
+        "refined_objective_Wh": 44445.970947784954,
+        "screen": {
+          "energy_Wh": [
+            44445.9709477849,
+            44445.970947784954
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1459239659567445e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.843378865691193e-10,
+          "packing": 0,
+          "power": 0.00046918235135195996,
+          "root_bending": 0,
+          "soc": 7.223105779607941e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.3116518010901643e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 41015.22668042012,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 41015.22668042012,
+        "refined_objective_Wh": 41015.22668041981,
+        "screen": {
+          "energy_Wh": [
+            41015.22668042012,
+            41015.22668041981
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.628049452162262e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.910730628220449e-10,
+          "packing": 0,
+          "power": 0.0013986662979666997,
+          "root_bending": 0,
+          "soc": 0.000001130430729467946,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.307280210395618e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 33431.47587172518,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33431.47587172518,
+        "refined_objective_Wh": 33431.47587172487,
+        "screen": {
+          "energy_Wh": [
+            33431.47587172518,
+            33431.47587172487
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 9.358431515567585e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.898326602808538e-11,
+          "packing": 0,
+          "power": 0.00004586335104550532,
+          "root_bending": 0,
+          "soc": 4.3056557960663433e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.180090799581592e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 44445.9709477849,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 0,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 44445.9709477849,
+        "refined_objective_Wh": 44445.970947784954,
+        "screen": {
+          "energy_Wh": [
+            44445.9709477849,
+            44445.970947784954
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1459239659567445e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.843378865691193e-10,
+          "packing": 0,
+          "power": 0.00046918235135195996,
+          "root_bending": 0,
+          "soc": 7.223105779607941e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.3116518010901643e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 41400.86898612042,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 2,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 41400.86898612042,
+        "refined_objective_Wh": 41400.868986120026,
+        "screen": {
+          "energy_Wh": [
+            41400.86898612042,
+            41400.868986120026
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 9.490180297849025e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.865967628830958e-10,
+          "packing": 0,
+          "power": 0.0002899179190147816,
+          "root_bending": 0,
+          "soc": 2.630973252315538e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.9366923154073845e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 41015.22668042012,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 41015.22668042012,
+        "refined_objective_Wh": 41015.22668041981,
+        "screen": {
+          "energy_Wh": [
+            41015.22668042012,
+            41015.22668041981
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.628049452162262e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.910730628220449e-10,
+          "packing": 0,
+          "power": 0.0013986662979666997,
+          "root_bending": 0,
+          "soc": 0.000001130430729467946,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.307280210395618e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9912,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 44445.9709477849,
+      "best_feasible": 35560.4054669857,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35560.4054669857,
+        "refined_objective_Wh": 35560.40546698542,
+        "screen": {
+          "energy_Wh": [
+            35560.4054669857,
+            35560.40546698542
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.775119144680802e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1063748805995033e-9,
+          "packing": 0,
+          "power": 0.0000331624735205871,
+          "root_bending": 0,
+          "soc": 2.1747350587020264e-9,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1303511460170057e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 38693.42550643276,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 6,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 38693.42550643276,
+        "refined_objective_Wh": 38693.42550643209,
+        "screen": {
+          "energy_Wh": [
+            38693.42550643276,
+            38693.42550643209
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.7299789091911787e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.853536709845343e-10,
+          "packing": 0,
+          "power": 0.0007312641247895213,
+          "root_bending": 0,
+          "soc": 7.915491706533828e-9,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.562955264158063e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 37503.61161490927,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37503.61161490927,
+        "refined_objective_Wh": 37503.61161490932,
+        "screen": {
+          "energy_Wh": [
+            37503.61161490927,
+            37503.61161490932
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.3580479614138391e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6915581158016835e-9,
+          "packing": 0,
+          "power": 0.00022014890367028084,
+          "root_bending": 0,
+          "soc": 1.998345643405841e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.915600435699389e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 33486.99927794059,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33486.99927794059,
+        "refined_objective_Wh": 33486.99927794016,
+        "screen": {
+          "energy_Wh": [
+            33486.99927794059,
+            33486.99927794016
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2819348060237064e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0420198037763839e-10,
+          "packing": 0,
+          "power": 0.00004588480314970944,
+          "root_bending": 0,
+          "soc": 7.625419573553671e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.6323658848000946e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 40238.05115625527,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 40238.05115625527,
+        "refined_objective_Wh": 40238.05115625563,
+        "screen": {
+          "energy_Wh": [
+            40238.05115625527,
+            40238.05115625563
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.860317854622565e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 7.264644441562496e-10,
+          "packing": 0,
+          "power": 0.001193019095038883,
+          "root_bending": 0,
+          "soc": 7.023140554673901e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.7616413301199145e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 39590.93267100624,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 15,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39590.93267100624,
+        "refined_objective_Wh": 39590.9326710058,
+        "screen": {
+          "energy_Wh": [
+            39590.93267100624,
+            39590.9326710058
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1026703020076008e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.4587444847365987e-10,
+          "packing": 0,
+          "power": 0.00085490955382439,
+          "root_bending": 0,
+          "soc": 8.42763067110397e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.695331806165882e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 37503.61161490927,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37503.61161490927,
+        "refined_objective_Wh": 37503.61161490932,
+        "screen": {
+          "energy_Wh": [
+            37503.61161490927,
+            37503.61161490932
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.3580479614138391e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.6915581158016835e-9,
+          "packing": 0,
+          "power": 0.00022014890367028084,
+          "root_bending": 0,
+          "soc": 1.998345643405841e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.915600435699389e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9913,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 42352.135250038504,
+      "best_feasible": 33375.00033451549,
+      "has_feasible": true,
+      "first_feasible_total_call": 5,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 24,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33375.00033451549,
+        "refined_objective_Wh": 33375.00033451532,
+        "screen": {
+          "energy_Wh": [
+            33375.00033451549,
+            33375.00033451532
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.014143024686475e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.1205659450629355e-10,
+          "packing": 0,
+          "power": 0.00004632133664417282,
+          "root_bending": 0,
+          "soc": 7.440206373221514e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.494967747488033e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 38228.82435092672,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 3,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 38228.82435092672,
+        "refined_objective_Wh": 38228.82435092704,
+        "screen": {
+          "energy_Wh": [
+            38228.82435092672,
+            38228.82435092704
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.374365167112636e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0695431207352613e-9,
+          "packing": 0,
+          "power": 0.00040472138175995376,
+          "root_bending": 0,
+          "soc": 7.094283860364925e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.16984849479951e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 36772.438172906164,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 36772.438172906164,
+        "refined_objective_Wh": 36772.43817290658,
+        "screen": {
+          "energy_Wh": [
+            36772.438172906164,
+            36772.43817290658
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1278272657863145e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.675964391358093e-10,
+          "packing": 0,
+          "power": 0.0008163846567147415,
+          "root_bending": 0,
+          "soc": 3.224685595215604e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.0518840198869839e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 33489.635923789145,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 13,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33489.635923789145,
+        "refined_objective_Wh": 33489.63592378866,
+        "screen": {
+          "energy_Wh": [
+            33489.635923789145,
+            33489.63592378866
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.4556418626337227e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.333311818375932e-11,
+          "packing": 0,
+          "power": 0.00004708310298506824,
+          "root_bending": 0,
+          "soc": 1.3641630694505302e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.0078492640452907e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 38686.96501253491,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 38686.96501253491,
+        "refined_objective_Wh": 38686.96501253444,
+        "screen": {
+          "energy_Wh": [
+            38686.96501253491,
+            38686.96501253444
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.203664560290182e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1403959998546043e-9,
+          "packing": 0,
+          "power": 0.0008017730221224761,
+          "root_bending": 0,
+          "soc": 1.0650222304064982e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.780689510930358e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 39110.97415183254,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 20,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39110.97415183254,
+        "refined_objective_Wh": 39110.97415183229,
+        "screen": {
+          "energy_Wh": [
+            39110.97415183254,
+            39110.97415183229
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.325144393537101e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 6.94857504868196e-10,
+          "packing": 0,
+          "power": 0.0011554164381246679,
+          "root_bending": 0,
+          "soc": 2.4545155147270847e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.654403938289306e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 36772.438172906164,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 18,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 36772.438172906164,
+        "refined_objective_Wh": 36772.43817290658,
+        "screen": {
+          "energy_Wh": [
+            36772.438172906164,
+            36772.43817290658
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1278272657863145e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.675964391358093e-10,
+          "packing": 0,
+          "power": 0.0008163846567147415,
+          "root_bending": 0,
+          "soc": 3.224685595215604e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.0518840198869839e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9914,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 46713.213087274074,
+      "best_feasible": 35528.18918016841,
+      "has_feasible": true,
+      "first_feasible_total_call": 4,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 20,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35528.18918016841,
+        "refined_objective_Wh": 35528.189180167945,
+        "screen": {
+          "energy_Wh": [
+            35528.18918016841,
+            35528.189180167945
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.3106811747323004e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.085253220622917e-9,
+          "packing": 0,
+          "power": 0.000033133147768205085,
+          "root_bending": 0,
+          "soc": 5.234127453679349e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.7201921604103063e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "random",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 48746.143826783846,
+      "has_feasible": true,
+      "first_feasible_total_call": 38,
+      "first_feasible_online_call": 26,
+      "first_feasible_censored": false,
+      "online_usable": 1,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 48746.143826783846,
+        "refined_objective_Wh": 48746.14382678373,
+        "screen": {
+          "energy_Wh": [
+            48746.143826783846,
+            48746.14382678373
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.388195510205056e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.581570595656558e-10,
+          "packing": 0,
+          "power": 0.0013920528925744913,
+          "root_bending": 0,
+          "soc": 0.0000010124650903220456,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.433826738623139e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "ev_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 48675.86662854499,
+      "has_feasible": true,
+      "first_feasible_total_call": 17,
+      "first_feasible_online_call": 5,
+      "first_feasible_censored": false,
+      "online_usable": 5,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 48675.86662854499,
+        "refined_objective_Wh": 48675.86662854575,
+        "screen": {
+          "energy_Wh": [
+            48675.86662854499,
+            48675.86662854575
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.5695160711144474e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.4859754537965841e-9,
+          "packing": 0,
+          "power": 0.00001105953000879456,
+          "root_bending": 0,
+          "soc": 7.112734620728922e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.22128549285128e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "ev_onehot",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 33369.192865004996,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 16,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33369.192865004996,
+        "refined_objective_Wh": 33369.19286500523,
+        "screen": {
+          "energy_Wh": [
+            33369.192865004996,
+            33369.19286500523
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.9774131066275385e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 9.578515758335016e-11,
+          "packing": 0,
+          "power": 0.000045850290315119224,
+          "root_bending": 0,
+          "soc": 8.491327840864926e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 6.271220809317413e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "phase_exact",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 43809.90210524891,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 7,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 43809.90210524891,
+        "refined_objective_Wh": 43809.90210524899,
+        "screen": {
+          "energy_Wh": [
+            43809.90210524891,
+            43809.90210524899
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.8268822779777083e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.1275335110028095e-9,
+          "packing": 0,
+          "power": 0.0000820264740402088,
+          "root_bending": 0,
+          "soc": 7.879431829227457e-9,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.557358103061347e-9
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "phase_sign",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 45246.05766042406,
+      "has_feasible": true,
+      "first_feasible_total_call": 15,
+      "first_feasible_online_call": 3,
+      "first_feasible_censored": false,
+      "online_usable": 10,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 45246.05766042406,
+        "refined_objective_Wh": 45246.05766042443,
+        "screen": {
+          "energy_Wh": [
+            45246.05766042406,
+            45246.05766042443
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.040432681218458e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.158890926613367e-10,
+          "packing": 0,
+          "power": 0.0007317051591235746,
+          "root_bending": 0,
+          "soc": 2.424970857450859e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.0898439639639435e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "ev_random_then_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 39318.003449091055,
+      "has_feasible": true,
+      "first_feasible_total_call": 13,
+      "first_feasible_online_call": 1,
+      "first_feasible_censored": false,
+      "online_usable": 20,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39318.003449091055,
+        "refined_objective_Wh": 39318.00344909147,
+        "screen": {
+          "energy_Wh": [
+            39318.003449091055,
+            39318.00344909147
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.0548083514602736e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.577219714363423e-10,
+          "packing": 0,
+          "power": 0.0002584349616551185,
+          "root_bending": 0,
+          "soc": 3.184789015842071e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.1579204201316315e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9915,
+      "method": "original_lsbo",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 35542.89829477747,
+      "has_feasible": true,
+      "first_feasible_total_call": 19,
+      "first_feasible_online_call": 7,
+      "first_feasible_censored": false,
+      "online_usable": 17,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35542.89829477747,
+        "refined_objective_Wh": 35542.89829477802,
+        "screen": {
+          "energy_Wh": [
+            35542.89829477747,
+            35542.89829477802
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.535318860431624e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0999106070386233e-9,
+          "packing": 0,
+          "power": 0.00003315348369337112,
+          "root_bending": 0,
+          "soc": 2.6522879337242955e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.3784150043605337e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "random",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 45450.5171510689,
+      "has_feasible": true,
+      "first_feasible_total_call": 22,
+      "first_feasible_online_call": 10,
+      "first_feasible_censored": false,
+      "online_usable": 3,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 45450.5171510689,
+        "refined_objective_Wh": 45450.51715106907,
+        "screen": {
+          "energy_Wh": [
+            45450.5171510689,
+            45450.51715106907
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.681960858002746e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.914656100332479e-9,
+          "packing": 0,
+          "power": 0.00008925730838549306,
+          "root_bending": 0,
+          "soc": 2.4931642583769786e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1182301307144371e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "ev_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 39554.437513231074,
+      "has_feasible": true,
+      "first_feasible_total_call": 15,
+      "first_feasible_online_call": 3,
+      "first_feasible_censored": false,
+      "online_usable": 10,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39554.437513231074,
+        "refined_objective_Wh": 39554.43751323183,
+        "screen": {
+          "energy_Wh": [
+            39554.437513231074,
+            39554.43751323183
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.9130586590238924e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 5.050376783444221e-10,
+          "packing": 0,
+          "power": 0.0007792320484366622,
+          "root_bending": 0,
+          "soc": 3.178308207174574e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.14587149827139e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "ev_onehot",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 33505.237393403506,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 14,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33505.237393403506,
+        "refined_objective_Wh": 33505.237393403106,
+        "screen": {
+          "energy_Wh": [
+            33505.237393403506,
+            33505.237393403106
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1943734768429964e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.063155119496173e-10,
+          "packing": 0,
+          "power": 0.00004589334260629574,
+          "root_bending": 0,
+          "soc": 2.716413732284373e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.00647039205748e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "phase_exact",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 40617.0599584892,
+      "has_feasible": true,
+      "first_feasible_total_call": 14,
+      "first_feasible_online_call": 2,
+      "first_feasible_censored": false,
+      "online_usable": 8,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 40617.0599584892,
+        "refined_objective_Wh": 40617.05995848898,
+        "screen": {
+          "energy_Wh": [
+            40617.0599584892,
+            40617.05995848898
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.374065199415854e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.57094617501275e-10,
+          "packing": 0,
+          "power": 0.00004937679438377085,
+          "root_bending": 0,
+          "soc": 2.7486503378915117e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.0260497057833504e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "phase_sign",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 38908.82637492676,
+      "has_feasible": true,
+      "first_feasible_total_call": 15,
+      "first_feasible_online_call": 3,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 38908.82637492676,
+        "refined_objective_Wh": 38908.82637492632,
+        "screen": {
+          "energy_Wh": [
+            38908.82637492676,
+            38908.82637492632
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1220010921026713e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0242748871291951e-9,
+          "packing": 0,
+          "power": 0.0002249825103226577,
+          "root_bending": 0,
+          "soc": 7.389183978578906e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 4.977258034610799e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "ev_random_then_latent",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 35608.00162900724,
+      "has_feasible": true,
+      "first_feasible_total_call": 24,
+      "first_feasible_online_call": 12,
+      "first_feasible_censored": false,
+      "online_usable": 11,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35608.00162900724,
+        "refined_objective_Wh": 35608.00162900699,
+        "screen": {
+          "energy_Wh": [
+            35608.00162900724,
+            35608.00162900699
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 6.94738675479934e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.182102415953068e-9,
+          "packing": 0,
+          "power": 0.00003326710110107545,
+          "root_bending": 0,
+          "soc": 2.687553476432569e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 8.708567045268012e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9916,
+      "method": "original_lsbo",
+      "initial_kind": "cold",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": null,
+      "best_feasible": 33355.709367928066,
+      "has_feasible": true,
+      "first_feasible_total_call": 15,
+      "first_feasible_online_call": 3,
+      "first_feasible_censored": false,
+      "online_usable": 22,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33355.709367928066,
+        "refined_objective_Wh": 33355.70936792882,
+        "screen": {
+          "energy_Wh": [
+            33355.709367928066,
+            33355.70936792882
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.2685759236247432e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.0944667394596763e-10,
+          "packing": 0,
+          "power": 0.000045906163355868834,
+          "root_bending": 0,
+          "soc": 1.435387389225884e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.0600162125840029e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 39919.23791547987,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 4,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39919.23791547987,
+        "refined_objective_Wh": 39919.237915479374,
+        "screen": {
+          "energy_Wh": [
+            39919.23791547987,
+            39919.237915479374
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.2394152383671113e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.8611332475160225e-9,
+          "packing": 0,
+          "power": 0.0010099343459317733,
+          "root_bending": 0,
+          "soc": 4.431770309065719e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.004015969310103e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 37828.6330178707,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 8,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37828.6330178707,
+        "refined_objective_Wh": 37828.63301787069,
+        "screen": {
+          "energy_Wh": [
+            37828.6330178707,
+            37828.63301787069
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.923399561053707e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.028345435003189e-10,
+          "packing": 0,
+          "power": 0.0009924928201439087,
+          "root_bending": 0,
+          "soc": 3.0870282402561955e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.3825339073569864e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 35715.043267604444,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35715.043267604444,
+        "refined_objective_Wh": 35715.04326760447,
+        "screen": {
+          "energy_Wh": [
+            35715.043267604444,
+            35715.04326760447
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.148899677557578e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.506413882523816e-9,
+          "packing": 0,
+          "power": 0.000033706181192250106,
+          "root_bending": 0,
+          "soc": 9.639424042306999e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.124453495928492e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 39689.81955423607,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 7,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39689.81955423607,
+        "refined_objective_Wh": 39689.8195542361,
+        "screen": {
+          "energy_Wh": [
+            39689.81955423607,
+            39689.8195542361
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.332820048970832e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.7032804056071882e-9,
+          "packing": 0,
+          "power": 0.000555780180967691,
+          "root_bending": 0,
+          "soc": 1.758107363303285e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.1913595510115726e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 37535.957913840204,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 12,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37535.957913840204,
+        "refined_objective_Wh": 37535.957913839935,
+        "screen": {
+          "energy_Wh": [
+            37535.957913840204,
+            37535.957913839935
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 7.172067710186925e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 3.622286914861661e-10,
+          "packing": 0,
+          "power": 0.0003926860389773523,
+          "root_bending": 0,
+          "soc": 7.368587584544173e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.296180528522541e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 37828.6330178707,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 8,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37828.6330178707,
+        "refined_objective_Wh": 37828.63301787069,
+        "screen": {
+          "energy_Wh": [
+            37828.6330178707,
+            37828.63301787069
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.923399561053707e-16,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 4.028345435003189e-10,
+          "packing": 0,
+          "power": 0.0009924928201439087,
+          "root_bending": 0,
+          "soc": 3.0870282402561955e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.3825339073569864e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9917,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 39919.23791547987,
+      "best_feasible": 35567.064657339324,
+      "has_feasible": true,
+      "first_feasible_total_call": 3,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 21,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35567.064657339324,
+        "refined_objective_Wh": 35567.064657339186,
+        "screen": {
+          "energy_Wh": [
+            35567.064657339324,
+            35567.064657339186
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 3.8868317079677505e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.106768232617128e-9,
+          "packing": 0,
+          "power": 0.00003316303756895067,
+          "root_bending": 0,
+          "soc": 2.41118934818374e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 1.253254211519561e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "random",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 39727.868282190495,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 1,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 39727.868282190495,
+        "refined_objective_Wh": 39727.86828219016,
+        "screen": {
+          "energy_Wh": [
+            39727.868282190495,
+            39727.86828219016
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 8.42466673205518e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 8.192249101313109e-10,
+          "packing": 0,
+          "power": 0.0012484465446114257,
+          "root_bending": 0,
+          "soc": 4.26481755910757e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 2.9014552893613654e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "ev_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 35930.559340916916,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 9,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35930.559340916916,
+        "refined_objective_Wh": 35930.55934091637,
+        "screen": {
+          "energy_Wh": [
+            35930.559340916916,
+            35930.55934091637
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.5187540385499592e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.4988204011245898e-9,
+          "packing": 0,
+          "power": 0.000034773160445755735,
+          "root_bending": 0,
+          "soc": 9.321389177197048e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.028901840451681e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "ev_onehot",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 33455.608152839915,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 33455.608152839915,
+        "refined_objective_Wh": 33455.60815283983,
+        "screen": {
+          "energy_Wh": [
+            33455.608152839915,
+            33455.60815283983
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 2.6097714610753475e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.592630554687503e-10,
+          "packing": 0,
+          "power": 0.00004650877336198622,
+          "root_bending": 0,
+          "soc": 4.1712576456798267e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.081398856075168e-7
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "phase_exact",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 47519.69266819403,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 0,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 47519.69266819403,
+        "refined_objective_Wh": 47519.6926681946,
+        "screen": {
+          "energy_Wh": [
+            47519.69266819403,
+            47519.6926681946
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.1942936960241689e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.875022359598688e-9,
+          "packing": 0,
+          "power": 0.00011313696646131355,
+          "root_bending": 0,
+          "soc": 7.3450617144033e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 5.0009974383868894e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "phase_sign",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 46716.04670457007,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 2,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 46716.04670457007,
+        "refined_objective_Wh": 46716.046704569795,
+        "screen": {
+          "energy_Wh": [
+            46716.04670457007,
+            46716.046704569795
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 5.918445777046543e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 5.895266497191187e-10,
+          "packing": 0,
+          "power": 0.001105533247973911,
+          "root_bending": 0,
+          "soc": 1.0870044669930579e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 7.340661123400594e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "ev_random_then_latent",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 35930.559340916916,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 9,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 35930.559340916916,
+        "refined_objective_Wh": 35930.55934091637,
+        "screen": {
+          "energy_Wh": [
+            35930.559340916916,
+            35930.55934091637
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 1.5187540385499592e-14,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 1.4988204011245898e-9,
+          "packing": 0,
+          "power": 0.000034773160445755735,
+          "root_bending": 0,
+          "soc": 9.321389177197048e-8,
+          "span": 0,
+          "stall": 0,
+          "voltage": 3.028901840451681e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    },
+    {
+      "case": "aircraft_sparse",
+      "seed": 9918,
+      "method": "original_lsbo",
+      "initial_kind": "warm",
+      "initial_calls": 12,
+      "online_calls": 30,
+      "initial_best": 47519.69266819403,
+      "best_feasible": 37795.75388186659,
+      "has_feasible": true,
+      "first_feasible_total_call": 10,
+      "first_feasible_online_call": 0,
+      "first_feasible_censored": false,
+      "online_usable": 19,
+      "online_physical_unknown": 0,
+      "numerical_failures": 0,
+      "stop_reason": null,
+      "verification": {
+        "verified_usable": true,
+        "nominal_objective_Wh": 37795.75388186659,
+        "refined_objective_Wh": 37795.753881866774,
+        "screen": {
+          "energy_Wh": [
+            37795.75388186659,
+            37795.753881866774
+          ],
+          "feasibility_labels_agree": true,
+          "relative_energy_range": 4.812681893397954e-15,
+          "status": "passed_screen"
+        },
+        "absolute_constraint_differences": {
+          "current": 2.41229258790554e-11,
+          "packing": 0,
+          "power": 0.000026264037748080504,
+          "root_bending": 0,
+          "soc": 1.5614037679467785e-7,
+          "span": 0,
+          "stall": 0,
+          "voltage": 6.73642079895842e-8
+        },
+        "not_optimizer_feedback": true
+      }
+    }
+  ],
+  "limitations": [
+    "Eight development seeds per mission; no independent confirmation.",
+    "Cold initial sets: one seed for 100 km and two for 140 km.",
+    "Historical sparse identifier does not establish feasibility below 10%.",
+    "Five-second verification is held out and is not physical model validation.",
+    "Full original logs, proposals, ledgers, plans and snapshots are in the Release archive."
+  ]
+}
