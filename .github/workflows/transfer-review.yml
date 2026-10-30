@@ -1,0 +1,29 @@
+name: Transfer pilot evidence review
+on:
+  push:
+    branches: [research/transfer-review-20261030]
+    paths: ['.github/workflows/transfer-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read hash-pinned public evidence, never execute evaluator or snapshot
+        run: |
+          mkdir -p /tmp/transfer-review-input
+          curl --fail --location --retry 2 --max-time 300 'https://github.com/Luyi1235/RA-LSBO/releases/download/transfer-pilot-20261030-141720-80f5ce0d/transfer_pilot_20261030_141720_80f5ce0d_full_records.zip' -o /tmp/transfer-review-input/transfer_original.zip
+          echo '90d13623d1175374d442b19c431493393617016a1267baa65db2cc2203f2fca1  /tmp/transfer-review-input/transfer_original.zip' | sha256sum --check
+          git archive HEAD -- ra_lsbo tests docs tools requirements-models.txt .gitignore .gitattributes runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base | gzip > /tmp/transfer-review-input/source.tar.gz
+          git rev-parse HEAD > /tmp/transfer-review-input/checkout.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transfer-review-input-${{ github.sha }}
+          path: /tmp/transfer-review-input/
+          retention-days: 7
+          compression-level: 0
