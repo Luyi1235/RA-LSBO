@@ -1,0 +1,87 @@
+name: Aircraft nominal pilot validation
+on:
+  push:
+    branches: [research/aircraft-nominal-pilot-20261030]
+    paths:
+      - 'ra_lsbo/experiments/simplified_aircraft/nominal_pilot.py'
+      - 'ra_lsbo/experiments/simplified_aircraft/numerical_checks.py'
+      - 'ra_lsbo/experiments/simplified_aircraft/reviewed_qualification.py'
+      - 'tests/test_aircraft_nominal_pilot.py'
+      - 'tests/test_aircraft_numerical_checks.py'
+      - 'docs/AIRCRAFT_NOMINAL_PILOT_PROTOCOL_20261030.md'
+      - '.github/workflows/aircraft-nominal-pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aircraft-nominal-pilot-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-models.txt
+      - name: Isolated CPU dependencies
+        run: |
+          mkdir -p runs/aircraft_nominal_ci
+          git rev-parse HEAD > runs/aircraft_nominal_ci/commit.txt
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          python -m pip freeze > runs/aircraft_nominal_ci/environment.txt
+      - name: New tests and affected regressions, not campaigns
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_aircraft_nominal_pilot.py tests/test_aircraft_numerical_checks.py tests/test_aircraft_transition.py tests/test_discovery_stages.py tests/test_discovery_stages_evidence.py tests/test_discovery_stages_phase.py tests/test_paper_experiments.py tests/test_soc_revision_acquisition.py tests/test_soc_revision_posterior.py tests/test_numerical_safeguards.py --junitxml=runs/aircraft_nominal_ci/junit.xml 2>&1 | tee runs/aircraft_nominal_ci/pytest.txt
+      - name: Seven-arm smoke with held-out checks, at most 54 reduced-aircraft calls
+        run: |
+          set -o pipefail
+          folder=runs/aircraft_nominal_ci/smoke
+          python -m ra_lsbo.experiments.simplified_aircraft.nominal_pilot prepare --profile smoke --output "$folder"
+          python -m ra_lsbo.experiments.simplified_aircraft.nominal_pilot run --output "$folder" --approved-call-limit 54 | tee runs/aircraft_nominal_ci/smoke_console.txt
+          python -m ra_lsbo.experiments.simplified_aircraft.nominal_pilot audit --output "$folder"
+          python -m ra_lsbo.experiments.simplified_aircraft.nominal_pilot report --output "$folder"
+      - name: Verify historical qualification and prepare full pilot only, zero new evaluations
+        run: |
+          curl --fail --location --retry 2 --output /tmp/qualification.zip 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-transition-20261030-1955/aircraft_entry_20261030_01_full_records.zip'
+          echo 'ea1359fb7c76ea8641c54432e8e901fc4de065be6dc643590c585f6c1d7d7789  /tmp/qualification.zip' | sha256sum --check
+          python -m zipfile -e /tmp/qualification.zip /tmp/aircraft-reviewed
+          qualifier=$(find /tmp/aircraft-reviewed -type d -name qualification)
+          test -n "$qualifier"
+          python -m ra_lsbo.experiments.simplified_aircraft.nominal_pilot prepare --profile pilot --qualification "$qualifier" --output runs/aircraft_nominal_ci/prepare_only
+          test ! -e runs/aircraft_nominal_ci/prepare_only/calls.jsonl
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('runs/aircraft_nominal_ci/prepare_only')
+          plan=json.loads((root/'plan.json').read_bytes())
+          assert plan['budget']['maximum_model_calls']==3664
+          data=json.loads((root/'qualification_diagnostics.json').read_bytes())
+          assert data['new_model_calls']==0
+          assert sum(len(x['checks']) for x in data['cases'].values())==28
+          PY
+      - name: Archive exact tested sources
+        if: always()
+        run: |
+          mkdir -p runs/aircraft_nominal_ci
+          git archive HEAD ra_lsbo/experiments/simplified_aircraft/nominal_pilot.py ra_lsbo/experiments/simplified_aircraft/numerical_checks.py ra_lsbo/experiments/simplified_aircraft/reviewed_qualification.py tests/test_aircraft_nominal_pilot.py tests/test_aircraft_numerical_checks.py docs/AIRCRAFT_NOMINAL_PILOT_PROTOCOL_20261030.md | gzip > runs/aircraft_nominal_ci/tested-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aircraft-nominal-validation-${{ github.sha }}
+          path: runs/aircraft_nominal_ci/
+          retention-days: 30

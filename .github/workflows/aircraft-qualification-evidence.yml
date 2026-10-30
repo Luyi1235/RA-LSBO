@@ -1,0 +1,28 @@
+name: Aircraft qualification evidence
+on:
+  push:
+    branches: [research/aircraft-qualification-review-20261030]
+    paths: ['.github/workflows/aircraft-qualification-evidence.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch fixed public evidence only; do not import evaluators
+        run: |
+          mkdir -p /tmp/aircraft-qualification-input
+          curl --fail --location --max-time 90 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-transition-20261030-1955/aircraft_entry_20261030_01_full_records.zip' -o /tmp/aircraft-qualification-input/records.zip
+          echo 'ea1359fb7c76ea8641c54432e8e901fc4de065be6dc643590c585f6c1d7d7789  /tmp/aircraft-qualification-input/records.zip' | sha256sum -c -
+          git rev-parse HEAD > /tmp/aircraft-qualification-input/commit.txt
+          git archive HEAD ra_lsbo tests tools docs requirements-models.txt .github .gitignore .gitattributes runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base | gzip > /tmp/aircraft-qualification-input/source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aircraft-qualification-input-${{ github.sha }}
+          path: /tmp/aircraft-qualification-input/
+          retention-days: 14
