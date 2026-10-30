@@ -1,0 +1,3202 @@
+{
+  "adaptations": {},
+  "all_arms_share_initial_labels": true,
+  "anchor_policy": "anchors checked and reported, never used to select a case or seed; only explicit anchored policy uses them",
+  "arms": [
+    "random",
+    "ev_latent",
+    "ev_onehot",
+    "ev_random_then_latent",
+    "ev_equal",
+    "ev_prequential"
+  ],
+  "baseline_note": "conventional_eic is our numeric-only hierarchical one-hot adaptation; not official CBOB/SCBO",
+  "budget": {
+    "aircraft_step_convergence": 0,
+    "held_out_flight_scenarios": 0,
+    "independent_panel": 32,
+    "maximum_model_calls": 3108,
+    "maximum_rcaide_mda_calls": 0,
+    "online": 2880,
+    "qualification_anchors": 4,
+    "shared_initial": 192
+  },
+  "comparison_protocol": {
+    "candidate_generation": "common screened global stream; registered RA variants may augment; native LSBO has original search",
+    "explicit_execution_budget_required": true,
+    "held_out_panels_and_flight_scenarios_are_optimizer_private": true,
+    "new_rcaide_mda_calls": 0,
+    "original_lsbo_in_primary_roster": false,
+    "pilot_is_exploratory_only": true,
+    "revision": "comparison_reliability_20261028",
+    "same_initial_labels": true,
+    "same_nominal_evaluation_budget": true
+  },
+  "confirmation_requires_additional_authorization": true,
+  "flight_risk": "post-optimization validation only; nominal optimizer is not a chance-constrained physical-risk optimizer",
+  "initial_policy": "random draws never rejected using feasibility labels; warm/cold reported after evaluation",
+  "kernel_averaging": false,
+  "methods": {
+    "ev_equal": {
+      "cold_global": true,
+      "coverage_period": 5,
+      "coverage_scope": "cold",
+      "engine": "phase_discovery_v1",
+      "feedback": "interval",
+      "near_tolerance": 1e-08,
+      "protect": true,
+      "random_discovery": false,
+      "settings": {
+        "average_kernel": false,
+        "boundary_fraction": 0.2,
+        "continuous_grid": [
+          0.05,
+          0.15,
+          0.4,
+          1.0
+        ],
+        "discrete_grid": [
+          0.5,
+          1.5
+        ],
+        "encoder_epochs": 30,
+        "horizon": 30,
+        "initial_radius": 0.2,
+        "kernel": "grouped",
+        "latent": true,
+        "local": true,
+        "local_branches": 4,
+        "local_maxiter": 25,
+        "local_points": 12,
+        "local_starts": 2,
+        "maximum_radius": 0.5,
+        "minimum_radius": 0.025,
+        "probability_exploitation": true,
+        "use_intervals": true
+      },
+      "transfer_mode": "equal"
+    },
+    "ev_latent": {
+      "cold_global": true,
+      "coverage_period": 5,
+      "coverage_scope": "cold",
+      "engine": "phase_discovery_v1",
+      "feedback": "interval",
+      "near_tolerance": 1e-08,
+      "protect": true,
+      "random_discovery": false,
+      "settings": {
+        "average_kernel": false,
+        "boundary_fraction": 0.2,
+        "continuous_grid": [
+          0.05,
+          0.15,
+          0.4,
+          1.0
+        ],
+        "discrete_grid": [
+          0.5,
+          1.5
+        ],
+        "encoder_epochs": 30,
+        "horizon": 30,
+        "initial_radius": 0.2,
+        "kernel": "grouped",
+        "latent": true,
+        "local": true,
+        "local_branches": 4,
+        "local_maxiter": 25,
+        "local_points": 12,
+        "local_starts": 2,
+        "maximum_radius": 0.5,
+        "minimum_radius": 0.025,
+        "probability_exploitation": true,
+        "use_intervals": true
+      },
+      "transfer_mode": null
+    },
+    "ev_onehot": {
+      "cold_global": true,
+      "coverage_period": 5,
+      "coverage_scope": "cold",
+      "engine": "phase_discovery_v1",
+      "feedback": "interval",
+      "near_tolerance": 1e-08,
+      "protect": true,
+      "random_discovery": false,
+      "settings": {
+        "average_kernel": false,
+        "boundary_fraction": 0.2,
+        "continuous_grid": [
+          0.05,
+          0.15,
+          0.4,
+          1.0
+        ],
+        "discrete_grid": [
+          0.5,
+          1.5
+        ],
+        "encoder_epochs": 30,
+        "horizon": 30,
+        "initial_radius": 0.2,
+        "kernel": "grouped",
+        "latent": false,
+        "local": true,
+        "local_branches": 4,
+        "local_maxiter": 25,
+        "local_points": 12,
+        "local_starts": 2,
+        "maximum_radius": 0.5,
+        "minimum_radius": 0.025,
+        "probability_exploitation": true,
+        "use_intervals": true
+      },
+      "transfer_mode": null
+    },
+    "ev_prequential": {
+      "cold_global": true,
+      "coverage_period": 5,
+      "coverage_scope": "cold",
+      "engine": "phase_discovery_v1",
+      "feedback": "interval",
+      "near_tolerance": 1e-08,
+      "protect": true,
+      "random_discovery": false,
+      "settings": {
+        "average_kernel": false,
+        "boundary_fraction": 0.2,
+        "continuous_grid": [
+          0.05,
+          0.15,
+          0.4,
+          1.0
+        ],
+        "discrete_grid": [
+          0.5,
+          1.5
+        ],
+        "encoder_epochs": 30,
+        "horizon": 30,
+        "initial_radius": 0.2,
+        "kernel": "grouped",
+        "latent": true,
+        "local": true,
+        "local_branches": 4,
+        "local_maxiter": 25,
+        "local_points": 12,
+        "local_starts": 2,
+        "maximum_radius": 0.5,
+        "minimum_radius": 0.025,
+        "probability_exploitation": true,
+        "use_intervals": true
+      },
+      "transfer_mode": "prequential"
+    },
+    "ev_random_then_latent": {
+      "cold_global": true,
+      "coverage_period": 5,
+      "coverage_scope": "cold",
+      "engine": "phase_discovery_v1",
+      "feedback": "interval",
+      "near_tolerance": 1e-08,
+      "protect": true,
+      "random_discovery": true,
+      "settings": {
+        "average_kernel": false,
+        "boundary_fraction": 0.2,
+        "continuous_grid": [
+          0.05,
+          0.15,
+          0.4,
+          1.0
+        ],
+        "discrete_grid": [
+          0.5,
+          1.5
+        ],
+        "encoder_epochs": 30,
+        "horizon": 30,
+        "initial_radius": 0.2,
+        "kernel": "grouped",
+        "latent": true,
+        "local": true,
+        "local_branches": 4,
+        "local_maxiter": 25,
+        "local_points": 12,
+        "local_starts": 2,
+        "maximum_radius": 0.5,
+        "minimum_radius": 0.025,
+        "probability_exploitation": true,
+        "use_intervals": true
+      },
+      "transfer_mode": null
+    },
+    "random": {
+      "adaptation": null,
+      "description": "Uniform random search over the exact-screened candidate pool",
+      "engine": "unchanged_external_v2"
+    }
+  },
+  "native_gp_steps": 15,
+  "new_rcaide_mda_calls": 0,
+  "panel_and_scenario_labels_available_to_optimizer": false,
+  "prerequisite": {
+    "algorithm_replay": false,
+    "checked_proposals": 8400,
+    "decision": "freeze_phase_control_test_representation_transfer",
+    "kind": "pinned_phase_evidence_import_v1",
+    "new_model_calls": 0,
+    "published_files_sha256": {
+      "audit.json": "dca96bc4ee699e27abacb7cbb3a76a8be75da97da913142fc5afbf2e15938391",
+      "plan.json": "b0046d5cf0a1e76c6e3a12760115460c5ef5677b4062b178cb8984a693784950",
+      "registration.json": "729de3543185d9afb28de8323b74d8d4545bf989c17f009a38cc07d369d3f28f",
+      "results.json": "95527bb0f87f99954b846afb5365d94e80d8e5b278c26289ad0dd5359d08c472"
+    },
+    "settled_calls": 8916,
+    "source_commit": "155f0b0237183d3feefa124e430c01bcd5db1450",
+    "stage": "phase",
+    "trial_count": 280
+  },
+  "profile": {
+    "cases": [
+      "branin_sparse",
+      "rosenbrock_sparse"
+    ],
+    "encoder_epochs": 30,
+    "horizon": 30,
+    "initial": 12,
+    "initial_policies": [
+      "random"
+    ],
+    "name": "pilot",
+    "native_gp_steps": 15,
+    "panel": 16,
+    "pool": 128,
+    "scenarios": 8,
+    "seeds": [
+      9801,
+      9802,
+      9803,
+      9804,
+      9805,
+      9806,
+      9807,
+      9808
+    ]
+  },
+  "reference": "ev_latent",
+  "registered_utc": "2026-10-30T06:17:38.970975+00:00",
+  "risk_supervised_encoder_claim": false,
+  "runtime": {
+    "packages": {
+      "botorch": "0.10.0",
+      "gpytorch": "1.11",
+      "matplotlib": "3.9.4",
+      "numpy": "2.0.2",
+      "scikit-learn": "1.6.1",
+      "scipy": "1.13.1",
+      "torch": "2.8.0"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.9.25 (main, Nov  3 2025, 22:44:01) [MSC v.1929 64 bit (AMD64)]"
+  },
+  "schema": "ra_lsbo_constraint_evidence_transfer_v1",
+  "sequential_execution": true,
+  "settings": {},
+  "source_commit": "21505bba5f9485287a3e34f4ce50dc849edf4e04",
+  "sources": {
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\ALGORITHM_COMPARISON_LITERATURE_REVIEW_20261026.md": "9a3d5cbf9e10efd08e1dbc35b464b2b85c63633404a96a607af83134ac8b1896",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\COMPARISON_RELIABILITY_REVISION_20261028.md": "01270facf52314ee9f5df4048dad6917544e14b414549f81f28fd569748f6957",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\DISCOVERY_STAGES_PROTOCOL_20261029.md": "91d45a0cdfaf819fbc76d17abf78eeb360b8950b2e1b13bf5a00c6e2628ee3d1",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\EVIDENCE_TRANSFER_PROTOCOL_20261030.md": "d34fc546462701eac69cd72e637a05c7aa3ab7ec28521248c7821b54de27f5b0",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\EXTERNAL_ALGORITHM_COMPARISON_PROTOCOL_20261026.md": "fb8c20b028427c47e685363e991857ae7c005738903dc992e25a7ac0e1b83e85",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\MATHEMATICAL_EXPERIMENTS_PROTOCOL.md": "7dd6d83ec3ed1667eb4e0ef44b7d587883ca3fa97cfb02a95c813c09a9810f58",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\PHASE_DISCOVERY_PROTOCOL_20261029.md": "9669f1ceeac827c533398c10c4bc958c88c4e21812662b781e61a64d2f99ca70",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\docs\\SIMPLIFIED_AIRCRAFT_EXPERIMENTS_PROTOCOL.md": "bd4cd01a119ef9a2e4cb1504209166debfd30677b8586a0c4a135b6a4cc0ced1",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\__init__.py": "a9bd440d6dcb01342031105e5e370fbb1da5188a69d6501c2850c608befe3046",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\adaptive_risk.py": "b76373a64ac40869e89d9a835b676d808767e1d5c7ee58ec381cda1d51d74707",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\adaptive_system.py": "e525f8b50359991108dd03c2b257653f20a80593633345c8e8ff66084491e966",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\audit.py": "03972bde81e5173b759c07ccffad656a276242723a3ee25d7cd519b6dcd928f0",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\boundary_validation.py": "83dc767502413bd8996ec85251bb1b0394037f9f69d26271189722ff7ae96812",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\budget.py": "84537f53983a578c85908e3fa50667a2ab4ab78c1ffc81f684a91be08e6e41e9",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\calibration.py": "1db5f9949af3fa8b69d4d6fbbe24e50d10e8c3dacfcb75d71f0db9a9476c60f8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\calibration_replay.py": "08d3fb60d97e92fd7a2eb9029a43b8c11bc2b5fec1caf004d937c884689f43ce",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\catalog.py": "2e5ea9d4a47211a893a205cc6e78357d013ddf44ec5d71954038cfa323673308",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\constraint_risk.py": "c9eca04a4dac86a25159eb7785648755cca84ebdf5fa9dc4f4ce49333abcb633",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\controlled_sparse.py": "a9dc44613fb13e46bcf1b75eb1fc43c8eea2583821fda955347ec2622dc1bcb5",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\discovery_learning.py": "dc17fcb871c17ed7c232989780ce8f1a4148acdf20cea8a9f46e909196760e36",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\discovery_selection.py": "fc55ec8deb5172547035072d807247702c04073aa00bde4654da6595686b3e04",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\__init__.py": "25c45eb12a4917da8c0d3bbbdd0dd6711516229253fea77792382cbdf30f5394",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\comparison\\__init__.py": "6cf351dff3554b94f22c9185c811a75cddd4f9aa5e1a1c155903156f18ffe6d8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\comparison\\methods.py": "c2dccdf3dad5574bfcf65d503fa8c9cdfab3b7fd7f68a7f7df1be91286cd9c5f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\comparison\\protocol.py": "8117db11eefc3b42e857c077866de72e766696ac32001303b0054697472c3846",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\comparison\\runner.py": "1e8adb858ac1caeefd03ea9a31f26cb8f97ccaf6019e6ca12a5c4d96086d9f39",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\comparison\\visualization.py": "59ee6265ffd597f22d24e716c2afcc10b2a6d1dca976d06ab7033addebf70599",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\__init__.py": "ef4e918c2cc86caa16e14c2fb424e2354ddb0d59c31e42b210a0a0af45138440",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\methods.py": "696b29941e00129055f2b81791b9f22097a54cf220d3f5b1183d3177892cbd72",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\metrics.py": "277ad7e4700f93e9fd8f9d59905cf5ddea3aca3b8ce2d554738f6c4043bff701",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\problems.py": "3344a794ccecd541ef4f0bfd8fbee7ceb91f5462a39131c142423fa90f6a65b9",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\protocol.py": "79a3f0055d6077953bc7699bf8cd7529d39058b0c5c0387eccacb7ed85b8a4d8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\core\\runner.py": "39209eae26e8fa3301c975ea22d9d209c5e86711d7f11168d4b6474698929261",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\__init__.py": "c92cf5da248506e8ee3c08360b17dac67c74ed16fa72ea1f2b8a21d54810bccb",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\compare.py": "d0beb17c41ad93bd2059cd5d3b833a13d3c17328d6e65f72709f959e309e3ea0",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\evidence_transfer.py": "487b3c1a1faed0f8fb75423f5ecc8587e2cef6b86d793176eb6c68eb6c65431f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\methods.py": "6f9b5b14b5eb99a3fb6e576d8e6bb719ebabe96e889f24ff8038c9ecca925877",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\metrics.py": "0baf1cae749c7a2fae7e6541c8bd00b668f6659be4ee78ed2575b60a0bdb4d9c",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\optimizer.py": "41bb06611c283e404a5e641cb65abaf34b911ab4b167d45e0e6e55ccad06d5a6",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\phase_metrics.py": "9ac595b75711ae79c09b53f4511f42d33db87fde5febb99ae9da6dc72e44ca4e",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\policies.py": "2476d0adac22febdcae82121ac8d5a7f937a2a5297a8aaea136ea2f863c1f627",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\protocol.py": "0bc203e50639cb83c6b987681130fe56b4b9d71516f90ae328ae6c5641f873a7",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\reviewed_evidence.py": "3b55386846717d3156d24cf106c448be51f8536d3e2407e868c6f78e5b220a19",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\reviewed_phase.py": "c4edfa06f7d3d4dd1628973a823d744ab5aeee92b71c3a494fe7e6be6d4fc36d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\discovery_stages\\runner.py": "4c0574cf7d7806cd386f254d53b681208f307ef772c863ced5413320fe5a9968",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\__init__.py": "fe52a92baa964b1518d1d281342edb10546b0f72e64dcee13773ae72eada4578",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\__main__.py": "c13eb66970ae37b8b044f428b309e67868814b90a8bb408806f3316ce4dfbc5b",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\cli.py": "440dbad45101540bbf4dbfd955c6b9162824efc70327591eb3908327b91905ce",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\compare.py": "bc38b8dac8959eb605bf8186742ca74e6e3d0bbe8285e495058cc0d13c266309",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\problems.py": "9b6a41db5e6362e2a97175bdfdb214f6772709ed49665c0c5f19ee69d20e6ffe",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\run_all.py": "7fd067c386e67fc417fd6eb96f03d3fa3f118e099f3f881e8390fc1df085a439",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\mathematical_benchmarks\\study.py": "b170031e072e72b933c07129df5bdacc552bc10406f67c027a75df3082fff174",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\__init__.py": "72e75a3d55b145d78eda42a01b642b29001233c344859bf6eac36129d069bd1e",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\__main__.py": "c13eb66970ae37b8b044f428b309e67868814b90a8bb408806f3316ce4dfbc5b",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\cli.py": "dc7fe6f108e09235600e5d94d65d648fe31ee79b8de9b90ff3e20f48d5b41593",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\compare.py": "14011097ba206e38759284fcabe87e1d66757276b8bd062efd8a26dd27b8a862",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\problems.py": "eb8f2abccde4bef64ea2fd70cbeec830b96ba624fa58e6904e0a9ea758a6e432",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\experiments\\simplified_aircraft\\study.py": "13b85b9034a5698f66dc8b8cf4521c8bd89f06919bcc111e1f3fdb111715ab99",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\features.py": "d642354f20150d5132cd80d938ae7aa81d4338f5f4fc96a00ab3cc642c32135d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\joint_constraints.py": "56996b42bc73128d8d128f167d3d2d6ed369b1b7e206225c82e5ceec71837a69",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\joint_selection.py": "e4fe5b3f68d6361826f3f7927fc1770a1965b65fb56026f7e7a07769d6208c47",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\legacy.py": "c5bdd5057e1077a4e7364c77c38f4272b4cf466e3a39bdce0b773fa5ed4a08a8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\legacy_benchmark.py": "0e8de0952aeda7d0b95480eec37c8594ea0c90539d669d3aa6242de679a40272",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\margin_joint.py": "9a27e942febb50a1b610ff25f078bbd3e65a65c723ed285293481dca759627ef",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\mechanism_system.py": "69f6564a65e2a333070555621abd0e3455b75311503a015682a32ff03a4be5d5",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\metrics.py": "e1ec3194c57f5fc1dfcc2976c262bdf615beb238e62042625504d6fa1a69857a",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\normalized_margin_joint.py": "2667b9ba9e4da5e645df207d9db7d5b147f9044065a72d0dbb4e375f93c48bbf",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\numerics.py": "75acdb4a9e2707795acb9c07f8f2613b0af5fff732852aafd21e6c39d8e5c1ab",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\optimizer.py": "7dc2f73906e9091e1d295f764c6c96b8c536e013f338d71befedc44b7e1c28bb",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_bo\\__init__.py": "d889583291441c5c992bade0fc79add04debec1b0e326311eba79e8fc6aad260",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_bo\\models.py": "cd6d0189d83ee76ed93e6c0302831b5f37408056d8770283391e3f62fdb6e028",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_bo\\problems.py": "0e8b18f2536a42ca480f86d73c69335508f3eaea628a3fcab4937b9f62271e6f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_bo\\records.py": "39c9c70dc85ce01f6b88c06760d4276a606499bdc16352ae5c49ef51a5701e1e",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_bo\\selector.py": "a358316bd8c97dc43140e9ab60e2024655eeb082b20eb379a2daa486da585e36",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_observation.py": "f6df975621c5501e2546138d1e78f8c950ac2b1ae71d5d8e8c6d8f0499c6265d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_refinement\\__init__.py": "d511e572ea9d68f3ed1d35bf83d4ed9c79818bfb98a9b38e34ca9fb99c5b3d4b",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_refinement\\optimizer.py": "fc92440ca3c709cdf187f885e2e322d768d4cd84b600c93d7308e03fff6dbe6c",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\partial_refinement\\posterior.py": "4b78d8a815172961e33e897a2ba914070f7e9ce858bd2a07135103a0e0337513",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\posterior_risk.py": "badcfff0803058bf89fe66bf12c19e9d6fc2ea03df6c0ddea5122216af9c7a17",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\posterior_selection.py": "5cde08d35a7287dbfb6a92c52ec55890a005f65c6a645700b602f1d85691d261",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\preflight.py": "19fb8b45d0afb2cd82d31d777e5479e8dc948e81008213d55642b16847576c95",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\records.py": "e2c6029b3901a1582c007806d2d1c8702ecf78da17b1f856aad0fb2502a5100a",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\replay.py": "0ab8b9c06b055b24b5f703ee34888c568668a95fe0b171c5a86e860b47b4ee04",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\research_statistics.py": "48b0fd5767e85d4c3386f676ef6df82baa8ad0c6fadaf9beef55300b28fd9075",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\responses.py": "f05e415f60540dde6c9993481a2ae4b3120767dc4cfc9758d81a8d3203504886",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\__init__.py": "64da8a59bd01bfc27b6e913f0a9a4986356369518a411c0571a21696ae72e358",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\adapter.py": "50cf69ec585fe66afd7d4d6d7705ba2d2a1313fc7a1d930ee33489c53d44bafd",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\boundary_ensemble.py": "cfb6894bee5f062b74dbc119b30263135e3a49fb39132e94a66a12f2e9cad0d4",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\mixed_gp.py": "10c6b63eeb47b53484d010bd672aac3cfacd8a2023d4a9baa0eeb486ae25ef24",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\observations.py": "e62fc4577c6c0b393c38e67cc99e5abbe568acc99130e94736bc266359b30fe5",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\online_calibration.py": "2a779294f621d262b094f77a57ea8ed65ae3d59595126a5177e7340c86d758b5",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_core\\optimizer.py": "f0ce8d335822a59a7587401c6d58f42890cea894c438dee496f8778308343066",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\risk_model.py": "58f229233211096bf9ee8167107d8169840a53f2152608837e8994e736d0a3a3",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\selection.py": "43f968ac15295557690cf5586917665d30cb203028239c723b7afbf798ea876b",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\soc_revision\\__init__.py": "9425b552ab83d41ba8bfab296658322fc98a51d73320b7e79c68e4dae3edd418",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\soc_revision\\acquisition.py": "5cc6f9a52cc92738b46b925bb20c2a3fda71b392ed8713d754e318cc4449031f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\soc_revision\\optimizer.py": "5a82e19cf9fe1351b9e04988b3902b13e38d7621280231cd3999c4ffc180e447",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\soc_revision\\posterior.py": "92d89f3757937f97cbd2649a6acea41475ea29bf9938b0b013bd71d7eeaf1ad1",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\stable_margin.py": "dc8c8dbbc2c1d52559c0292d355f26c3e90ba96d7279aac5e7a7aec4dfd363f2",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\structured_encoder.py": "8ba135ecf8736b24c0b6e033dc914b9272b81ef535c72685581fe4781be68487",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\structured_models.py": "841f9c6d37f5186bef62b5142f7b20343b2f870c1f3b7f88ef8adaa018eb3c28",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\synthetic.py": "6d8149b431e300841f6106905056ece8f7f2e21af3ff22d6e66e749deb68cdf2",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\system_experiment.py": "25eb92547ff26ffc41e0f8902efb35bedf300789353a34e4509c51b760515f9d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\training.py": "b00f18408bb2122fec540950971200bca8ad84edd08a9d03ae553330e4d6b9b6",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\transfer_validation.py": "13433705de54b96f166b144e9970a3c49afc3040c95874b1b7756a8353978f5d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\x57_live.py": "0a616e732cb1d6b4fcf79c5e546041c54401d32e204219b5d23bc83650035751",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\ra_lsbo\\x57_pilot.py": "afd3e568ffcaf6396ed5b23f7d68b7ee22b2f37a2246a4bdd7e7cc8f50ec3772",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\__init__.py": "adee8e5daf6b37ae75a8aafacaf51ae529ce483360682848aa6ec9a378ee81a0",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\candidate_pool.py": "ee955b997e0b0520c2b65ad4399900e82f893037926ee12cdbfc061cb3c6ae39",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\comparison.py": "7941f3830383d8afaeb56a8165022d2a465d379bcc219d090609cc8539ba59c8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\feasible_search.py": "dcebaa1f55190c893c9e2fe956aca0c6decd5a8efb744b37815d3b6c7e552978",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\optimizer.py": "52a93f2c177a231efa5d69ad3babc23f226065d86b22d0c9b302df66d0760d66",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\records.py": "c7c9f69cbd27a2c17b07f62598f6cb654e9d9e4eb1766e7bffadde8698b4f04c",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\representation.py": "a6b223751ffc35617ebc3a0dd8be4fdb78391c73512356577ad50d06a6e22bbe",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\risk_selection.py": "f97652d52af03306c8dfeb3a7c76181c2b99750f79c4f35eec094d164e8cd1e6",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\space.py": "3c09dad15a7937b6455682cea669b17f45b2f3540cd729b3a64a868a56b92914",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\lsbo\\surrogate.py": "424a6d5b94681b1ec8d23c19a8f1fe5f21f39badc24181f96dbc7fa5c5b9b353",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\__init__.py": "639dc6e36e0a81f5023343c6c6a1a61c7b2024c87759fa0c58e3fd10434e8537",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\__init__.py": "5d101ed609c89fa4b1ec476349cd426da4cdeefc5a3c88eb10b4b36387601b45",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\adapter.py": "bda85381157c30d9e594f4a8c1f6d285d0c8afaa1f08f7894dfb88c195fc5823",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\airfoil_assignment.py": "bd96a446c6dc29bb5ea33e7b53203d18d32dcb1471682dd41210da8a393cf430",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\battery_diagnostics.py": "00cff306f98ecf7eb1fdbc5b71d952bc22929ece8fa998c0a3260727ecde5562",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\battery_energy.py": "7aa373e3be16445a59f76d022aad6c16b9c58028795df69a40329eabddd2e1cb",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\component_scaling.py": "8337e0045375378da4ef828e224ace6b625524542d756da3bf69fb17cd20b1b1",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\constraints.py": "6c5410881eeee6d48a8fa8d3bf6bd5f5a1648aef6bb499e6e96d9d5147a59f53",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\dep_diagnostics.py": "3e7b9ca5fb31b32fcfc39d93cd7a2f4415457601cb646a37b7fb37470abf2b71",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\dep_groups.py": "1425a99172fb8c653bbc35798dc588257040613e618f094cb55f7cf1626e1253",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\dep_physics.py": "fc1771d3285d0c712df2b503362ec913e4b4359e080c2fadbca2dae7d3d5434f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\dep_study.py": "95e6247c34c69e6dfa4cf5a1aa82f940e273bc04af310e225e5e5d2a88cf13bb",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\design_study.py": "d33501951cd443829c9c9e9171a710fe68e51471171a3210f4a3294b3554236f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\domain_solver.py": "9b6743aefa97b14ded9691e6ec59db6e5c7d8a014dd7432e43924fea99d4e331",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\energy_audit.py": "f1980e33ed08c4ae3a9c58031ba00436800325cba9e0d0cbc711ed0448fe05b5",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\evaluation_diagnostics.py": "a781ce3ef62fe636549dd06513ac076ed5db7a264e11d100277d9a342369b14c",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\mission_profile.py": "fd0e80a7c4893846e0b738728c1a45cf9d4036ee62bf1f3d0c3101288f9ca2fa",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\mission_slipstream.py": "9ccdf28f16d8d465b5fe7b3df65daa449771e71bf6b45e45192b81317f5a6da7",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\mission_solver.py": "a1ea7f5e6363b0457d7367121a744d5e72523f1c0b9c63144725bec56967a295",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\model\\Procedure.py": "340972e1b2f27eda5e60507162596edcf9b45476c6bcc1618736a63b13c5a224",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\model\\X57_Analysis.py": "531e0814611762fe75bc3074cc4e9f251dc28a8541ba0fec616c158bb86b91af",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\model\\__init__.py": "448904970bb9355c68c8c942906360b9a9bf024de0ee91375b20d2fb6c6ae101",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\model\\candidate_evaluator.py": "e05847ab7ed3307226ced35d03020cb04c9621137c0c227c55a3f94338f9eb39",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\model\\design_space.py": "408472b721985f4b484a7cc457d3c6359af3cb6d8a1a6f16338e68ea3246d371",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\motor_design.py": "77fed4ea79e5f770f98cca3d041f1090614dec5e00e193fa1b3b2319cc01d7bc",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\nasa_battery.py": "858ea2518ca01e1181ba91bbc07dcfa65559134efd631eeb14aad8f140546af1",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\nasa_battery_runtime.py": "d8800ca52cdc828b984322ce83281cedf0e82704f65e2a1688a38f88a1a419dc",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\operating_limits.py": "e1ab8995afaf9dcd5dfbeab1a1f9ffaef1b11edd981000cbe9056e476e9e98f8",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\postprocess.py": "21a342f77a641108bbcb1dd5d148439d2a4daa66721a4d45e3e3e16a7a7874d7",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\powered_lift_probe.py": "eb12a1c0136cd6bd0e022044a28fc0a4fd2320fa815b9eea10ca25ac77dd5c05",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\problem.py": "e798b9acdc3579000f650ff4d8d3b5c84aa99156694fe8aaeb4a75ca6bb5505f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\propulsion_diagnostics.py": "e76a9911bd2e98aa1ffcbc184a0e2552315ea4d05d2256ff687d2156799a92b4",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\propulsion_geometry.py": "37bbc57c3986d2910a44076b68890f49d54c0d7e6a82492c5b60a7fcab658051",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\propulsion_research.py": "58ffba972a374d7cd005fce80c33c355e86f48d6b86c6ad8f00da23a98b7d32f",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\research_vlm.py": "bbd4d4812507dba4e73c70da29947037de8a099a999c50e0975bdf30062462d3",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\runtime.py": "f3ec6b56f6464e13a7c546b474cb4a1448da74f6c1ba5e878e3668afb2eaa408",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\section_consistency.py": "47194d6ce2beac09f7d418bad45a72f06c99f0efff1ffc63881810d1daadd4cc",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\sectional_limits.py": "c2d35c01c441687141a50bec898e1eff8f9b8feb7fb457e65ab548c27a6101a0",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\simplified_powered_lift.py": "d5ba60a4d5c212f04d6b18c59e590272d66455e422b45115951a35b803f99afa",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\solver_seed_extension.py": "f3cc4fb38fbdab1dd1ac011366b697c9f9f0581e45371597781a1c69779132cc",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\verify_model.py": "b89c3f4c8f05787ad4ea165300d3d9d7f67d67e83931087b341d8d4b79c226f2",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\runs\\compact_mda_20261021T081006Z_20eb608d\\qualification_recovered_20261025\\frozen_base\\problems\\x57\\worker.py": "b4736fec7df20877f8cff9c89c07812cccfba81af3dfaf461a0d3b7d227e5867",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_comparison_entrypoints.py": "c67a768bb31720bdcac356ed2163395bd4ea51a8322160b944926fd19c72a489",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_comparison_one_click.py": "21132e45fc63ffab93be20f88503b92fd4b2f35f4853bbd192a6f61644282c33",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_comparison_reliability.py": "8c93acecde339e3342ce30da58d66e6a6af5a0ba42dad5b6d1c119df53e8b288",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_comparison_visualization.py": "892019a35f579df7eb615f65c8ed194e41f866f904d4d2638c33054001ccf12d",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_discovery_stages.py": "cdd1e404198cb498297aa5a1aaaf6b8d49e3c2ab7ea8dede54af792dd2c1256b",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_discovery_stages_evidence.py": "b494fee1373b070041549c3234aa283785abe5299e8984704f7fd03d8fe96fec",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_discovery_stages_phase.py": "33d46742c6354995483542f110de208243b83dacddfe6e78707597dcdfb7e8dc",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_evidence_transfer.py": "812d11ebe2e7354722914e32b691b67fd5b941fc5a961f58c3e461c37875f55c",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_external_comparison.py": "5e9120cc1cb7a957e1dd64b90e7f2849b98621d177a3220651d352197586eee7",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_numerical_safeguards.py": "f329401963a26168da0c5a40c3e4f03ff434afe830c64af5be6d270cbc92c0b9",
+    "D:\\LSBO\\RA-LSBO-transfer-20261030_01\\tests\\test_paper_experiments.py": "a0f1fdf12e7e91dadb911a82e5ecc108febe6c6105b9210fade97e21a056d157"
+  },
+  "sparsity": "ordinary/sparse are prospective task names, actual fractions and binomial intervals must be reported",
+  "stage": "transfer",
+  "staged_policy": {
+    "cold_local_rule": "disabled until first usable feasible, unless coverage-only control",
+    "coverage_period": 5,
+    "coverage_scope": "cold only, then latent development for portfolio arms",
+    "feedback_limitation": "current math tasks mainly exact+sign; not a finite-interval test",
+    "feedback_modes": [
+      "exact",
+      "sign",
+      "interval"
+    ],
+    "formal_cbob_implementation": false,
+    "near_tolerance": 1e-08,
+    "nominal_horizon_retained_after_native_stop": true,
+    "publication_confirmation": false,
+    "representation_transfer": "constraint-wise prequential likelihood weights; not calibrated probabilities",
+    "risk_supervised_encoder": false
+  },
+  "statistical_claim": "smoke/pilot exploratory; confirm is a candidate protocol, not automatic publication evidence",
+  "statistical_endpoints": {
+    "inference": "fresh exploratory development seeds, small cold strata; no independent confirmation or multiplicity-adjusted superiority",
+    "primary": "cold_start_discovery_at_horizon",
+    "secondary": [
+      "first_feasible_online_censoring",
+      "warm_start_improvement",
+      "conditional_paired_objective",
+      "lexicographic_paired_descriptive",
+      "paired_warm_objective",
+      "prequential_constraint_scores",
+      "weight_trajectory"
+    ]
+  },
+  "suite": "mathematical",
+  "tasks": {
+    "branin_sparse": {
+      "anchors": [
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.68,
+            "y": 0.25
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.75,
+            "x": 0.68,
+            "y": 0.25
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        }
+      ],
+      "contract": "c788624cfbec09044e5264a55405a1bfa61b94fec6b170220a6c34f39290d3ab",
+      "initial": {
+        "9801": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5407417750001512,
+                  "x": 0.7156798072487034,
+                  "y": 0.931644520926776
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.40533014377462717,
+                  "x": 0.567729328987836,
+                  "y": 0.3215356070460328
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8514952114071922,
+                  "x": 0.11860929135017517,
+                  "y": 0.42283261673337924
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.754416459679043,
+                  "x": 0.24061619469694695,
+                  "y": 0.2111709586692514
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.6463909274733333,
+                  "y": 0.7644100650431533
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.033549377833648975,
+                  "x": 0.9621558619426738,
+                  "y": 0.006643948913715447
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7088969323431675,
+                  "x": 0.9873863127890175,
+                  "y": 0.414113780012216
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.7926130777744758,
+                  "y": 0.7633914739825493
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.31754576008325197,
+                  "x": 0.4007798733365202,
+                  "y": 0.8296729925615899
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5320937425232957,
+                  "x": 0.6519171067390787,
+                  "y": 0.8876555138561982
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7185133902185854,
+                  "x": 0.12651585692900202,
+                  "y": 0.06921314577926829
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8749802552083271,
+                  "x": 0.3031162786007099,
+                  "y": 0.934563947789851
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9802": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.49458423105505567,
+                  "x": 0.6513261405830948,
+                  "y": 0.08446702216049762
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.4226029046959232,
+                  "y": 0.8980602358367624
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6578433955811528,
+                  "x": 0.21278667241267446,
+                  "y": 0.6279718470820957
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7109043672951609,
+                  "x": 0.5776223245345355,
+                  "y": 0.31345442966001025
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7892034822232697,
+                  "x": 0.014324858074011737,
+                  "y": 0.0833342353281793
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.3980979802914112,
+                  "y": 0.6982247346671754
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.3530914037525823,
+                  "x": 0.11009494220458171,
+                  "y": 0.34838982043784616
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.09416708334815294,
+                  "x": 0.8226492942073238,
+                  "y": 0.9641883420809877
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.329689614581233,
+                  "y": 0.7766145171502564
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6272400269654973,
+                  "x": 0.4558646031429796,
+                  "y": 0.10594399241781227
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4180548021408088,
+                  "x": 0.2640349635524114,
+                  "y": 0.12066642365166858
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8535331678214894,
+                  "x": 0.9985463606775054,
+                  "y": 0.5504172897350255
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9803": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.6669174105423811,
+                  "x": 0.14698337822383678,
+                  "y": 0.37828612957721564
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8196683652104123,
+                  "x": 0.620812583398236,
+                  "y": 0.9036883139063663
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6537667929770794,
+                  "x": 0.8741184553693646,
+                  "y": 0.7997780291825446
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.3363072654351946,
+                  "x": 0.3657279562637541,
+                  "y": 0.80607256039273
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.6378564975847599,
+                  "y": 0.27016363714638025
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7445281646776374,
+                  "x": 0.015449888664017086,
+                  "y": 0.3879151121618961
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9294379778206356,
+                  "x": 0.7818081344414528,
+                  "y": 0.6502704867652284
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8172169908488237,
+                  "x": 0.44411118052288756,
+                  "y": 0.01063233304651745
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.28702550768923174,
+                  "x": 0.1809349695895387,
+                  "y": 0.8189068940995714
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8653577313013847,
+                  "x": 0.19865530123726294,
+                  "y": 0.25135834357276166
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.6425930923089466,
+                  "y": 0.06061260649845657
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.10188594724299405,
+                  "x": 0.4198474200580604,
+                  "y": 0.9157094909312651
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9804": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.281987096385365,
+                  "x": 0.20321596183886836,
+                  "y": 0.498361652783454
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.25401723982564806,
+                  "x": 0.1369467703031112,
+                  "y": 0.6453049824186547
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.0010013838062155056,
+                  "x": 0.10183140748033848,
+                  "y": 0.6813206755930009
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.09533828089622509,
+                  "x": 0.07388545705232041,
+                  "y": 0.2219645484305487
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8124237033011315,
+                  "y": 0.97819282019881
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6258769017721935,
+                  "x": 0.36989748519328536,
+                  "y": 0.6377228855017613
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5554162544170153,
+                  "x": 0.0407262028583103,
+                  "y": 0.7117637241949443
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.28886196583656887,
+                  "x": 0.05475280751407208,
+                  "y": 0.8362761616162036
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4609292463637228,
+                  "x": 0.03751407469134871,
+                  "y": 0.703757444232922
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7968985566868682,
+                  "x": 0.8897967891781593,
+                  "y": 0.7941274685125823
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8106729487099236,
+                  "x": 0.5681705481751232,
+                  "y": 0.8640254295428264
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2645973618341967,
+                  "x": 0.5508867307173193,
+                  "y": 0.8523154527280572
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9805": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8440824487616003,
+                  "y": 0.4743975616215014
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.002543623524695171,
+                  "x": 0.2191124078811515,
+                  "y": 0.32655798964230376
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.06034293538546742,
+                  "x": 0.46573103474652444,
+                  "y": 0.24325164819590162
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.12376554794653583,
+                  "x": 0.6868851611928316,
+                  "y": 0.33940151917661654
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5074885113308241,
+                  "x": 0.40427701892949264,
+                  "y": 0.7779782984076298
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.5304191546274014,
+                  "y": 0.5700985404352538
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4428371852056602,
+                  "x": 0.30050123000628315,
+                  "y": 0.7217544626396349
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9362043093715154,
+                  "x": 0.6646335875903536,
+                  "y": 0.6864504410854447
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6362681513420493,
+                  "x": 0.7833398758819122,
+                  "y": 0.6494394960036268
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8804433285704233,
+                  "y": 0.4281326222111177
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.026718637972089954,
+                  "x": 0.6861637404195929,
+                  "y": 0.6303623726055814
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.620747680893297,
+                  "x": 0.20280978134225758,
+                  "y": 0.9504340891007171
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9806": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5841218299391129,
+                  "x": 0.9849668772995469,
+                  "y": 0.2557534888643963
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8735855367650044,
+                  "x": 0.08287288551456806,
+                  "y": 0.6846859981766561
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7927807952575708,
+                  "x": 0.8543672815363481,
+                  "y": 0.20677964709946517
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.40726069391229325,
+                  "x": 0.08540409869082155,
+                  "y": 0.37279777615428633
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.17987784854086009,
+                  "y": 0.669793197378092
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6386501876793453,
+                  "x": 0.5987638345575939,
+                  "y": 0.2631680908979135
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.15681769403023982,
+                  "x": 0.2768840026174958,
+                  "y": 0.18778810157723125
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9616366301128195,
+                  "x": 0.6480909559463272,
+                  "y": 0.2729180969695717
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.6150225257108304,
+                  "y": 0.8911600820065628
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.2849243283617855,
+                  "y": 0.6967089814733133
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.12744376516195466,
+                  "y": 0.5825698912598805
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.6696036741941856,
+                  "y": 0.30423329263687005
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9807": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.02318138699989669,
+                  "x": 0.7393640434217303,
+                  "y": 0.02831679794313846
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.30191389690720505,
+                  "y": 0.2952665505034764
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.593744048480076,
+                  "x": 0.35622168944395016,
+                  "y": 0.378065610952681
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.04762720598095149,
+                  "y": 0.2789798337135917
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.031827257928097596,
+                  "x": 0.5270144943152146,
+                  "y": 0.39502021019702394
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4611690705121546,
+                  "x": 0.7365308094414705,
+                  "y": 0.054383277942594344
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6746944177481534,
+                  "x": 0.7213015095684769,
+                  "y": 0.9672926922388838
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.03516913660131071,
+                  "y": 0.6473946328044626
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7953394440403063,
+                  "x": 0.48456631784263104,
+                  "y": 0.47751694299975334
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5235871229881434,
+                  "x": 0.8601154579189967,
+                  "y": 0.4164265936226449
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.43162302797374075,
+                  "x": 0.3576166260664201,
+                  "y": 0.4493867989037068
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5569631286936519,
+                  "x": 0.48125676885006863,
+                  "y": 0.20857546544344352
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9808": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.8573654275828038,
+                  "x": 0.9215285921073004,
+                  "y": 0.3785040751067775
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7140171809458132,
+                  "x": 0.5490042312445981,
+                  "y": 0.9516116016913581
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9820767528588047,
+                  "x": 0.8497823424300184,
+                  "y": 0.055420905522957864
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.1667391076748903,
+                  "x": 0.6473696340248574,
+                  "y": 0.7991126494414112
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6693482748003253,
+                  "x": 0.3838901766577051,
+                  "y": 0.4298990608493164
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.29806852972270503,
+                  "x": 0.3644675499364366,
+                  "y": 0.2557177759190533
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9790425719191891,
+                  "x": 0.8828199139089988,
+                  "y": 0.5419380546051309
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.10667063261650733,
+                  "y": 0.34528506566588546
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.18228041724083188,
+                  "x": 0.6602817849731116,
+                  "y": 0.9122397538699428
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.1417666078537001,
+                  "x": 0.5634265710941003,
+                  "y": 0.4429177819037562
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2274385576824942,
+                  "x": 0.46083361947970625,
+                  "y": 0.7096992857560988
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6104106524972688,
+                  "x": 0.15817037491635044,
+                  "y": 0.3545097865842819
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        }
+      },
+      "panel": [
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.3025833492689728,
+            "y": 0.5942159795737681
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.03993882632809931,
+            "x": 0.8343069926408823,
+            "y": 0.6574243611916272
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.43580721029234515,
+            "y": 0.9727319543554972
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.07921966983070072,
+            "x": 0.699410481014976,
+            "y": 0.6293571530139838
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.2721506101781196,
+            "y": 0.23696320206397803
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.3026762772818452,
+            "y": 0.11658086140273383
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.023624259197144948,
+            "x": 0.3826062271776993,
+            "y": 0.08801151416200226
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.7445057860586173,
+            "y": 0.5201020482551794
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.032159178806224764,
+            "x": 0.592867313491823,
+            "y": 0.9648729410863646
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.6216652863421379,
+            "y": 0.2995125086308721
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.4662141654601162,
+            "x": 0.375078897595739,
+            "y": 0.726551718839545
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.2052250945841284,
+            "x": 0.3598426894361304,
+            "y": 0.6142902361953965
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.02039818912494762,
+            "x": 0.9738422371489197,
+            "y": 0.9440381278907368
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.7739531577702362,
+            "x": 0.8198966632799106,
+            "y": 0.4556367921461014
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.12111446744801535,
+            "x": 0.2781423653768732,
+            "y": 0.9176332350546037
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.6061119759754203,
+            "x": 0.04644897575707896,
+            "y": 0.7249462604990243
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        }
+      ],
+      "panel_exact_screen_rejections": 0,
+      "settings": {
+        "center": [
+          0.68,
+          0.25
+        ],
+        "difficulty": "sparse",
+        "ellipse_radii": [
+          0.16,
+          0.2
+        ],
+        "family": "paper_branin_extension_v1",
+        "feedback": "region violation returns only a sign and skips the objective",
+        "source": "3344a794ccecd541ef4f0bfd8fbee7ceb91f5462a39131c142423fa90f6a65b9",
+        "upstream_replica": false
+      }
+    },
+    "rosenbrock_sparse": {
+      "anchors": [
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.72,
+            "y": 0.7
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.75,
+            "x": 0.72,
+            "y": 0.7
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        }
+      ],
+      "contract": "a152faa67d45761ac0db591ad7ef4a796f55fd7c36da012d6417f23ab15fbbfe",
+      "initial": {
+        "9801": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8401617608410888,
+                  "y": 0.8635715616056618
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8779586940035113,
+                  "x": 0.7649721581597648,
+                  "y": 0.03607715401580025
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9731994634767729,
+                  "x": 0.39443035333094634,
+                  "y": 0.8663176926419193
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5050133295177429,
+                  "x": 0.4159178941346059,
+                  "y": 0.8084887695945809
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.7911025885422498,
+                  "y": 0.6414083726004194
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2246426006246992,
+                  "x": 0.26080340765370313,
+                  "y": 0.8042307496395592
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8305063453253906,
+                  "x": 0.8837353478288541,
+                  "y": 0.8102494058707088
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.31377269115406003,
+                  "x": 0.8765944263671686,
+                  "y": 0.3544758158811814
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.18006907769030644,
+                  "x": 0.2287673057522922,
+                  "y": 0.11956830993259593
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.3073044504242337,
+                  "x": 0.5834528583316685,
+                  "y": 0.48203350654533994
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2306670537858011,
+                  "x": 0.20151025219446395,
+                  "y": 0.9080027649396116
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.051779712161547975,
+                  "y": 0.6211056292071903
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9802": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.3187221499813543,
+                  "x": 0.5033004865408263,
+                  "y": 0.014574429143308976
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6568121731641486,
+                  "x": 0.4771090085483174,
+                  "y": 0.09572129088979442
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.18896637576791975,
+                  "x": 0.6067666820267485,
+                  "y": 0.01970656151393002
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8539242971574097,
+                  "x": 0.5261455180444649,
+                  "y": 0.25101704567278216
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.12227229416593666,
+                  "x": 0.28123310605818486,
+                  "y": 0.8028880256000265
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4941500797825852,
+                  "x": 0.2233848863307799,
+                  "y": 0.6568796350866217
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9753782837324116,
+                  "x": 0.46653904272928626,
+                  "y": 0.6949159816948648
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.42603083971794964,
+                  "x": 0.1791647560760089,
+                  "y": 0.614911259904946
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.27933722564099983,
+                  "y": 0.2634331997363609
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9218196336375644,
+                  "x": 0.7274532795178688,
+                  "y": 0.13465444938482862
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.3458199078131031,
+                  "y": 0.32085518126540624
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9281439614113502,
+                  "x": 0.5944567961736743,
+                  "y": 0.5919492606985884
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9803": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.37016229204401974,
+                  "y": 0.5177453406926328
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6544169547892303,
+                  "x": 0.004071443944565933,
+                  "y": 0.38318654095573523
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.18830323962718531,
+                  "y": 0.7972828968516316
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.40840075744178894,
+                  "x": 0.9885499193542334,
+                  "y": 0.6425866567815083
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.538090548158536,
+                  "x": 0.5747556196651087,
+                  "y": 0.4613962790661783
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.49595795434404566,
+                  "x": 0.1144851226422886,
+                  "y": 0.4676792675764405
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9006658994848005,
+                  "x": 0.07072995101239699,
+                  "y": 0.44695451085017446
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2386542001905,
+                  "x": 0.37678179747758167,
+                  "y": 0.1770247288961293
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5088482456700034,
+                  "x": 0.8240479007453196,
+                  "y": 0.49951917923161426
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7473473087548251,
+                  "x": 0.6258694311163567,
+                  "y": 0.2290826435234119
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.7249231428169541,
+                  "y": 0.8085235793754262
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.2639497257541854,
+                  "y": 0.11812430133361318
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9804": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.20853540586016028,
+                  "y": 0.21778812083463028
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.004525108141914536,
+                  "x": 0.9439742576680489,
+                  "y": 0.9799364697764034
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.1227227709678319,
+                  "x": 0.24193297632232313,
+                  "y": 0.0848837791707776
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8062797049976442,
+                  "y": 0.7235459095281354
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8767386969018738,
+                  "y": 0.1288559454290057
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.3622490439890119,
+                  "y": 0.09221926447512407
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8701909842075443,
+                  "x": 0.659758598862216,
+                  "y": 0.13979116196330388
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.12176418407973133,
+                  "x": 0.362401254043507,
+                  "y": 0.5718163425375808
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5537616845315779,
+                  "x": 0.714463635826174,
+                  "y": 0.6440516021601849
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.002507655208783599,
+                  "x": 0.8068396167353156,
+                  "y": 0.31205209984164095
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.44888675830463476,
+                  "x": 0.6490517660782011,
+                  "y": 0.566841851874855
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8695784098530183,
+                  "x": 0.6704507881957035,
+                  "y": 0.2477548042392942
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9805": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.060555410314054536,
+                  "x": 0.2924235979048634,
+                  "y": 0.8472856550656593
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.3353797977330618,
+                  "x": 0.5415437353693677,
+                  "y": 0.9490200734952395
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.6476774643036207,
+                  "x": 0.20004663890479701,
+                  "y": 0.8876563276846108
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8122754651737676,
+                  "x": 0.892720193806424,
+                  "y": 0.5171796673766078
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.10992976456220571,
+                  "x": 0.11770251525214726,
+                  "y": 0.7723931602170485
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.3875685422089573,
+                  "x": 0.9799249082940282,
+                  "y": 0.93922547271702
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.690543836805079,
+                  "x": 0.9457039191692743,
+                  "y": 0.3155643046842972
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.13134729990931393,
+                  "y": 0.5119018300763185
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.631230792533304,
+                  "x": 0.9594014522785843,
+                  "y": 0.8287104434812257
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9964481649505221,
+                  "x": 0.0967438788239453,
+                  "y": 0.13735460292790647
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2467656481404138,
+                  "x": 0.1715061021057569,
+                  "y": 0.8872547250988894
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.07314104868097204,
+                  "x": 0.7137709836293785,
+                  "y": 0.29272399497886925
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9806": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.07711299379388736,
+                  "x": 0.6940046793644837,
+                  "y": 0.5824972809354709
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.04994229738468581,
+                  "x": 0.34429084843402125,
+                  "y": 0.5195285779881091
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.994989185233186,
+                  "x": 0.05744070150129066,
+                  "y": 0.4358592424996187
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4650634278920657,
+                  "x": 0.8358191867712162,
+                  "y": 0.4083981166324848
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4629004371518738,
+                  "x": 0.6534659722452159,
+                  "y": 0.6187902234483044
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9237222947817009,
+                  "x": 0.4182175511091818,
+                  "y": 0.4067475420089893
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.2603795655944743,
+                  "x": 0.6871833675758645,
+                  "y": 0.2924242760326523
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.23804023889088854,
+                  "x": 0.36805180325447506,
+                  "y": 0.4948366273003757
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8267891944253051,
+                  "x": 0.6747370213167304,
+                  "y": 0.4378011595787442
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5989236799140417,
+                  "x": 0.07819900776726196,
+                  "y": 0.48709308970294585
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.08703271259765655,
+                  "x": 0.29844185100404363,
+                  "y": 0.8422264141317728
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8705391040138134,
+                  "x": 0.16299182810934854,
+                  "y": 0.8930624297991635
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9807": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.02368592790370283,
+                  "x": 0.4855569713249177,
+                  "y": 0.5866956599415822
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.24020452239456858,
+                  "y": 0.7241304150320486
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.08571472662028168,
+                  "x": 0.07539166052442425,
+                  "y": 0.9175864873178521
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7845391336339932,
+                  "x": 0.6963718344832217,
+                  "y": 0.07069411837171524
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.48258815701060087,
+                  "x": 0.778029282820677,
+                  "y": 0.10618198406229529
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.08437837633038214,
+                  "y": 0.30216902427511394
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8307765920919336,
+                  "x": 0.8930462782471883,
+                  "y": 0.13229970622949216
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.4409521341894901,
+                  "y": 0.5507369632968311
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.7724241635896293,
+                  "x": 0.3420304145384633,
+                  "y": 0.004739925838991632
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.4562646743614198,
+                  "x": 0.07567944491925105,
+                  "y": 0.4736866512497523
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.12407780366477772,
+                  "x": 0.7401940786582598,
+                  "y": 0.1253697204198957
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.2312943078055293,
+                  "y": 0.48757030659687184
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        },
+        "9808": {
+          "random": {
+            "exact_screen_rejections": 0,
+            "random_candidates": [
+              {
+                "continuous": {
+                  "trim": 0.6827324363241076,
+                  "x": 0.09667422178897889,
+                  "y": 0.25926224616574967
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.45904906782620203,
+                  "x": 0.8967752323396203,
+                  "y": 0.4220664440143794
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.985871031808424,
+                  "x": 0.20685120868681106,
+                  "y": 0.8727826910057876
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.41025269155788247,
+                  "x": 0.23277474287034705,
+                  "y": 0.43950230171522053
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.12088236786452256,
+                  "x": 0.42028385046715744,
+                  "y": 0.4257930977848723
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.0069311894952901465,
+                  "x": 0.6057494150024327,
+                  "y": 0.4756170293409858
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8371254111855022,
+                  "x": 0.26442089233199584,
+                  "y": 0.2110722390548101
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.8037776190183854,
+                  "x": 0.3200725319261314,
+                  "y": 0.654997754328494
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.5161665769199795,
+                  "y": 0.1820453215115858
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.31632525718293114,
+                  "x": 0.637136562307748,
+                  "y": 0.11410739872659592
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 3
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.5,
+                  "x": 0.8272325670798659,
+                  "y": 0.11714667387120292
+                },
+                "discrete": {
+                  "architecture": "basic",
+                  "module": 1
+                }
+              },
+              {
+                "continuous": {
+                  "trim": 0.9938896726253764,
+                  "x": 0.760462040359029,
+                  "y": 0.3236034615484703
+                },
+                "discrete": {
+                  "architecture": "augmented",
+                  "module": 2
+                }
+              }
+            ],
+            "shared_anchor_index": null
+          }
+        }
+      },
+      "panel": [
+        {
+          "continuous": {
+            "trim": 0.6205058511417992,
+            "x": 0.47207591268532356,
+            "y": 0.04970698815358521
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.5306957793594961,
+            "y": 0.16031416715465796
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.3646423135596618,
+            "y": 0.31406661778076006
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.5,
+            "x": 0.5812082655735945,
+            "y": 0.12220331305539522
+          },
+          "discrete": {
+            "architecture": "basic",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.482275660093176,
+            "x": 0.5351596200603956,
+            "y": 0.9300425358515699
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.012277112594713535,
+            "x": 0.18749197844700594,
+            "y": 0.6322970542475773
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.9315870383288599,
+            "x": 0.05721744579016763,
+            "y": 0.15091463887779877
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.3139594874505848,
+            "x": 0.5657349903084944,
+            "y": 0.5208345082932533
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.09613472049723437,
+            "x": 0.616062574305129,
+            "y": 0.3765410004983418
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.4224528969475486,
+            "x": 0.8004574734476025,
+            "y": 0.21310126116173134
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.8116876575965088,
+            "x": 0.14644279995791465,
+            "y": 0.28042894509916316
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.07154376207248803,
+            "x": 0.25799219779975013,
+            "y": 0.8273673660185642
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.3114378251770359,
+            "x": 0.7592280379609834,
+            "y": 0.9205155822855231
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.6076217688557846,
+            "x": 0.3163206306142956,
+            "y": 0.7350060521652833
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 3
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.009580188924302568,
+            "x": 0.0980978693796476,
+            "y": 0.1672408255569896
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 2
+          }
+        },
+        {
+          "continuous": {
+            "trim": 0.47459360588348787,
+            "x": 0.5282341199174183,
+            "y": 0.7611858864993812
+          },
+          "discrete": {
+            "architecture": "augmented",
+            "module": 1
+          }
+        }
+      ],
+      "panel_exact_screen_rejections": 0,
+      "settings": {
+        "center": [
+          0.72,
+          0.7
+        ],
+        "difficulty": "sparse",
+        "ellipse_radii": [
+          0.16,
+          0.2
+        ],
+        "family": "paper_rosenbrock_extension_v1",
+        "feedback": "region violation returns only a sign and skips the objective",
+        "source": "3344a794ccecd541ef4f0bfd8fbee7ceb91f5462a39131c142423fa90f6a65b9",
+        "upstream_replica": false
+      }
+    }
+  }
+}
