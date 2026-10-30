@@ -1,0 +1,67 @@
+name: Transfer review validation
+on:
+  push:
+    branches: [research/transfer-review-20261030]
+    paths:
+      - 'ra_lsbo/experiments/discovery_stages/decision_effect.py'
+      - 'tools/review_transfer_pilot.py'
+      - 'tests/test_transfer_decision_effect.py'
+      - '.github/workflows/transfer-review-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Isolated numerical-only dependencies, no optimizer environment
+        run: |
+          python -m pip install numpy==2.0.2 scipy==1.13.1 pytest==8.3.5
+          mkdir -p /tmp/review-validation
+          python -m pip freeze > /tmp/review-validation/environment.txt
+          git rev-parse HEAD > /tmp/review-validation/commit.txt
+          git archive HEAD -- ra_lsbo/experiments/discovery_stages/decision_effect.py tools/review_transfer_pilot.py tests/test_transfer_decision_effect.py | gzip > /tmp/review-validation/review-source.tar.gz
+      - name: Pure diagnostic regression tests, not optimization campaigns
+        run: python -m pytest -q tests/test_transfer_decision_effect.py --junitxml=/tmp/review-validation/junit.xml
+      - name: Read immutable original evidence and reconstruct scores
+        run: |
+          curl --fail --location --retry 2 --max-time 300 'https://github.com/Luyi1235/RA-LSBO/releases/download/transfer-pilot-20261030-141720-80f5ce0d/transfer_pilot_20261030_141720_80f5ce0d_full_records.zip' -o /tmp/transfer.zip
+          echo '90d13623d1175374d442b19c431493393617016a1267baa65db2cc2203f2fca1  /tmp/transfer.zip' | sha256sum --check
+          python - <<'PY'
+          from pathlib import PurePosixPath
+          from zipfile import ZipFile
+          with ZipFile('/tmp/transfer.zip') as archive:
+              for name in archive.namelist():
+                  p = PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts or '\\' in name or ':' in name:
+                      raise ValueError('Unsafe archive path')
+              archive.extractall('/tmp/transfer-evidence')
+          PY
+          python tools/review_transfer_pilot.py /tmp/transfer-evidence/runs/transfer_pilot_20261030_141720_80f5ce0d /tmp/review-validation/derived > /tmp/review-validation/review.log
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('/tmp/review-validation/derived/facts.json')
+          f=json.loads(p.read_text())
+          assert f['settled_calls']==3108 and f['proposals_linked']==2880
+          assert f['equal_adaptive_same_candidates']==480
+          assert f['cold_model_choice_changes']==3 and f['realized_cold_candidate_changes']==0
+          assert f['cold_gate_changes']==6 and f['model_changes_overridden_by_coverage']==3
+          assert f['new_model_calls']==f['new_rcaide_mda_calls']==0
+          print('PINNED INPUT RECONSTRUCTION PASSED; no fitting or evaluator calls')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfer-review-validation-${{ github.sha }}
+          path: /tmp/review-validation/
+          retention-days: 30
