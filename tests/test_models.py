@@ -15,7 +15,9 @@ if HAS_MODELS:
     from ra_lsbo.responses import ResponseHeads
     from ra_lsbo.replay import prequential, summarize
 
-BASE = Path(__file__).resolve().parents[2] / "LSBO" / "X57-LSBO-refactored"
+# Portable test fixture; production algorithms and historical source records stay unchanged.
+BASE = (Path(__file__).resolve().parents[1] /
+        "runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base")
 VARIABLES = [
     {"name": "layout", "kind": "nominal", "default": "single", "values": ["single", "distributed"]},
     {"name": "count", "kind": "ordinal", "default": 2, "values": [2, 4],
