@@ -1,0 +1,42 @@
+name: Interrupted corpus read-only triage
+
+on:
+  push:
+    branches:
+      - analysis/corpus-interruption-diagnosis-20261031
+    paths:
+      - tools/triage_interrupted_corpus.py
+      - .github/workflows/interrupt-corpus-triage.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify pure Python syntax
+        run: python -m py_compile tools/triage_interrupted_corpus.py
+      - name: Retrieve fixed interrupted evidence, no evaluator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/corpus_interrupt
+          curl --retry 2 --retry-delay 2 --fail --location --silent --show-error \
+            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \
+            -o /tmp/corpus_interrupt/original.zip
+          echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/corpus_interrupt/original.zip' | sha256sum --check
+          python tools/triage_interrupted_corpus.py /tmp/corpus_interrupt/original.zip /tmp/corpus_interrupt/extracted
+      - name: Upload selected historical evidence, not the original ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interrupted-corpus-readonly-triage
+          retention-days: 14
+          path: /tmp/corpus_interrupt/extracted
+          if-no-files-found: warn
