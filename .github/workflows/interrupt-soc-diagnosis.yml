@@ -1,0 +1,67 @@
+name: Bounded SOC interruption diagnostic validation
+
+on:
+  push:
+    branches:
+      - analysis/corpus-interruption-diagnosis-20261031
+    paths:
+      - tools/diagnose_failed_soc_prefix.py
+      - tests/test_soc_interruption_diagnosis.py
+      - .github/workflows/interrupt-soc-diagnosis.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install existing pinned numerical dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Test safe recording; do not fit encoders or GP
+        run: |
+          python -m py_compile tools/diagnose_failed_soc_prefix.py
+          python -m pytest -q tests/test_soc_interruption_diagnosis.py
+      - name: Verify original archive and register D29 plan only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/soc_diagnostic
+          curl --retry 2 --fail --location --silent --show-error \
+            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \
+            -o /tmp/soc_diagnostic/input.zip
+          echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/soc_diagnostic/input.zip' | sha256sum --check
+          python tools/diagnose_failed_soc_prefix.py plan --archive /tmp/soc_diagnostic/input.zip --output /tmp/soc_diagnostic/plan_only
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path('/tmp/soc_diagnostic/plan_only/plan.json').read_text())
+          assert plan['gp_candidate_attempt_limit']==8
+          assert plan['encoder_fits_limit']==2
+          assert plan['gp_head']=='soc'
+          assert plan['history_D28_count']==40 and plan['history_D29_count']==41
+          PY
+      - name: Preserve read-only registration receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soc-interruption-plan-only
+          retention-days: 14
+          path: /tmp/soc_diagnostic/plan_only/
+          if-no-files-found: warn
