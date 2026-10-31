@@ -70,7 +70,9 @@ def main(archive, target):
             if label == "started":
                 role = event.get("role", "")
                 role_counts[role] = role_counts.get(role, 0) + 1
-            if "9936" in str(event.get("tag", "")) and "old30" in str(event.get("tag", "")):
+            tag_parts = str(event.get("tag", "")).split("/")
+            if ({"aircraft_sparse", "9936", "old30", "online"}.issubset(set(tag_parts))
+                    and event.get("role") == "online"):
                 related.append(event)
         if counts != {"started": 2212, "settled": 2212}:
             raise ValueError("Pilot ledger count mismatch")
