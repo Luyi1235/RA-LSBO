@@ -37,8 +37,16 @@ def main(archive, target):
         if not members:
             raise ValueError("Could not find exact target trial")
         ledgers = [n for n in files if n.endswith("/calls.jsonl")]
-        if len(ledgers) != 1:
-            raise ValueError("Expected exactly one pilot calls.jsonl")
+        pilot_ledgers = []
+        for candidate in ledgers:
+            events = [json.loads(line) for line in z.read(candidate).splitlines() if line.strip()]
+            started = sum(x.get("event") == "started" for x in events)
+            settled = sum(x.get("event") == "settled" for x in events)
+            if (started, settled) == (2212, 2212):
+                pilot_ledgers.append((candidate, events))
+        if len(pilot_ledgers) != 1:
+            raise ValueError("Could not identify unique pilot ledger by sealed event counts")
+        ledger_path, calls = pilot_ledgers[0]
         members = [n for n in members if n.endswith((".jsonl", ".json", ".txt", ".log"))]
         trial = {}
         for name in members:
@@ -51,7 +59,7 @@ def main(archive, target):
         observations = [json.loads(s) for s in trial["observations.jsonl"].splitlines() if s.strip()]
         if len(proposals) != 29 or len(observations) != 29:
             raise ValueError("Unexpected online record counts; do not infer a missing proposal")
-        calls = [json.loads(s) for s in z.read(ledgers[0]).splitlines() if s.strip()]
+        # Pilot ledger was uniquely selected above; smoke is excluded.
         counts = {"started": 0, "settled": 0}
         role_counts = {}
         related = []
