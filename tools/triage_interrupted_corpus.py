@@ -63,17 +63,22 @@ def main(archive, target):
         counts = {"started": 0, "settled": 0}
         role_counts = {}
         related = []
-        for event in calls:
-            label = event.get("event")
-            if label in counts:
-                counts[label] += 1
-            if label == "started":
-                role = event.get("role", "")
-                role_counts[role] = role_counts.get(role, 0) + 1
-            tag_parts = str(event.get("tag", "")).split("/")
+        if len(calls) % 2:
+            raise ValueError("Incomplete started/settled ledger pair")
+        for index in range(0, len(calls), 2):
+            start, settle = calls[index:index+2]
+            if start.get("event") != "started" or settle.get("event") != "settled":
+                raise ValueError("Unexpected ledger event pairing")
+            if start.get("call_id", start.get("number")) != settle.get("call_id", settle.get("number")):
+                raise ValueError("Ledger start and settlement identities differ")
+            counts["started"] += 1
+            counts["settled"] += 1
+            role = start.get("role", "")
+            role_counts[role] = role_counts.get(role, 0) + 1
+            tag_parts = str(start.get("tag", "")).split("/")
             if ({"aircraft_sparse", "9936", "old30", "online"}.issubset(set(tag_parts))
-                    and event.get("role") == "online"):
-                related.append(event)
+                    and role == "online"):
+                related.extend((start, settle))
         if counts != {"started": 2212, "settled": 2212}:
             raise ValueError("Pilot ledger count mismatch")
         if len(related) != 58:
