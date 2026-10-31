@@ -14,7 +14,11 @@ if HAS_MODELS:
     from ra_lsbo.structured_encoder import EncoderSettings, StructuredFeatures, VIEWS
     from ra_lsbo.structured_models import (
         StructuredLearningStrategy, StructuredResponseHeads, StructuredRiskHeads, fit_structured_models)
-    from tests.test_models import BASE, VARIABLES, history
+    from tests.test_models import VARIABLES, history
+    # Portable, tracked fixture: never depend on a developer sibling checkout.
+    BASE = (Path(__file__).resolve().parents[1]
+            / "runs/compact_mda_20261021T081006Z_20eb608d"
+            / "qualification_recovered_20261025/frozen_base")
     from tools.risk_feature_ablation import feature_matrix
 
 
