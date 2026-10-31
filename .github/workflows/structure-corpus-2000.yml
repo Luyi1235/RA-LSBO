@@ -1,0 +1,73 @@
+name: Structure corpus 2000 offline validation
+
+on:
+  push:
+    branches: [research/structure-corpus-2000-20261031]
+    paths:
+      - 'ra_lsbo/structure_corpus.py'
+      - 'tools/study_structure_corpus_2000.py'
+      - 'tests/test_structure_corpus.py'
+      - 'docs/STRUCTURE_CORPUS_2000_PROTOCOL_20261031.md'
+      - '.github/workflows/structure-corpus-2000.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structure-corpus-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-models.txt
+      - name: Install isolated existing model dependencies
+        run: |
+          mkdir -p runs/structure_corpus_ci
+          git rev-parse HEAD > runs/structure_corpus_ci/commit.txt
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          python -m pip freeze > runs/structure_corpus_ci/environment.txt
+      - name: Synthetic structural and affected regression tests
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_structure_corpus.py tests/test_structured_encoder.py tests/test_risk_core_mixed_gp.py tests/test_risk_core_observations.py --junitxml=runs/structure_corpus_ci/junit.xml 2>&1 | tee runs/structure_corpus_ci/tests.log
+      - name: Download fixed past evidence, no new evaluations
+        run: |
+          curl -fL --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip' -o /tmp/aircraft_records.zip
+          echo '35306153ceaf9f0d17d3586455d140931985f384e28b8dba93f1902095ef6bfd  /tmp/aircraft_records.zip' | sha256sum -c -
+      - name: Offline smoke 20 encoder fits and 40 GP head fits only
+        run: |
+          set -o pipefail
+          python tools/study_structure_corpus_2000.py /tmp/aircraft_records.zip runs/structure_corpus_ci/smoke --profile smoke --approved-encoder-fits 20 --approved-gp-heads 40 2>&1 | tee runs/structure_corpus_ci/smoke.log
+      - name: Independent read-only output audit
+        run: |
+          python -c "from tools.study_structure_corpus_2000 import audit_output; print(audit_output('runs/structure_corpus_ci/smoke'))" > runs/structure_corpus_ci/audit_check.txt
+      - name: Archive exact new sources
+        if: always()
+        run: |
+          mkdir -p runs/structure_corpus_ci
+          git archive HEAD ra_lsbo/structure_corpus.py tools/study_structure_corpus_2000.py tests/test_structure_corpus.py docs/STRUCTURE_CORPUS_2000_PROTOCOL_20261031.md .github/workflows/structure-corpus-2000.yml | gzip > runs/structure_corpus_ci/tested-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: structure-corpus-validation-${{ github.sha }}
+          path: runs/structure_corpus_ci/
+          retention-days: 30
