@@ -48,7 +48,7 @@ jobs:
             'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \
             -o /tmp/soc_diagnostic/input.zip
           echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/soc_diagnostic/input.zip' | sha256sum --check
-          python tools/diagnose_failed_soc_prefix.py plan --archive /tmp/soc_diagnostic/input.zip --output /tmp/soc_diagnostic/plan_only
+          python tools/diagnose_failed_soc_prefix.py plan --archive /tmp/soc_diagnostic/input.zip --output /tmp/soc_diagnostic/plan_only --cross-platform-check
           python - <<'PY'
           import json
           from pathlib import Path
@@ -56,6 +56,7 @@ jobs:
           assert plan['gp_candidate_attempt_limit']==8
           assert plan['encoder_fits_limit']==2
           assert plan['gp_head']=='soc'
+          assert plan['platform_check_only'] is True
           assert plan['history_D28_count']==40 and plan['history_D29_count']==41
           PY
       - name: Preserve read-only registration receipt
