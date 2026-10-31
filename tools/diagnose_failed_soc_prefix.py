@@ -25,6 +25,10 @@ import zipfile
 
 import numpy as np
 
+# A direct python tools/... invocation otherwise places tools/, not the checkout,
+# on sys.path. This is diagnostic-only import setup, not an evaluator change.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from ra_lsbo.partial_bo.records import DesignRecord
 from ra_lsbo.partial_bo.models import PrefixFeatures, LearnedMixedHead
 from ra_lsbo.partial_refinement.posterior import group_divisors
