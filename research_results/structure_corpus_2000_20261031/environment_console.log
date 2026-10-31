@@ -1,0 +1,61 @@
+**********************
+PowerShell transcript start
+Start time: 20261031164244
+Username: DESKTOP-RMCQJIF\pc
+RunAs User: DESKTOP-RMCQJIF\pc
+Configuration Name: 
+Machine: DESKTOP-RMCQJIF (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\pc\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+$ErrorActionPreference = 'Stop'
+$taskOut = 'D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01'
+if (Test-Path -LiteralPath $taskOut) { throw 'Output directory must be new' }
+New-Item -ItemType Directory -Path $taskOut | Out-Null
+Start-Transcript -LiteralPath (Join-Path $taskOut 'environment_console.log')
+try {
+$taskPy = 'C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe'
+git rev-parse HEAD | Set-Content -Encoding utf8 (Join-Path $taskOut 'commit.txt')
+if ($LASTEXITCODE -ne 0) { throw 'git failed' }
+& $taskPy -m pip check 2>&1 | Tee-Object -FilePath (Join-Path $taskOut 'pip_check.txt')
+if ($LASTEXITCODE -ne 0) { throw 'pip check failed' }
+& $taskPy -m pip freeze | Set-Content -Encoding utf8 (Join-Path $taskOut 'environment.txt')
+if ($LASTEXITCODE -ne 0) { throw 'pip freeze failed' }
+& $taskPy -c 'import sys,platform,numpy,scipy,torch,gpytorch,botorch,sklearn; print(sys.executable); print(sys.version); print(platform.platform()); print(numpy.__version__,scipy.__version__,torch.__version__,gpytorch.__version__,botorch.__version__,sklearn.__version__); print(torch.__config__.show()); assert sys.version_info[:3]==(3,9,25); assert (numpy.__version__,scipy.__version__,torch.__version__,gpytorch.__version__,botorch.__version__,sklearn.__version__)==("2.0.2","1.13.1","2.8.0+cpu","1.11","0.10.0","1.6.1")' 2>&1 | Tee-Object -FilePath (Join-Path $taskOut 'platform.txt')
+if ($LASTEXITCODE -ne 0) { throw 'Environment differs' }
+$taskOld = Get-Content -LiteralPath 'D:\LSBO\RA-LSBO-aircraft-representation-20261031_01\runs\aircraft_representation_20261031_01\environment.txt' | Where-Object { $_.Trim() } | Sort-Object
+$taskNew = Get-Content -LiteralPath (Join-Path $taskOut 'environment.txt') | Where-Object { $_.Trim() } | Sort-Object
+$taskDiff = Compare-Object $taskOld $taskNew
+if ($taskDiff) { $taskDiff; throw 'Package freeze differs from original verified environment' }
+'Package snapshot matches prior verified pilot environment.' | Tee-Object -FilePath (Join-Path $taskOut 'environment_match.txt')
+} finally { Stop-Transcript }
+Process ID: 23832
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01\environment_console.log
+No broken requirements found.
+C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe
+3.9.25 (main, Nov  3 2025, 22:44:01) [MSC v.1929 64 bit (AMD64)]
+Windows-10-10.0.26200-SP0
+2.0.2 1.13.1 2.8.0+cpu 1.11 0.10.0 1.6.1
+PyTorch built with:
+  - C++ Version: 201703
+  - MSVC 193833145
+  - Intel(R) oneAPI Math Kernel Library Version 2025.2-Product Build 20250620 for Intel(R) 64 architecture applications
+  - Intel(R) MKL-DNN v3.7.1 (Git Hash 8d263e693366ef8db40acc569cc7d8edf644556d)
+  - OpenMP 2019
+  - LAPACK is enabled (usually provided by MKL)
+  - CPU capability usage: AVX512
+  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=a1cb3cc05d46d198467bebbb6e8fba50a325d4e7, CXX_COMPILER=C:/actions-runner/_work/pytorch/pytorch/pytorch/.ci/pytorch/windows/tmp_bin/sccache-cl.exe, CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc /Zc:__cplusplus /bigobj /FS /utf-8 -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DLIBKINETO_NOXPUPTI=ON -DUSE_FBGEMM -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE /wd4624 /wd4068 /wd4067 /wd4267 /wd4661 /wd4717 /wd4244 /wd4804 /wd4273, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.8.0, USE_CUDA=0, USE_CUDNN=OFF, USE_CUSPARSELT=OFF, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=OFF, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, USE_XCCL=OFF, USE_XPU=OFF,
+
+Package snapshot matches prior verified pilot environment.
+**********************
+PowerShell transcript end
+End time: 20261031164251
+**********************

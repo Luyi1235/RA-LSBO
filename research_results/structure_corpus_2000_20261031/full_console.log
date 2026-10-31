@@ -1,0 +1,40 @@
+**********************
+PowerShell transcript start
+Start time: 20261031164335
+Username: DESKTOP-RMCQJIF\pc
+RunAs User: DESKTOP-RMCQJIF\pc
+Configuration Name: 
+Machine: DESKTOP-RMCQJIF (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\pc\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+$ErrorActionPreference='Stop'
+$taskOut='D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01'
+$env:OMP_NUM_THREADS='1'
+$env:MKL_NUM_THREADS='1'
+$env:OPENBLAS_NUM_THREADS='1'
+$env:PYTHONHASHSEED='0'
+$env:MPLBACKEND='Agg'
+$env:PYTHONUNBUFFERED='1'
+Start-Transcript -LiteralPath (Join-Path $taskOut 'full_console.log')
+try {
+& 'C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe' tools/study_structure_corpus_2000.py 'D:\LSBO\RA-LSBO-aircraft-pilot-20261030_01\runs\aircraft_nominal_20261030_01_full_records.zip' (Join-Path $taskOut 'full') --profile full --approved-encoder-fits 160 --approved-gp-heads 320 2>&1 | Tee-Object -FilePath (Join-Path $taskOut 'full.log')
+$taskFullExit=$LASTEXITCODE
+"full_exit_code=$taskFullExit" | Set-Content -Encoding utf8 (Join-Path $taskOut 'full_exit_code.txt')
+if ($taskFullExit -ne 0) { throw "Full offline process failed with exit $taskFullExit; no retries authorized" }
+} finally { Stop-Transcript }
+Process ID: 22668
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01\full_console.log
+{"profile": "full", "counts": {"encoder_fit_calls": 160, "onehot_transforms": 32, "GP_head_fit_calls": 320}, "new_evaluator_calls": 0}
+**********************
+PowerShell transcript end
+End time: 20261031164748
+**********************

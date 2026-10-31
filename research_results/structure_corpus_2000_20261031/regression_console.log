@@ -1,0 +1,50 @@
+**********************
+PowerShell transcript start
+Start time: 20261031164310
+Username: DESKTOP-RMCQJIF\pc
+RunAs User: DESKTOP-RMCQJIF\pc
+Configuration Name: 
+Machine: DESKTOP-RMCQJIF (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\pc\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+$ErrorActionPreference='Stop'
+$taskOut='D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01'
+$env:OMP_NUM_THREADS='1'
+$env:MKL_NUM_THREADS='1'
+$env:OPENBLAS_NUM_THREADS='1'
+$env:PYTHONHASHSEED='0'
+$env:MPLBACKEND='Agg'
+$env:PYTHONUNBUFFERED='1'
+Start-Transcript -LiteralPath (Join-Path $taskOut 'regression_console.log')
+try {
+& 'C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe' -m pytest -q tests/test_structure_corpus.py tests/test_structured_encoder.py tests/test_risk_core_mixed_gp.py tests/test_risk_core_observations.py --junitxml (Join-Path $taskOut 'junit.xml') 2>&1 | Tee-Object -FilePath (Join-Path $taskOut 'pytest.txt')
+if ($LASTEXITCODE -ne 0) { throw "Regression failed with exit $LASTEXITCODE" }
+[xml]$taskJUnit=Get-Content -LiteralPath (Join-Path $taskOut 'junit.xml') -Raw
+$taskSuites=@($taskJUnit.testsuites.testsuite)
+$taskCount=($taskSuites | Measure-Object tests -Sum).Sum
+$taskFailures=($taskSuites | Measure-Object failures -Sum).Sum
+$taskErrors=($taskSuites | Measure-Object errors -Sum).Sum
+$taskSkips=($taskSuites | Measure-Object skipped -Sum).Sum
+"JUnit tests=$taskCount failures=$taskFailures errors=$taskErrors skipped=$taskSkips"
+if ($taskCount -ne 78 -or $taskFailures -ne 0 -or $taskErrors -ne 0 -or $taskSkips -ne 0) { throw 'JUnit acceptance failed' }
+} finally { Stop-Transcript }
+Process ID: 15376
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01\regression_console.log
+........................................................................ [ 92%]
+......                                                                   [100%]
+- generated xml file: D:\LSBO\RA-LSBO-structure-corpus-output-20261031_01\junit.xml -
+78 passed in 7.26s
+JUnit tests=78 failures=0 errors=0 skipped=0
+**********************
+PowerShell transcript end
+End time: 20261031164319
+**********************
