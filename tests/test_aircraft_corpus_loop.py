@@ -277,3 +277,31 @@ def test_npz_included_in_seal(tmp_path):
 
 def test_cli_no_implicit_campaign():
     with pytest.raises(SystemExit):p.main([])
+
+
+def primary_fixture():
+    return [{'case':c,'seed':1,'method':m,'step_verification':{
+        'verified_usable':True,'refined_objective_Wh':100.}}
+        for c in p.CASES for m in p.ARMS]
+
+
+def test_primary_requires_unique_complete_pairs():
+    rows=primary_fixture()
+    with pytest.raises(ValueError):p.primary_pairs(rows+[rows[0]])
+    with pytest.raises(ValueError):p.primary_pairs(rows[1:])
+
+
+def test_primary_never_imputes_infeasible_objectives():
+    rows=primary_fixture()
+    for r in rows:
+        if r['method']=='ra_corpus':
+            r['step_verification']={'verified_usable':False,'refined_objective_Wh':None}
+    assert all(r['counts']=={'loss':1} and r['median_difference_Wh'] is None
+               for r in p.primary_pairs(rows))
+
+
+def test_control_invented_cost_rejected(tmp_path):
+    prob=p.problem_for(p.CASES[0])
+    prop={'metadata':{'posterior_fit_skipped':True,'representation_fit':{'encoder_fit_calls':1}}}
+    with pytest.raises(ValueError):
+        ca.audit_representation(prob,p.BASE,tmp_path,[],[],[prop],3,'ra_old30')

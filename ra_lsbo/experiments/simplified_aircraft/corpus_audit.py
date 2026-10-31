@@ -86,8 +86,36 @@ def audit_representation(problem, base, output, initial, online, proposals, seed
         if (output/'representation').exists():
             raise ValueError('Unexpected persistent training files in a control')
         for prop in proposals:
-            if 'persistent_representation' in prop['metadata']:
+            metadata = prop['metadata']
+            if 'persistent_representation' in metadata:
                 raise ValueError('Persistent representation in a control')
+            info = metadata.get('representation_fit')
+            if method == 'random':
+                if info is not None:
+                    raise ValueError('Invented fitted representation for random search')
+                continue
+            if metadata['posterior_fit_skipped']:
+                if info is not None:
+                    raise ValueError('Invented control fit on coverage')
+                continue
+            latent = method != 'ra_onehot'
+            epochs = 480 if method == 'ra_old480' else 30
+            if (not isinstance(info, dict) or info['encoder_fit_calls'] != int(latent)
+                    or info['gradient_updates'] != (epochs if latent else 0)
+                    or info['feature_identity'] != metadata['feature_identity']
+                    or (info['encoder_state'] is None) != (not latent)
+                    or (info['grammar'] is None) != (not latent)
+                    or info['configurations'] != problem.space.configurations()
+                    or not finite_seconds(info['feature_seconds'])
+                    or not finite_seconds(info['gp_seconds'])):
+                raise ValueError('Control fit accounting or feature identity changed')
+            code = np.asarray(info['normalized_codebook'], float)
+            offset, scale = np.asarray(info['offset'], float), np.asarray(info['scale'], float)
+            if (code.ndim != 2 or code.shape[0] != len(problem.space.configurations())
+                    or offset.shape != scale.shape or scale.shape != (2*len(problem.space.continuous)+code.shape[1],)
+                    or not np.isfinite(code).all() or not np.isfinite(offset).all()
+                    or not np.isfinite(scale).all() or np.any(scale <= 0)):
+                raise ValueError('Invalid control feature geometry')
         return None
     expected_steps = scheduled_updates(len(proposals))
     events = lines(output/'representation/events.jsonl')

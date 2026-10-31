@@ -136,9 +136,15 @@ def primary_pairs(summaries):
     # Primary comparator per case: 5 s verified incumbent availability first,
     # then refined Wh at that same, nominally selected design. No re-selection.
     lookup={(r['case'],r['seed'],r['method']):r for r in summaries}
+    if len(lookup) != len(summaries):
+        raise ValueError('Duplicate primary-endpoint trial identity')
+    if any(r['case'] not in CASES or r['method'] not in ARMS for r in summaries):
+        raise ValueError('Unregistered primary-endpoint identity')
     result=[]
     for case in CASES:
         seeds=sorted({r['seed'] for r in summaries if r['case']==case})
+        if any((case, seed, method) not in lookup for seed in seeds for method in ARMS):
+            raise ValueError('Missing paired primary-endpoint trial')
         for other in ARMS:
             if other==REFERENCE:continue
             counts=Counter(); differences=[];percentages=[];pairs=[]
@@ -164,6 +170,7 @@ def primary_pairs(summaries):
                 'median_relative_difference_pct':float(np.median(percentages)) if percentages else None,
                 'pairs':pairs,'interpretation':'developmental paired endpoint, no significance claim'})
     return result
+
 
 def budget_for(profile):
     trials = len(CASES)*len(profile['seeds'])*len(ARMS)
@@ -460,6 +467,13 @@ def audit(folder,write=True):
                     raise ValueError('Invalid timing evidence')
                 if sum(timing['proposal_seconds'])+sum(timing['accept_seconds']) > timing['optimization_seconds']+1e-6:
                     raise ValueError('Component timings exceed recorded optimization duration')
+                cost = summary['representation_accounting']
+                if method != 'random' and 'feature_preparation_seconds' in cost:
+                    components = cost['feature_preparation_seconds']+cost['gp_seconds']
+                    if method == 'ra_corpus':
+                        components += cost['encoder_fit_seconds']
+                    if components > sum(timing['proposal_seconds'])+1e-6:
+                        raise ValueError('Representation/GP costs exceed recorded proposal duration')
                 timings.append(timing)
     if claimed!=set(settled) or roles['shared_initial']!=plan['budget']['shared_initial']:
         raise ValueError('Unclaimed or missing calls')
