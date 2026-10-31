@@ -1,0 +1,32 @@
+name: Structure corpus review input
+on:
+  push:
+    branches: [analysis/structure-corpus-review-20261031]
+    paths: ['.github/workflows/structure-corpus-review-input.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch hash-pinned published evidence (no evaluation or training)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/corpus-review-input
+          curl --fail --location --max-time 120 'https://github.com/Luyi1235/RA-LSBO/releases/download/structure-corpus-2000-20261031/RA-LSBO-structure-corpus-output-20261031_01_records.zip' -o /tmp/corpus-review-input/records.zip
+          curl --fail --location --max-time 120 'https://github.com/Luyi1235/RA-LSBO/releases/download/structure-corpus-2000-20261031/RA-LSBO-structure-corpus-output-20261031_01_manifest.json' -o /tmp/corpus-review-input/manifest.json
+          echo 'd7953cdcc91891eff8fa0ff7c1fc1f7103ccdb7d24a39cbd94651b4ef2a2628f  /tmp/corpus-review-input/records.zip' | sha256sum -c -
+          echo '0186cc780c5e184ee703e8378625c09589070ef594da872a152e566dcc597980  /tmp/corpus-review-input/manifest.json' | sha256sum -c -
+          git rev-parse HEAD > /tmp/corpus-review-input/commit.txt
+          git archive HEAD ra_lsbo tests tools docs requirements-models.txt runs/compact_mda_20261021T081006Z_20eb608d/qualification_recovered_20261025/frozen_base | gzip > /tmp/corpus-review-input/tracked-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corpus-review-input-${{ github.sha }}
+          path: /tmp/corpus-review-input/
+          retention-days: 14

@@ -1,0 +1,62 @@
+name: Structure corpus metric review
+on:
+  push:
+    branches: [analysis/structure-corpus-review-20261031]
+    paths:
+      - 'tools/review_structure_corpus_full.py'
+      - 'tools/probe_structure_codebook_scale.py'
+      - 'tests/test_structure_codebook_metric.py'
+      - 'docs/STRUCTURE_CODEBOOK_METRIC_PROTOCOL_20261031.md'
+      - '.github/workflows/structure-corpus-metric-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Isolated fixed numeric dependencies
+        run: |
+          mkdir -p /tmp/metric-review
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install numpy==2.0.2 scipy==1.13.1 pytest==8.3.5
+          python -m pip check
+          python -m pip freeze > /tmp/metric-review/environment.txt
+          git rev-parse HEAD > /tmp/metric-review/commit.txt
+      - name: Tests without evaluators or encoder fitting
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_structure_codebook_metric.py tests/test_risk_core_mixed_gp.py tests/test_risk_core_observations.py --junitxml=/tmp/metric-review/junit.xml 2>&1 | tee /tmp/metric-review/tests.log
+      - name: Acquire fixed evidence
+        run: |
+          set -euo pipefail
+          curl --fail --location --max-time 180 'https://github.com/Luyi1235/RA-LSBO/releases/download/structure-corpus-2000-20261031/RA-LSBO-structure-corpus-output-20261031_01_records.zip' -o /tmp/corpus.zip
+          curl --fail --location --max-time 120 'https://github.com/Luyi1235/RA-LSBO/releases/download/structure-corpus-2000-20261031/RA-LSBO-structure-corpus-output-20261031_01_manifest.json' -o /tmp/corpus-manifest.json
+          curl --fail --location --max-time 180 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip' -o /tmp/pilot.zip
+          python tools/review_structure_corpus_full.py /tmp/corpus.zip /tmp/corpus-manifest.json /tmp/metric-review/full_review.json
+      - name: Fixed 256-head sensitivity, zero neural fits and zero evaluator calls
+        run: |
+          set -o pipefail
+          python tools/probe_structure_codebook_scale.py /tmp/corpus.zip /tmp/corpus-manifest.json /tmp/pilot.zip /tmp/metric-review/probe --approved-gp-heads 256 2>&1 | tee /tmp/metric-review/probe.log
+      - name: Archive exact tools and protocol
+        if: always()
+        run: |
+          git archive HEAD tools/review_structure_corpus_full.py tools/probe_structure_codebook_scale.py tests/test_structure_codebook_metric.py docs/STRUCTURE_CODEBOOK_METRIC_PROTOCOL_20261031.md .github/workflows/structure-corpus-metric-review.yml | gzip > /tmp/metric-review/tested-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-metric-review-${{ github.sha }}
+          path: /tmp/metric-review/
+          retention-days: 30
