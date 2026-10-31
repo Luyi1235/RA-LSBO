@@ -6,6 +6,7 @@ on:
       - 'ra_lsbo/grammar_pretraining.py'
       - 'tools/check_grammar_pretraining.py'
       - 'tests/test_grammar_pretraining.py'
+      - 'tests/test_models.py'
       - 'docs/GRAMMAR_PRETRAINING_PROTOCOL_20261031.md'
       - '.github/workflows/grammar-pretraining.yml'
   workflow_dispatch:
@@ -41,10 +42,10 @@ jobs:
           python -m pip check
           python -m pip freeze > /tmp/grammar-validation/environment.txt
           git rev-parse HEAD > /tmp/grammar-validation/commit.txt
-      - name: New opt-in feature tests and unchanged encoder regressions
+      - name: New opt-in feature tests and portable encoder regressions
         run: |
           set -o pipefail
-          python -m pytest -q tests/test_grammar_pretraining.py tests/test_structured_encoder.py tests/test_soc_revision_posterior.py --junitxml=/tmp/grammar-validation/junit.xml 2>&1 | tee /tmp/grammar-validation/pytest.txt
+          python -m pytest -q tests/test_grammar_pretraining.py tests/test_models.py tests/test_structured_encoder.py tests/test_soc_revision_posterior.py --junitxml=/tmp/grammar-validation/junit.xml 2>&1 | tee /tmp/grammar-validation/pytest.txt
       - name: Retrieve fixed old records, no evaluations
         run: |
           curl -fL --retry 2 -o /tmp/pilot.zip https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip
@@ -59,7 +60,7 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/grammar-validation
-          git archive HEAD ra_lsbo/grammar_pretraining.py tools/check_grammar_pretraining.py tests/test_grammar_pretraining.py docs/GRAMMAR_PRETRAINING_PROTOCOL_20261031.md | gzip > /tmp/grammar-validation/source.tar.gz
+          git archive HEAD ra_lsbo/grammar_pretraining.py tools/check_grammar_pretraining.py tests/test_grammar_pretraining.py tests/test_models.py docs/GRAMMAR_PRETRAINING_PROTOCOL_20261031.md | gzip > /tmp/grammar-validation/source.tar.gz
       - uses: actions/upload-artifact@v4
         if: always()
         with:
