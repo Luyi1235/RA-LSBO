@@ -1,0 +1,69 @@
+name: Grammar pretraining offline validation
+on:
+  push:
+    branches: [research/grammar-pretraining-20261031]
+    paths:
+      - 'ra_lsbo/grammar_pretraining.py'
+      - 'tools/check_grammar_pretraining.py'
+      - 'tests/test_grammar_pretraining.py'
+      - 'tests/test_models.py'
+      - 'docs/GRAMMAR_PRETRAINING_PROTOCOL_20261031.md'
+      - '.github/workflows/grammar-pretraining.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: grammar-pretraining-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-models.txt
+      - name: Isolated pinned test dependencies
+        run: |
+          mkdir -p /tmp/grammar-validation
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+          python -m pip freeze > /tmp/grammar-validation/environment.txt
+          git rev-parse HEAD > /tmp/grammar-validation/commit.txt
+      - name: New opt-in feature tests and portable encoder regressions
+        run: |
+          set -o pipefail
+          python -m pytest -q tests/test_grammar_pretraining.py tests/test_models.py tests/test_structured_encoder.py tests/test_soc_revision_posterior.py --junitxml=/tmp/grammar-validation/junit.xml 2>&1 | tee /tmp/grammar-validation/pytest.txt
+      - name: Retrieve fixed old records, no evaluations
+        run: |
+          curl -fL --retry 2 -o /tmp/pilot.zip https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip
+          curl -fL --retry 2 -o /tmp/grammar-validation/windows.zip https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-representation-20261031/aircraft_representation_20261031_01_records.zip
+          echo '35306153ceaf9f0d17d3586455d140931985f384e28b8dba93f1902095ef6bfd  /tmp/pilot.zip' | sha256sum -c -
+          echo '9b514cdcfa92dcab33345429e2a73f521a022a3f2fae041aec98ef83d578ea64  /tmp/grammar-validation/windows.zip' | sha256sum -c -
+      - name: Fixed 32-prefix six-control prediction study, zero evaluator calls
+        run: |
+          set -o pipefail
+          python tools/check_grammar_pretraining.py /tmp/pilot.zip /tmp/grammar-validation/windows.zip /tmp/grammar-validation/results 2>&1 | tee /tmp/grammar-validation/run.txt
+      - name: Source identity
+        if: always()
+        run: |
+          mkdir -p /tmp/grammar-validation
+          git archive HEAD ra_lsbo/grammar_pretraining.py tools/check_grammar_pretraining.py tests/test_grammar_pretraining.py tests/test_models.py docs/GRAMMAR_PRETRAINING_PROTOCOL_20261031.md | gzip > /tmp/grammar-validation/source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grammar-pretraining-${{ github.sha }}
+          path: /tmp/grammar-validation/
+          retention-days: 30
