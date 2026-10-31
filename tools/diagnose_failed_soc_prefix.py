@@ -110,14 +110,15 @@ def load_input(archive):
     return manifest, proposals, history
 
 
-def diagnostic_plan(archive):
+def diagnostic_plan(archive, *, cross_platform_check=False):
     manifest, proposals, history = load_input(archive)
     problem = problem_for(CASE)
     if tuple(n for n in problem.required_constraints
              if n not in problem.analytical_constraints) != EXPECTED_CONSTRAINTS:
         raise ValueError("Nonanalytic constraint order changed")
-    if any(x.observation.contract_id != problem.contract_id for x in history):
-        raise ValueError("Physical contract differs")
+    contract_match = all(x.observation.contract_id == problem.contract_id for x in history)
+    if not contract_match and not cross_platform_check:
+        raise ValueError("Physical contract differs; use the original Windows environment")
     if not proposals[28]["metadata"].get("feature_identity"):
         raise ValueError("No original D28 feature identity to verify")
     attempts = [{"head": "soc", "continuous_length": c, "discrete_length": d}
@@ -129,6 +130,8 @@ def diagnostic_plan(archive):
         raise ValueError("Diagnostic branch must descend from fixed execution commit")
     result = {
         "schema": "aircraft_corpus_soc_D29_diagnostic_v1",
+        "platform_check_only": bool(cross_platform_check),
+        "contract_match": bool(contract_match),
         "source_commit": SOURCE_SHA, "diagnostic_commit": commit,
         "archive_sha256": ARCHIVE_SHA,
         "last_success_prefix": proposals[28]["prefix_digest"],
@@ -147,6 +150,8 @@ def diagnostic_plan(archive):
 def run(archive, output):
     output = Path(output)
     registered = json.loads((output / "plan.json").read_text(encoding="utf8"))
+    if registered.get("platform_check_only") or not registered.get("contract_match"):
+        raise ValueError("Cross-platform preview is not a GP fitting authorization")
     fresh = diagnostic_plan(archive)
     if registered != fresh:
         raise ValueError("Diagnostic plan or code/source inputs have changed")
@@ -245,11 +250,16 @@ def main():
     parser.add_argument("command", choices=("plan", "run"))
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--cross-platform-check", action="store_true",
+                        help="For CI structure-only inspection; NEVER authorizes GP fitting")
     args = parser.parse_args()
+    if args.cross_platform_check and args.command != "plan":
+        parser.error("cross-platform check cannot execute GP fitting")
     if args.command == "plan":
         if args.output.exists():
             raise FileExistsError("Use a new diagnostic output, never overwrite")
-        spec = diagnostic_plan(args.archive)
+        spec = diagnostic_plan(args.archive,
+                               cross_platform_check=args.cross_platform_check)
         args.output.mkdir(parents=True)
         write(args.output / "plan.json", spec)
         print("Registered two feature fits + 8 D29 SOC kernel attempts; no evaluator calls")
