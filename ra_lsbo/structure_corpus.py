@@ -11,6 +11,7 @@ from dataclasses import asdict
 import hashlib
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
@@ -101,6 +102,7 @@ class CorpusRepresentation:
         self.history = []
         self.events = []
         self.total_updates = 0
+        self.fit_seconds = []
         self._sealed_state = None
         self._failed = False
 
@@ -135,11 +137,13 @@ class CorpusRepresentation:
         self.representation.grammar = torch.cat([self.sampled_indices, observed_indices], dim=0)
         epochs = self.settings.update_epochs if incremental else self.settings.initial_epochs
         batches = math.ceil(len(self.representation.grammar)/self.settings.batch_size)
+        started = time.perf_counter()
         try:
             self.representation.fit(observations, epochs=epochs, incremental=incremental)
         except Exception:
             self._failed = True
             raise
+        self.fit_seconds.append(time.perf_counter()-started)
         self.total_updates += epochs*batches
         self.history = rows
         self._sealed_state = state_digest(self.representation)
@@ -175,6 +179,7 @@ class CorpusRepresentation:
         meta = {'schema': CORPUS_SCHEMA, 'variables': [asdict(v) for v in self.space.variables],
                 'settings': asdict(self.settings), 'seed': self.seed, 'corpus': self.corpus,
                 'history': self.history, 'events': self.events, 'total_updates': self.total_updates,
+                'fit_seconds': self.fit_seconds,
                 'tensor_names': names, 'state_digest': self._sealed_state,
                 'version': rep.version, 'y_mean': rep.y_mean, 'y_std': rep.y_std,
                 'performance_fitted': rep.performance_fitted,
@@ -209,6 +214,9 @@ class CorpusRepresentation:
         rep.training_trace = deepcopy(m['events'][-1]['training_trace'])
         rep.model.eval()
         obj.history, obj.events, obj.total_updates = m['history'], m['events'], m['total_updates']
+        obj.fit_seconds = list(m['fit_seconds'])
+        if len(obj.fit_seconds) != len(obj.events) or any(not math.isfinite(t) or t < 0 for t in obj.fit_seconds):
+            raise ValueError('Invalid fit timing record')
         obj._sealed_state = state_digest(rep)
         if obj._sealed_state != m['state_digest']:
             raise ValueError('Checkpoint reconstructed identity differs')
