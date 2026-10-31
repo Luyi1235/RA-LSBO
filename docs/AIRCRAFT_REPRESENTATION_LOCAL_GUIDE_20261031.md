@@ -51,6 +51,9 @@ $Dirty = git status --porcelain --untracked-files=no
 CheckExit 'status'
 if ($Dirty) { throw '受跟踪源码不是干净状态' }
 New-Item -ItemType Directory -Path $Out | Out-Null
+$JUnit = Join-Path $Out 'junit.xml'
+$Diagnostic = Join-Path $Out 'diagnostic.json'
+$Log = Join-Path $Out 'refit.log'
 
 & $Py -m pip check
 CheckExit 'pip check'
@@ -58,19 +61,18 @@ CheckExit 'pip check'
 CheckExit 'pip freeze'
 & $Py -c 'import sys,platform,torch,numpy; print(sys.version); print(platform.platform()); print(torch.__version__); print(numpy.__version__); print(torch.__config__.show())' | Set-Content -Encoding utf8 (Join-Path $Out 'platform.txt')
 CheckExit 'runtime record'
-& $Py -m pytest -q tests/test_aircraft_nominal_evidence_review.py --junitxml=(Join-Path $Out 'junit.xml')
+& $Py -m pytest -q tests/test_aircraft_nominal_evidence_review.py --junitxml $JUnit
 CheckExit '20 diagnostic tests'
 
 $env:OMP_NUM_THREADS='1'
 $env:MKL_NUM_THREADS='1'
 $env:OPENBLAS_NUM_THREADS='1'
 $env:PYTHONHASHSEED='0'
-& $Py tools/refit_aircraft_representation_diagnostic.py $Archive (Join-Path $Out 'diagnostic.json')
+& $Py tools/refit_aircraft_representation_diagnostic.py $Archive $Diagnostic 2>&1 | Tee-Object -FilePath $Log
 CheckExit 'representation refit'
 ```
 
-若PowerShell不接受示例的`--junitxml=(Join-Path ...)`参数形式，将路径先赋给`$JUnit`后传入
-`--junitxml $JUnit`；不要因此改仓库源码。保存实际命令与完整控制台日志，非零退出码即停止。
+保存实际命令与完整控制台日志，非零退出码即停止，不通过改仓库源码绕过检查。
 
 ## 执行边界与如何读结果
 
