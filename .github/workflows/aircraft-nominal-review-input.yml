@@ -1,0 +1,26 @@
+name: Aircraft nominal review input
+on:
+  push:
+    branches: [analysis/aircraft-nominal-review-20261031]
+    paths: ['.github/workflows/aircraft-nominal-review-input.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download and authenticate published evidence, no evaluation code
+        run: |
+          mkdir -p /tmp/aircraft-review-input
+          curl --fail --location --retry 2 --output /tmp/aircraft-review-input/records.zip https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip
+          echo '35306153ceaf9f0d17d3586455d140931985f384e28b8dba93f1902095ef6bfd  /tmp/aircraft-review-input/records.zip' | sha256sum --check
+          curl --fail --location --retry 2 --output /tmp/aircraft-review-input/manifest.json https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_manifest.json
+          echo '6abee3f22e39b31f75bdd1ed40b61dcbd40b37e5fa230301bf37600e5c2633b1  /tmp/aircraft-review-input/manifest.json' | sha256sum --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nominal-review-input-${{ github.sha }}
+          path: /tmp/aircraft-review-input/
+          retention-days: 7
+          compression-level: 0
