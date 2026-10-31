@@ -1,0 +1,46 @@
+name: Aircraft nominal evidence review
+on:
+  push:
+    branches: [analysis/aircraft-nominal-review-20261031]
+    paths:
+      - 'tools/review_aircraft_nominal_evidence.py'
+      - 'tests/test_aircraft_nominal_evidence_review.py'
+      - '.github/workflows/aircraft-nominal-evidence-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test pure observation and pairing arithmetic
+        run: |
+          mkdir -p /tmp/nominal-evidence-review
+          git rev-parse HEAD > /tmp/nominal-evidence-review/commit.txt
+          python -m pip install pytest==8.3.5
+          python -m pip freeze > /tmp/nominal-evidence-review/environment.txt
+          python -m pytest -q tests/test_aircraft_nominal_evidence_review.py --junitxml=/tmp/nominal-evidence-review/junit.xml
+      - name: Get fixed raw evidence and manifest
+        run: |
+          curl --fail --location --retry 2 --output /tmp/records.zip https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_full_records.zip
+          curl --fail --location --retry 2 --output /tmp/manifest.json https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-nominal-pilot-20261030-233225/aircraft_nominal_20261030_01_manifest.json
+      - name: Reconstruct every recorded trial, no model imports or calls
+        run: |
+          set -o pipefail
+          python tools/review_aircraft_nominal_evidence.py /tmp/records.zip /tmp/manifest.json /tmp/nominal-evidence-review/derived 2>&1 | tee /tmp/nominal-evidence-review/review.log
+          mkdir -p /tmp/nominal-evidence-review/tools /tmp/nominal-evidence-review/tests
+          cp tools/review_aircraft_nominal_evidence.py /tmp/nominal-evidence-review/tools/
+          cp tests/test_aircraft_nominal_evidence_review.py /tmp/nominal-evidence-review/tests/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nominal-evidence-review-${{ github.sha }}
+          path: /tmp/nominal-evidence-review/
+          retention-days: 30
