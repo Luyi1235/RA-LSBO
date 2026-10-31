@@ -1,0 +1,75 @@
+{
+  "schema": "ra_lsbo_aircraft_representation_local_summary_v1",
+  "source_commit": "5f33e4b9174b23e232ebe5d5ce53f7859a58e1ed",
+  "input_archive_sha256": "35306153ceaf9f0d17d3586455d140931985f384e28b8dba93f1902095ef6bfd",
+  "diagnostic_sha256": "21abbf077226fcc4ea163c287aeae7534bcc5c115997481fe72e8fde2ccc824c",
+  "original_environment_package_snapshot_matches": true,
+  "diagnostic_tests": 20,
+  "diagnostic_tests_failed": 0,
+  "diagnostic_tests_skipped": 0,
+  "encoder_refits": 64,
+  "onehot_transforms": 32,
+  "rows": 96,
+  "source_text_bindings_checked": 156,
+  "new_model_calls": 0,
+  "new_rcaide_mda_calls": 0,
+  "fitted_GP_count": 0,
+  "optimizer_replay": false,
+  "identity_eligibility": "representation=latent AND epochs=30 AND saved_feature_identity is nonempty",
+  "identity_comparison": {
+    "eligible": 29,
+    "matches": 29,
+    "mismatches": [],
+    "excluded_missing_original": [
+      {
+        "case": "aircraft_ordinary",
+        "seed": 9916,
+        "iteration": 0
+      },
+      {
+        "case": "aircraft_sparse",
+        "seed": 9915,
+        "iteration": 0
+      },
+      {
+        "case": "aircraft_sparse",
+        "seed": 9916,
+        "iteration": 0
+      }
+    ]
+  },
+  "reconstruction": [
+    {
+      "epochs": 30,
+      "refits": 32,
+      "grammar_reconstruction_mean": 0.13281249999999997,
+      "grammar_reconstruction_median": 0.08333333333333333,
+      "grammar_reconstruction_min": 0.08333333333333333,
+      "grammar_reconstruction_max": 0.3333333333333333,
+      "active_variable_mean": {
+        "parallel_strings": 0.3515625,
+        "prop_layout": 0.8307291666666667,
+        "propeller_count": 0.3541666666666667
+      }
+    },
+    {
+      "epochs": 120,
+      "refits": 32,
+      "grammar_reconstruction_mean": 0.5078124999999999,
+      "grammar_reconstruction_median": 0.5,
+      "grammar_reconstruction_min": 0.3333333333333333,
+      "grammar_reconstruction_max": 0.75,
+      "active_variable_mean": {
+        "parallel_strings": 0.7473958333333333,
+        "prop_layout": 0.9869791666666667,
+        "propeller_count": 0.6006944444444446
+      }
+    }
+  ],
+  "limitations": [
+    "Training grammar reconstruction is not held-out prediction quality.",
+    "120 epochs is a fixed sensitivity diagnostic, not an adopted optimizer setting.",
+    "All original identities reproduced in this Windows environment; the cause of earlier Linux differences remains undetermined.",
+    "No inference that reconstruction alone caused BO performance differences."
+  ]
+}
