@@ -22,6 +22,11 @@ class DualViewTests(unittest.TestCase):
         self.assertEqual(pr.budget_for(pr.profile_for("pilot"))["maximum_model_calls"],856)
         self.assertEqual(pr.profile_for("pilot")["seeds"],[9961,9962,9963,9964])
         self.assertEqual(pr.profile_for("pilot")["horizon"],18)
+        for method in pr.ARMS[1:]:
+            self.assertEqual(pr.model_settings(method,pr.profile_for("smoke")).continuous_grid,
+                             (.05,.15,.4,1.))
+            self.assertEqual(pr.model_settings(method,pr.profile_for("smoke")).discrete_grid,
+                             (.5,1.5))
         for name in pr.ARMS[1:]:
             spec=pr.method_spec(name,pr.profile_for("pilot"))
             self.assertTrue(spec["gp_stable_tail_moments"])
