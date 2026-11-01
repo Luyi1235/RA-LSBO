@@ -1,0 +1,66 @@
+name: Opt-in EP tail stability candidate tests
+
+on:
+  push:
+    branches:
+      - research/ep-stability-candidate-20261101
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  numerical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Pinned numerical dependencies (no aircraft evaluator invoked)
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Numerical tests and existing mixed EP regressions
+        run: |
+          python -m py_compile ra_lsbo/risk_core/ep_numerics.py ra_lsbo/risk_core/mixed_gp.py
+          python -m py_compile tools/probe_ep_stability_D29.py
+          python -m pytest -q tests/test_ep_stability_candidate.py tests/test_risk_core_mixed_gp.py tests/test_risk_core_observations.py --junitxml=ep_stability_junit.xml
+      - name: Verify immutable pilot evidence, plan-only on Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ep_stability_input
+          curl --retry 2 --fail --location --silent --show-error \
+            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \
+            -o /tmp/ep_stability_input/interruption.zip
+          echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/ep_stability_input/interruption.zip' | sha256sum --check
+          python tools/probe_ep_stability_D29.py plan \
+            --archive /tmp/ep_stability_input/interruption.zip \
+            --output /tmp/ep_stability_input/plan_only --cross-platform-check
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/ep_stability_input/plan_only/plan.json'))
+          assert p['platform_check_only'] and not p['contract_match']
+          assert p['numerical_candidate']=='stable_extreme_tail_moments_and_EP_trace_only'
+          assert len(p['attempts'])==8 and p['gp_candidate_attempt_limit']==8
+          print('Non-authorizing Linux plan-only preview passed; zero EP GP and VAE fits')
+          PY
+      - name: Preserve JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ep-stability-candidate-tests
+          path: ep_stability_junit.xml
+          retention-days: 30
+          if-no-files-found: warn
