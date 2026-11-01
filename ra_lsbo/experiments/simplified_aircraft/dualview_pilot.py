@@ -35,6 +35,7 @@ from .dualview_protocol import (SCHEMA, DOCUMENT, CASES, ARMS, CORPUS_ARMS, REFE
     profile_for, budget_for, method_spec, model_settings, method_order)
 from .corpus_optimizer import audit_training
 from .dualview_optimizer import StableCorpusDiscoveryBO, StableOnehotDiscoveryBO
+from .dualview_metrics import soc_prequential
 
 # LF-normalized source identity only for cross-platform equation compatibility.
 # Every actual experiment additionally seals RAW bytes, runtime and checkout.
@@ -279,6 +280,7 @@ def summary_for(problem,plan,case,seed,method,initial,online,proposals,stop_reas
         'model_failure_heads':dict(Counter(
             p['metadata']['model_failure']['head'] for p in proposals
             if p['metadata'].get('coverage_reason')=='model_failure')),
+        'soc_prequential':soc_prequential(proposals,online),
         'output_kinds':dict(Counter(n+':'+v.kind for r in online
             for n,v in [('objective',r.observation.objective),*r.observation.constraints])),
         'step_verification':verification_result(best,refined)})
