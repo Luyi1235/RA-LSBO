@@ -257,6 +257,9 @@ class HeterogeneousRiskPosterior(RefinementPosterior):
         if self.objective is not None:
             heads["objective"]=self.objective.diagnostics()
         return {"model":"risk_decoupled_dualview_v1","history_digest":self.history_digest,
+                # Preserve the frozen corpus-checkpoint audit contract: the
+                # objective VAE/feature snapshot is the persistent one.
+                "feature_identity":self.objective_features.identity,
                 "objective_feature_identity":self.objective_features.identity,
                 "risk_feature_identity":self.risk_features.identity,
                 "view_policy":self.view_policy,"soc_dual_guard":self.dual_soc,
@@ -343,6 +346,11 @@ class StableCorpusDiscoveryBO(CorpusDiscoveryBO):
                 self,records,global_pool,iteration,error)
             self.last_requested_iteration=iteration
             prefix=digest([r.to_dict() for r in records])
+            # Even when no GP survives, bind the representation snapshot
+            # that was actually used for that failed proposal. The immutable
+            # checkpoint auditor must not mistake the fallback for a fit skip.
+            meta["feature_identity"]=feature_snapshot(
+                self.problem,self.base,records,self.session).identity
             meta["corpus_training"]={
                 "schema":CORPUS_TRAINING_SCHEMA,
                 "corpus_identity":self.session.corpus["identity"],
