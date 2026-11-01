@@ -9,6 +9,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from ra_lsbo.risk_core.observations import OutputObservation
+from ra_lsbo.budget import digest
 from ra_lsbo.experiments.simplified_aircraft import dualview_protocol as pr
 from ra_lsbo.experiments.simplified_aircraft import dualview_optimizer as dv
 from ra_lsbo.experiments.simplified_aircraft import dualview_pilot as pilot
