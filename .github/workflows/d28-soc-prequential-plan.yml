@@ -61,6 +61,20 @@ jobs:
           assert proposal['metadata']['selected_index']==170
           print('Read-only D28 future-candidate and old30 forecast control verified')
           PY
+          python - <<'PY'
+          from pathlib import Path
+          from tools.prequential_soc_D28_gate import run
+          directory=Path('/tmp/d28gate/preview')
+          try:
+              run(Path('/tmp/d28gate/original.zip'), directory)
+          except ValueError as exc:
+              assert 'cannot authorize' in str(exc)
+          else:
+              raise AssertionError('Cross-platform preview unexpectedly authorized fitting')
+          assert not (directory/'diagnostic_execution.lock').exists()
+          assert not (directory/'result.json').exists()
+          print('Non-authorizing preview correctly blocks run before any lock or model fitting')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
