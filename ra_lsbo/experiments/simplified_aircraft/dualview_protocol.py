@@ -43,8 +43,12 @@ def budget_for(profile):
 def model_settings(method,profile):
     if method not in ARMS or method=="random":
         raise ValueError("No GP settings for uniform random control")
+    # The existing generic RA smoke reduces its GP grid to 2x1. This new
+    # protocol intentionally holds the full 4x2 kernel grid even in smoke,
+    # so numerical behavior is the same as in the prospective pilot.
     return replace(settings_for("ra_lsbo",profile),
-        latent=method in CORPUS_ARMS,encoder_epochs=30)
+        latent=method in CORPUS_ARMS,encoder_epochs=30,
+        continuous_grid=(.05,.15,.4,1.),discrete_grid=(.5,1.5))
 
 
 def method_spec(method,profile):
