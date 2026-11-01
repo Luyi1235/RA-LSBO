@@ -96,7 +96,9 @@ def protocol(archive, *, cross_platform_check=False):
         "future_outcome_sha256":digest(target.to_dict()),
         "case":CASE,"seed":SEED,"iteration":28,
         "training_rows":len(pre),"withheld_rows":1,
-        "shared_kernel_grid":GRID,
+        # JSON has arrays but no tuples. Register the canonical JSON shape
+        # so run() compares exactly the same structure read from plan.json.
+        "shared_kernel_grid":[[c,d] for c,d in GRID],
         "representation_comparison":["stable_tail_latent30","stable_tail_onehot"],
         "reference_forecast":"original_saved_old30_no_refit",
         "max_new_VAE_fits":1,"max_new_GP_candidates":16,
