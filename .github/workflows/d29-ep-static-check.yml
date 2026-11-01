@@ -1,0 +1,30 @@
+name: D29 SOC static numerical check
+on:
+  push:
+    branches:
+      - analysis/ep-predictive-validation-20261101
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.0.2 scipy==1.13.1 pytest==8.3.5
+      - run: python -m pytest -q tests/test_ep_d29_static_audit.py
+      - name: Fetch sealed D29 evidence
+        run: |
+          mkdir -p /tmp/ep_check
+          curl -fLsS 'https://github.com/Luyi1235/RA-LSBO/releases/download/ep-stability-d29-20261101/RA-LSBO-ep-stability-D29-20261101.zip' -o /tmp/ep_check/evidence.zip
+          python tools/audit_ep_d29_static.py /tmp/ep_check/evidence.zip /tmp/ep_check/report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d29-static-audit-output
+          path: /tmp/ep_check/report
+          if-no-files-found: warn
