@@ -1,0 +1,90 @@
+name: Verify uploaded D29 SOC evidence integrity
+
+on:
+  push:
+    branches:
+      - analysis/corpus-interruption-diagnosis-20261031
+    paths:
+      - .github/workflows/verify-soc-evidence-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download fixed release bytes and check archive SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/soc_verify
+          curl --fail --location --silent --show-error --retry 2 \
+            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-soc-diagnostic-20261031/RA-LSBO-aircraft-soc-diagnostic-20261031-final.zip' \
+            -o /tmp/soc_verify/release.zip
+          echo 'be04f372275ffa0cbde91e6fb099e6cae447539b6ce2f0ce91fc69aff4d42c6b  /tmp/soc_verify/release.zip' | sha256sum -c
+      - name: Independent per-file and attempt audit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, zipfile
+          from pathlib import PurePosixPath
+          archive='/tmp/soc_verify/release.zip'
+          with zipfile.ZipFile(archive) as z:
+              names=[x for x in z.namelist() if not x.endswith('/')]
+              assert len(names)==len(set(names))
+              index={}
+              for path in names:
+                  p=PurePosixPath(path)
+                  assert '..' not in p.parts and not p.is_absolute(), path
+                  assert p.name not in index, 'Duplicate basename: '+p.name
+                  index[p.name]=z.read(path)
+              manifest=json.loads(index['manifest.json'])
+              assert manifest['input_archive_sha256']=='aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9'
+              matched=[]
+              for item in manifest['files']:
+                  value=index[item['name']]
+                  assert len(value)==item['bytes'], item['name']+' size mismatch'
+                  assert hashlib.sha256(value).hexdigest()==item['sha256'], item['name']+' hash mismatch'
+                  matched.append(item['name'])
+              checks={}
+              for line in index['SHA256SUMS.txt'].decode().splitlines():
+                  sha,name=line.split(None,1)
+                  checks[name.strip()]=sha
+              for name,sha in checks.items():
+                  assert hashlib.sha256(index[name]).hexdigest()==sha, name+' SHA256SUMS mismatch'
+              plan=json.loads(index['plan.json'])
+              feature=json.loads(index['features.json'])
+              attempts=[json.loads(line) for line in index['candidate_attempts.jsonl'].splitlines()]
+              result=json.loads(index['result.json'])
+              assert len(attempts)==8
+              assert [a['candidate_index'] for a in attempts]==list(range(8))
+              assert all(a['head']=='soc' and not a['success'] for a in attempts)
+              assert sum(any(e.get('error_type')=='FloatingPointError' for e in a['inner_errors']) for a in attempts)==1
+              assert sum(any(e.get('error_message')=='MixedObservationGP EP did not converge within max_sweeps' for e in a['inner_errors']) for a in attempts)==7
+              assert plan['contract_match'] and not plan['platform_check_only']
+              assert feature[0]['feature_identity']==plan['last_success_feature_identity']
+              assert result['GP_attempt_count']==8 and result['encoder_fit_count']==2
+              summary={'schema':'soc_release_readonly_integrity_check_v1',
+                  'release_zip_sha256':hashlib.sha256(open(archive,'rb').read()).hexdigest(),
+                  'entries':len(index),'manifest_member_checks':len(matched),
+                  'sha256sums_checks':len(checks),'gp_attempts':len(attempts),
+                  'EP_nonconverged':7,'truncated_tail_failure':1,
+                  'original_archive_sha256':manifest['input_archive_sha256'],
+                  'no_evaluator_calls':True}
+              open('/tmp/soc_verify/verification.json','w').write(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+              print(json.dumps(summary,indent=2))
+          PY
+      - name: Upload independent read-only verification receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soc-evidence-archive-integrity
+          retention-days: 14
+          path: /tmp/soc_verify/verification.json
+          if-no-files-found: warn
