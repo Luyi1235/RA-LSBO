@@ -11,6 +11,9 @@ from numpy.testing import assert_allclose
 from ra_lsbo.risk_core.observations import OutputObservation
 from ra_lsbo.experiments.simplified_aircraft import dualview_protocol as pr
 from ra_lsbo.experiments.simplified_aircraft import dualview_optimizer as dv
+from ra_lsbo.experiments.simplified_aircraft.dualview_metrics import soc_prequential
+from types import SimpleNamespace
+import math
 
 
 class DualViewTests(unittest.TestCase):
@@ -114,6 +117,36 @@ class DualViewTests(unittest.TestCase):
         self.assertEqual(meta["model_failure"]["head"],"constraint:soc")
         self.assertEqual(meta["model_failure"]["candidate_failures"],failure.failures)
         self.assertFalse(meta["posterior_fit_skipped"])
+
+    def test_prequential_scoring_separates_density_from_interval_mass(self):
+        candidate={"x":1}
+        exact=SimpleNamespace(candidate=candidate,
+            observation=SimpleNamespace(constraint=lambda _:OutputObservation(
+                "exact","e",value=.1)))
+        interval=SimpleNamespace(candidate=candidate,
+            observation=SimpleNamespace(constraint=lambda _:OutputObservation(
+                "interval","i",lower=0.)))
+        def prop():
+            return {"candidate":candidate,"metadata":{"selected_index":0,
+                "coverage_reason":None,
+                "forecasts":{"constraints":{"soc":{"mean":[0.],"variance":[1.],"scale":1.}}}}}
+        report=soc_prequential([prop(),prop()],[exact,interval])
+        self.assertEqual(report["exact"],1)
+        self.assertEqual(report["interval"],1)
+        self.assertAlmostEqual(report["exact_density_nll_mean"],
+            .5*math.log(2*math.pi)+.005,places=9)
+        self.assertAlmostEqual(report["interval_mass_nll_mean"],math.log(2),places=9)
+        self.assertIsNotNone(report["exact_95pct_coverage_numerator"])
+        self.assertEqual(report["model_failure_fallback"],0)
+
+    def test_prequential_skips_genuine_unfitted_coverage(self):
+        row=SimpleNamespace(candidate={"x":1},
+            observation=SimpleNamespace(constraint=lambda _:OutputObservation("exact","e",value=1.)))
+        report=soc_prequential([{"candidate":{"x":1},
+            "metadata":{"coverage_reason":"model_failure"}}],[row])
+        self.assertEqual(report["skipped_no_forecast"],1)
+        self.assertEqual(report["model_failure_fallback"],1)
+        self.assertIsNone(report["exact_density_nll_mean"])
 
     def test_structure_sampler_not_changed_and_hybrid_has_no_hidden_weights(self):
         spec=pr.method_spec("hybrid_guard",pr.profile_for("pilot"))
