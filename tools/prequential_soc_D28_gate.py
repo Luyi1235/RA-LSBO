@@ -68,14 +68,16 @@ def prior_data(archive):
     return pre, proposal, target, selected
 
 
-def protocol(archive):
+def protocol(archive, *, cross_platform_check=False):
     if sha256_stream(archive) != ARCHIVE_SHA:
         raise ValueError("Original pilot ZIP identity changed")
     pre, proposal, target, index = prior_data(archive)
     problem = problem_for(CASE)
-    if (len(problem.space.continuous) != 6
-            or any(r.observation.contract_id != problem.contract_id for r in pre+[target])):
-        raise ValueError("Physical contract or feature layout changed; original Windows required")
+    if len(problem.space.continuous) != 6:
+        raise ValueError("Continuous feature layout changed")
+    contract_match = all(r.observation.contract_id == problem.contract_id for r in pre+[target])
+    if not contract_match and not cross_platform_check:
+        raise ValueError("Physical contract changed; original Windows environment required")
     head_names = [n for n in problem.required_constraints if n not in problem.analytical_constraints]
     if head_names != ["stall","root_bending","soc","current","voltage","power"]:
         raise ValueError("Response head order changed")
@@ -84,6 +86,8 @@ def protocol(archive):
         raise ValueError("Experiment code is not descended from fixed original")
     return {
         "schema":"fixed_D28_to_D29_SOC_prequential_one_point_v1",
+        "platform_check_only":bool(cross_platform_check),
+        "contract_match":bool(contract_match),
         "original_archive_sha256":ARCHIVE_SHA,"source_commit":SOURCE_SHA,
         "diagnostic_commit":rev,
         "D28_original_feature_identity":EXPECTED_D28,
@@ -147,6 +151,8 @@ def fit_head(training_X, test_X, obs, continuous_count, arm, out_path):
 def run(archive,out):
     out=Path(out)
     plan=json.loads((out/"plan.json").read_text(encoding="utf8"))
+    if plan.get("platform_check_only") or not plan.get("contract_match"):
+        raise ValueError("Cross-platform plan preview cannot authorize GP or VAE fits")
     if plan!=protocol(archive):
         raise ValueError("Plan or environment modified; stop")
     with (out/"diagnostic_execution.lock").open("x") as stream:
@@ -208,11 +214,15 @@ def main():
     parser.add_argument("command",choices=("plan","run"))
     parser.add_argument("--archive",required=True,type=Path)
     parser.add_argument("--output",required=True,type=Path)
+    parser.add_argument("--cross-platform-check", action="store_true",
+        help="Linux CI plan-only preview; NEVER enables model fitting")
     args=parser.parse_args()
+    if args.cross_platform_check and args.command != "plan":
+        parser.error("cross-platform-check cannot run models")
     if args.command=="plan":
         if args.output.exists():
             raise FileExistsError("Output directory exists")
-        p=protocol(args.archive)
+        p=protocol(args.archive, cross_platform_check=args.cross_platform_check)
         args.output.mkdir(parents=True)
         save_new(args.output/"plan.json",p)
         print("Registered: 1 encoder +16 SOC GP candidate fits; zero evaluator calls")
