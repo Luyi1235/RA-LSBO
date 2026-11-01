@@ -1,0 +1,70 @@
+name: D28 SOC leakage-safe plan and integration checks
+on:
+  push:
+    branches:
+      - analysis/ep-predictive-validation-20261101
+    paths:
+      - tools/prequential_soc_D28_gate.py
+      - .github/workflows/d28-soc-prequential-plan.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install relevant model imports, no model evaluation
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Verify syntax
+        run: python -m py_compile tools/prequential_soc_D28_gate.py
+      - name: Verify original observations and frozen future target, plan only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d28gate
+          curl -fLsS --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' -o /tmp/d28gate/original.zip
+          echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/d28gate/original.zip' | sha256sum -c
+          python tools/prequential_soc_D28_gate.py plan --archive /tmp/d28gate/original.zip --output /tmp/d28gate/preview --cross-platform-check
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          from tools.prequential_soc_D28_gate import prior_data
+          p=json.loads(Path('/tmp/d28gate/preview/plan.json').read_text())
+          assert p['platform_check_only'] and not p['contract_match']
+          assert p['training_rows']==40 and p['withheld_rows']==1
+          assert p['max_new_VAE_fits']==1 and p['max_new_GP_candidates']==16
+          assert p['new_evaluator_calls']==p['new_RCAIDE_calls']==p['new_BO_calls']==0
+          assert len(p['shared_kernel_grid'])==8
+          pre, proposal, future, ix=prior_data(Path('/tmp/d28gate/original.zip'))
+          old=proposal['metadata']['forecasts']['constraints']['soc']
+          mean=float(old['mean'][ix]);variance=float(old['variance'][ix])
+          true=future.observation.constraint('soc').value
+          assert math.isclose(mean,-.019670086090909394,rel_tol=0,abs_tol=1e-12)
+          assert math.isclose(variance,5.385913491917027e-5,rel_tol=0,abs_tol=1e-12)
+          assert math.isclose(true,-.09529698726991598,rel_tol=0,abs_tol=1e-12)
+          assert proposal['metadata']['selected_index']==170
+          print('Read-only D28 future-candidate and old30 forecast control verified')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d28-prequential-non-authorizing-plan
+          path: /tmp/d28gate/preview/plan.json
+          retention-days: 14
+          if-no-files-found: warn
