@@ -15,6 +15,7 @@ from scipy.special import ndtr
 from scipy.stats import truncnorm
 
 from .observations import OutputObservation
+from .ep_numerics import extreme_tail_moments
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,8 @@ class MixedGPSettings:
     damping: float = 0.7
     tolerance: float = 1e-8
     max_sweeps: int = 60
+    stable_tail_moments: bool = False
+    record_ep_trace: bool = False
 
     def __post_init__(self):
         scales = np.asarray(self.length_scale, dtype=float)
@@ -55,9 +58,11 @@ class MixedGPSettings:
         if (isinstance(self.max_sweeps, bool)
                 or not isinstance(self.max_sweeps, Integral) or self.max_sweeps < 1):
             raise ValueError("max_sweeps must be a positive integer")
+        if type(self.stable_tail_moments) is not bool or type(self.record_ep_trace) is not bool:
+            raise ValueError("Numerical diagnostics and tail mode must be boolean")
 
 
-def _truncated_moments(a, b):
+def _truncated_moments(a, b, stable_tail=False):
     """Standard normal conditional moments; log-tail formulas are in SciPy.
 
     Analytic CDF-ratio formulas lose variance digits for very narrow intervals.
@@ -66,6 +71,10 @@ def _truncated_moments(a, b):
     """
     if not a < b:
         raise FloatingPointError("Interval collapsed at floating-point resolution")
+    if stable_tail:
+        stable = extreme_tail_moments(a, b)
+        if stable is not None:
+            return stable
     narrow = np.isfinite(a) and np.isfinite(b) and (
         (b - a) * (1 + min(abs(a), abs(b))) < 0.1)
     if not narrow:
@@ -89,12 +98,12 @@ def _truncated_moments(a, b):
     return float(center + displacement), float(weights @ (offsets - displacement)**2)
 
 
-def _interval_tilt(mean, variance, lower, upper, noise):
+def _interval_tilt(mean, variance, lower, upper, noise, stable_tail=False):
     """Moments of f given lower < f + N(0, noise**2) < upper."""
     total = variance + noise**2
     sd = np.sqrt(total)
     a, b = (lower - mean) / sd, (upper - mean) / sd
-    shift, truncated_variance = _truncated_moments(a, b)
+    shift, truncated_variance = _truncated_moments(a, b, stable_tail)
     tilted_mean = mean + variance / sd * shift
     # This form avoids subtracting almost equal variances for a narrow interval.
     tilted_variance = variance * (
@@ -225,6 +234,7 @@ class MixedObservationGP:
         tau, nu = np.zeros(n), np.zeros(n)
         mean, posterior = base_mean.copy(), covariance.copy()
         converged = False
+        ep_trace = [] if self.settings.record_ep_trace else None
         for sweep in range(1, self.settings.max_sweeps + 1):
             old_tau, old_nu = tau.copy(), nu.copy()
             for i, (lower, upper) in enumerate(self._bounds):
@@ -244,9 +254,21 @@ class MixedObservationGP:
                 if not np.isfinite(cavity_precision) or cavity_precision <= 0:
                     raise FloatingPointError("Nonpositive EP cavity precision")
                 cavity_variance = 1 / cavity_precision
-                tilted_mean, tilted_variance = _interval_tilt(
-                    cavity_mean, cavity_variance, lower, upper,
-                    self.settings.interval_noise)
+                try:
+                    tilted_mean, tilted_variance = _interval_tilt(
+                        cavity_mean, cavity_variance, lower, upper,
+                        self.settings.interval_noise, self.settings.stable_tail_moments)
+                except FloatingPointError as error:
+                    # Annotate the ORIGINAL error without changing its class or
+                    # performing an additional fit. The caller can inspect the
+                    # original failed site in a bounded diagnostic run.
+                    error.ep_site_index = i
+                    error.ep_sweep = sweep
+                    error.ep_cavity_mean = float(cavity_mean)
+                    error.ep_cavity_variance = float(cavity_variance)
+                    error.ep_interval_bounds = (float(lower), float(upper))
+                    error.ep_trace = ep_trace
+                    raise
                 new_tau = 1 / tilted_variance - cavity_precision
                 if new_tau < -1e-8 * max(1.0, cavity_precision):
                     raise FloatingPointError("Negative interval site precision")
@@ -271,13 +293,23 @@ class MixedObservationGP:
                 np.max(np.abs(nu - old_nu) / (1 + np.abs(nu))))
             if not np.all(np.isfinite(mean)) or not np.all(np.isfinite(posterior)):
                 raise FloatingPointError("Nonfinite EP posterior")
+            if ep_trace is not None:
+                ep_trace.append({"sweep": sweep, "last_site_change": float(change),
+                                 "site_precision_max": float(np.max(tau)),
+                                 "linear_term_max_abs": float(np.max(np.abs(nu)))})
             if change <= self.settings.tolerance:
                 converged = True
                 break
         self.diagnostics.update(
             converged=converged, sweeps=sweep, last_site_change=float(change))
+        if ep_trace is not None:
+            self.diagnostics["ep_trace"] = ep_trace
         if not converged:
-            raise RuntimeError("MixedObservationGP EP did not converge within max_sweeps")
+            error = RuntimeError("MixedObservationGP EP did not converge within max_sweeps")
+            error.ep_sweeps = sweep
+            error.ep_last_site_change = float(change)
+            error.ep_trace = ep_trace
+            raise error
         self._interval_base_mean = base_mean
         self._posterior_mean = mean
         self._posterior_covariance = posterior
