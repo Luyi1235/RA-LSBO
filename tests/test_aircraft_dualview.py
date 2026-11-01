@@ -11,6 +11,7 @@ from numpy.testing import assert_allclose
 from ra_lsbo.risk_core.observations import OutputObservation
 from ra_lsbo.experiments.simplified_aircraft import dualview_protocol as pr
 from ra_lsbo.experiments.simplified_aircraft import dualview_optimizer as dv
+from ra_lsbo.experiments.simplified_aircraft import dualview_pilot as pilot
 from ra_lsbo.experiments.simplified_aircraft.dualview_metrics import soc_prequential
 from types import SimpleNamespace
 import math
@@ -147,6 +148,38 @@ class DualViewTests(unittest.TestCase):
         self.assertEqual(report["skipped_no_forecast"],1)
         self.assertEqual(report["model_failure_fallback"],1)
         self.assertIsNone(report["exact_density_nll_mean"])
+
+    def test_sparse_no_incumbent_smoke_is_not_numerical_failure(self):
+        from unittest.mock import patch
+        records=[]
+        for case in pr.CASES:
+            for arm in pr.ARMS:
+                evaluated=case=="aircraft_ordinary"
+                status={
+                    "status":"evaluated" if evaluated else "no_nominal_feasible_incumbent",
+                    "verified_usable":bool(evaluated),
+                    "screen":{"status":"passed_screen"} if evaluated else None}
+                records.append({"case":case,"method":arm,"online_calls":2,
+                                "stopped":False,"step_verification":status})
+        plan={"profile":pr.profile_for("smoke"),"source_commit":"test","runtime":{}}
+        original={"evidence_hashes":{}}
+        def saved(path):
+            return original if str(path).endswith("audit.json") else {"summaries":records}
+        with patch.object(pilot,"load_plan",return_value=plan), \
+             patch.object(pilot,"audit",return_value=original), \
+             patch.object(pilot,"read",side_effect=saved), \
+             patch.object(pilot,"sha",return_value="testsha"):
+            receipt=pilot.smoke_receipt("/unused/smoke")
+        self.assertTrue(receipt["smoke_numerical_gate_only"])
+        self.assertEqual(receipt["smoke_no_feasible_trial_count"],len(pr.ARMS))
+        # A numerically invalid 5s check is still a hard failure.
+        records[0]["step_verification"]["verified_usable"]=False
+        with patch.object(pilot,"load_plan",return_value=plan), \
+             patch.object(pilot,"audit",return_value=original), \
+             patch.object(pilot,"read",side_effect=saved), \
+             patch.object(pilot,"sha",return_value="testsha"):
+            with self.assertRaisesRegex(ValueError,"Smoke numerical checks"):
+                pilot.smoke_receipt("/unused/smoke")
 
     def test_structure_sampler_not_changed_and_hybrid_has_no_hidden_weights(self):
         spec=pr.method_spec("hybrid_guard",pr.profile_for("pilot"))
