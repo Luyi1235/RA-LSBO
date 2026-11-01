@@ -224,6 +224,42 @@ class DualViewTests(unittest.TestCase):
         self.assertEqual(engine.next_iteration,2)
         self.assertEqual(engine.expected_prefix,digest([record.to_dict()]))
 
+    def test_corpus_failure_binds_snapshot_and_preserves_state_for_next_step(self):
+        """Surrogate-only fault injection: no VAE/GP or physical model call."""
+        from ra_lsbo.experiments.simplified_aircraft.transition import problem_for
+        from ra_lsbo.partial_bo.problems import candidate_pool
+        from ra_lsbo.experiments.core.protocol import BASE
+        from ra_lsbo.experiments.simplified_aircraft.corpus_optimizer import CorpusDiscoveryBO
+        problem=problem_for("aircraft_ordinary")
+        pool,_=candidate_pool(problem,919193,4)
+        engine=dv.StableCorpusDiscoveryBO(problem,BASE,19,
+            pr.model_settings("hybrid_onehot",pr.profile_for("smoke")),
+            "/tmp/synthetic-unit-only",allocation="onehot_risk")
+        engine.next_iteration=1
+        engine.last_requested_iteration=0
+        engine.session=SimpleNamespace(
+            corpus={"identity":"sealed-synthetic"},
+            events=[{"synthetic":True}],total_updates=7,fit_seconds=[.01])
+        engine.latest_training={"iteration":0,"raw_training_prefix":"synthetic"}
+        failure=dv.ModelNumericalFailure("constraint:soc",
+            [{"status":"RuntimeError","error_message":"injected GP failure"}])
+        def fail(*_args,**_kwargs):
+            engine.failed=True
+            raise failure
+        with patch.object(CorpusDiscoveryBO,"propose",side_effect=fail), \
+             patch.object(dv,"feature_snapshot",
+                          return_value=SimpleNamespace(identity="sealed-prefix-identity")):
+            candidate,metadata=engine.propose([],pool,1)
+        self.assertFalse(engine.failed)
+        self.assertEqual(engine.last_requested_iteration,1)
+        self.assertEqual(metadata["model_failure"]["head"],"constraint:soc")
+        self.assertEqual(metadata["feature_identity"],"sealed-prefix-identity")
+        self.assertEqual(metadata["corpus_training"]["current_gp_prefix"],digest([]))
+        self.assertFalse(metadata["corpus_training"]["gp_fit_skipped"])
+        self.assertFalse(metadata["corpus_training"]["representation_fit_on_this_proposal"])
+        self.assertEqual(metadata["pool"][metadata["selected_index"]],candidate)
+        self.assertIsNotNone(engine.pending)
+
     def test_unexpected_surrogate_bug_cannot_be_silently_converted_to_coverage(self):
         from ra_lsbo.experiments.simplified_aircraft.transition import problem_for
         from ra_lsbo.partial_bo.problems import candidate_pool
