@@ -196,6 +196,15 @@ def run(archive, output):
               for kind in ("exact", "interval", "missing")}
     if counts != {"exact": 17, "interval": 24, "missing": 0}:
         raise ValueError("D29 SOC observation types changed")
+    # Seal the entire GP-level input so future targeted numerical checks do
+    # not require another VAE fit or access to the original optimizer.
+    with (output / "D29_soc_gp_features.npz").open("xb") as stream:
+        np.savez_compressed(stream, inputs=inputs)
+    write(output / "D29_soc_normalized_evidence.json", {
+        "D29_feature_identity": summaries[-1]["feature_identity"],
+        "center": center, "scale": scale,
+        "observations": [asdict(item) for item in normalized],
+        "exact_interval_missing_counts": counts})
 
     state = {"context": None, "root": []}
     class TracingEvidenceGP(original_gp):
