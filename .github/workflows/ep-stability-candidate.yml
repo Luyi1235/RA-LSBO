@@ -40,12 +40,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/ep_stability_input
-          curl --retry 2 --fail --location --silent --show-error \\
-            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \\
+          curl --retry 2 --fail --location --silent --show-error \
+            'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' \
             -o /tmp/ep_stability_input/interruption.zip
           echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/ep_stability_input/interruption.zip' | sha256sum --check
-          python tools/probe_ep_stability_D29.py plan \\
-            --archive /tmp/ep_stability_input/interruption.zip \\
+          python tools/probe_ep_stability_D29.py plan \
+            --archive /tmp/ep_stability_input/interruption.zip \
             --output /tmp/ep_stability_input/plan_only --cross-platform-check
           python - <<'PY'
           import json
