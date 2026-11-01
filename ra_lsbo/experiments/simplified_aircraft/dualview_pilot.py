@@ -274,6 +274,11 @@ def summary_for(problem,plan,case,seed,method,initial,online,proposals,stop_reas
                             if method in CORPUS_ARMS else None),
         'decision_diagnostics':decision_diagnostics(problem,initial,proposals,online),
         'phase_diagnostics':phase_diagnostics(initial,proposals,online) if plan['methods'][method]['engine'] in {'discovery_bo_v1','phase_discovery_v1'} else None,
+        'model_failure_coverage_calls':sum(
+            p['metadata'].get('coverage_reason')=='model_failure' for p in proposals),
+        'model_failure_heads':dict(Counter(
+            p['metadata']['model_failure']['head'] for p in proposals
+            if p['metadata'].get('coverage_reason')=='model_failure')),
         'output_kinds':dict(Counter(n+':'+v.kind for r in online
             for n,v in [('objective',r.observation.objective),*r.observation.constraints])),
         'step_verification':verification_result(best,refined)})
@@ -394,6 +399,32 @@ def audit(folder,write=True):
                     row=claim(f'{case}/{seed}/{method}/online/{i}','online',problem,prop['candidate'])
                     if row.observation.design_id in {r.observation.design_id for r in history}:raise ValueError('Repeated design')
                     validate_decision(problem,plan,method,seed,history,prop)
+                    if method!='random':
+                        from ..discovery_stages.policies import filter_near, coverage_pick, nearest_distance, NEAR_TOLERANCE
+                        meta=prop['metadata']
+                        if (meta.get('method')!=method or
+                            meta.get('raw_history_digest')!=prop['prefix_digest'] or
+                            digest(meta.get('settings'))!=digest(plan['methods'][method]['settings'])):
+                            raise ValueError('Dual-view proposal prefix or configuration changed')
+                        allowed,_,rejected_near=filter_near(problem,pool,history)
+                        if (meta.get('global_near_rejections')!=rejected_near or
+                            meta.get('pool',[None])[meta['selected_index']]!=prop['candidate']):
+                            raise ValueError('Dual-view selection or near protection changed')
+                        distance=nearest_distance(problem,prop['candidate'],[r.candidate for r in history])
+                        if distance is not None and distance<=NEAR_TOLERANCE:
+                            raise ValueError('Dual-view repeats a near-identical historical design')
+                        if meta.get('coverage_reason')=='model_failure':
+                            failure=meta.get('model_failure')
+                            if (not meta.get('posterior_fit_failed') or not isinstance(failure,dict)
+                                or failure.get('policy')!='all_kernel_candidates_failed_or_prediction_numeric_failure'
+                                or not isinstance(failure.get('candidate_failures'),list)
+                                or not failure['candidate_failures']):
+                                raise ValueError('Unregistered surrogate-failure fallback')
+                            expected,rule=coverage_pick(problem,allowed,history,seed,i)
+                            if prop['candidate']!=allowed[expected] or meta.get('coverage_rule')!=rule:
+                                raise ValueError('Recorded model-failure exploration differs')
+                        elif meta.get('posterior_fit_failed'):
+                            raise ValueError('Model fit failed without registered exploration')
                     if method not in CORPUS_ARMS and 'corpus_training' in prop['metadata']:
                         raise ValueError('Unregistered corpus metadata on control')
                     history.append(row);online.append(row);checked+=1
