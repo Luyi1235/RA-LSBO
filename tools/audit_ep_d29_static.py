@@ -119,6 +119,21 @@ def candidate_geometry(X, obs, c, d, ncont):
     Kcond = .5*(Kcond+Kcond.T)
     Kcond.flat[::len(Kcond)+1] += 1e-8
     eigen = np.linalg.eigvalsh(Kcond)
+    # An independent *pre-EP* standardized lower-bound check: the SOC model
+    # conditions analytically on the 17 exact values and observes 24 positive
+    # one-sided lower inequalities. Large tail distances can cause EP numeric
+    # instability without requiring any GP/EP fitting here.
+    y_exact = np.asarray([obs[i]["value"] for i in exact], dtype=float)
+    base_mean = Kix @ cho_solve(f, y_exact)
+    lower = np.asarray([obs[i]["lower"] for i in interval], dtype=float)
+    if not np.isfinite(lower).all():
+        raise ValueError("Expected finite one-sided lower SOC constraints")
+    sd = np.sqrt(np.diag(Kcond))
+    if not np.isfinite(sd).all() or np.any(sd <= 0):
+        raise ValueError("Invalid pre-EP conditional variance")
+    standardized_lower = (lower-base_mean)/sd
+    if not np.isfinite(standardized_lower).all():
+        raise ValueError("Nonfinite pre-EP interval tail distance")
     # Observational geometry only, not EP posterior or prediction quality.
     dist = np.sqrt(np.sum((z[:,None]-z[None,:])**2, axis=-1))
     np.fill_diagonal(dist, np.inf)
@@ -131,6 +146,11 @@ def candidate_geometry(X, obs, c, d, ncont):
         "pre_EP_interval_cov_cond": float(eigen[-1]/eigen[0]) if eigen[0] > 0 else None,
         "minimum_distinct_row_distance": float(np.min(dist)),
         "zero_distance_nonidentical_rows": int(np.count_nonzero(np.triu(dist == 0, k=1))),
+        "pre_EP_interval_lower_standardized_min": float(np.min(standardized_lower)),
+        "pre_EP_interval_lower_standardized_median": float(np.median(standardized_lower)),
+        "pre_EP_interval_lower_standardized_max": float(np.max(standardized_lower)),
+        "pre_EP_interval_lower_above_8sigma_count": int(np.sum(standardized_lower > 8.0)),
+        "pre_EP_interval_lower_above_20sigma_count": int(np.sum(standardized_lower > 20.0)),
     }
 
 
