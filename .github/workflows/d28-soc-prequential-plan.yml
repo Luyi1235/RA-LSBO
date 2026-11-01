@@ -44,8 +44,15 @@ jobs:
           python - <<'PY'
           import json, math
           from pathlib import Path
-          from tools.prequential_soc_D28_gate import prior_data
+          from tools.prequential_soc_D28_gate import prior_data, protocol
+          archive=Path('/tmp/d28gate/original.zip')
           p=json.loads(Path('/tmp/d28gate/preview/plan.json').read_text())
+          # Regression: the previous runner died before making a lock because
+          # tuple-valued GRID became lists on JSON read. Test the exact
+          # saved-vs-regenerated comparison the real run performs.
+          expected=protocol(archive, cross_platform_check=True)
+          assert p == expected, 'JSON roundtrip changed the registered plan'
+          assert all(type(pair) is list and len(pair)==2 for pair in p['shared_kernel_grid'])
           assert p['platform_check_only'] and not p['contract_match']
           assert p['training_rows']==40 and p['withheld_rows']==1
           assert p['max_new_VAE_fits']==1 and p['max_new_GP_candidates']==16
