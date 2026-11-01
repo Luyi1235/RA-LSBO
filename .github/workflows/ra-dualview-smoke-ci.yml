@@ -1,0 +1,79 @@
+# Independent full-roster smoke with exact source checksum and tamper-negative audit.
+# All previous CI smoke evidence, failed and successful, remains immutable.
+name: RA-LSBO dualview CI-only 42-call aircraft smoke
+on:
+  push:
+    branches:
+      - research/ra-lsbo-risk-dualview-20261101
+    paths:
+      - '.github/workflows/ra-dualview-smoke-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: 'Agg'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned research CPU dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Verify bounded algorithm contracts
+        run: python -m pytest -q tests/test_aircraft_dualview.py
+      - name: Register 42-call Linux integration smoke (not Windows qualification)
+        run: |
+          python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot prepare --profile smoke --output /tmp/ra_dualview_ci_smoke
+      - name: Run new-policy reduced-aircraft smoke, max 42 simplified truth calls, 0 RCAIDE
+        run: |
+          python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot run --output /tmp/ra_dualview_ci_smoke --approved-call-limit 42
+      - name: Independently audit and describe CI smoke
+        run: |
+          python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot audit --output /tmp/ra_dualview_ci_smoke
+          python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot report --output /tmp/ra_dualview_ci_smoke
+      - name: Verify completed audit rejects a tampered historical selected index
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a /tmp/ra_dualview_ci_smoke /tmp/ra_dualview_ci_tampered
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from ra_lsbo.experiments.simplified_aircraft.dualview_pilot import audit
+          root=Path('/tmp/ra_dualview_ci_tampered')
+          path=root/'optimization/aircraft_ordinary/9960_onehot_stable/proposals.jsonl'
+          rows=[json.loads(line) for line in path.read_text().splitlines() if line]
+          assert rows and len(rows[0]['metadata']['pool'])>1
+          before=rows[0]['metadata']['selected_index']
+          rows[0]['metadata']['selected_index']=0 if before!=0 else 1
+          path.write_text(chr(10).join(json.dumps(r,sort_keys=True) for r in rows)+chr(10))
+          try:
+              audit(root,write=False)
+          except ValueError as error:
+              assert 'Dual-view selection' in str(error), repr(error)
+              print('Tampered selected-index correctly rejected by read-only audit')
+          else:
+              raise AssertionError('Audit incorrectly accepted altered proposal')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-dualview-ci-smoke-42call-evidence
+          path: /tmp/ra_dualview_ci_smoke/
+          retention-days: 30
+          if-no-files-found: warn
