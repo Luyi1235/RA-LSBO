@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 import traceback
 import zipfile
 
@@ -244,6 +245,7 @@ def run(archive, output):
                 c, d = attempt["continuous_length"], attempt["discrete_length"]
                 divisor = group_divisors(inputs.shape[1], len(problem.space.continuous), c, d)
                 state["root"] = []
+                attempt_start = time.perf_counter()
                 result = {**attempt, "candidate_index": index, "counts": counts,
                           "raw_D29_feature_identity": summaries[-1]["feature_identity"],
                           "normalized_output_scale": scale,
@@ -258,11 +260,22 @@ def run(archive, output):
                     model = TracingEvidenceGP(inputs / divisor, normalized,
                         seed=registered["soc_seed"], settings=settings)
                     evidence = model.log_evidence()
+                    prediction = model.predict(inputs / divisor)
+                    if (not all(np.isfinite(v).all() for v in prediction.values())
+                            or np.any(prediction["variance"] < 0.)):
+                        raise FloatingPointError("Nonfinite or negative posterior predictions")
                     result.update(success=True, evidence=evidence,
-                        ep_diagnostics=model.diagnostics)
-                except Exception as exc:
+                        ep_diagnostics=model.diagnostics,
+                        prediction_mean_minmax=[
+                            float(np.min(prediction["mean"])),
+                            float(np.max(prediction["mean"]))],
+                        prediction_variance_minmax=[
+                            float(np.min(prediction["variance"])),
+                            float(np.max(prediction["variance"]))])
+                except (np.linalg.LinAlgError, FloatingPointError, RuntimeError) as exc:
                     result.update(error_type=type(exc).__name__, error_message=str(exc),
                                   error_traceback=traceback.format_exc())
+                result["elapsed_seconds"] = time.perf_counter() - attempt_start
                 result["inner_errors"] = state["root"]
                 stream.write(json.dumps(sanitize(result), sort_keys=True, allow_nan=False) + "\n")
                 stream.flush()
