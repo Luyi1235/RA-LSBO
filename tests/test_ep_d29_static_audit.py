@@ -26,7 +26,8 @@ class D29StaticAuditTests(unittest.TestCase):
     def test_geometry_exact_and_interval_conditional_covariance(self):
         rng = np.random.default_rng(2)
         x = rng.random((7,16))
-        o = [{"kind": "exact"}]*3+[{"kind": "interval"}]*4
+        o = [{"kind": "exact", "value": v} for v in (-.2, -.1, -.05)] + [
+            {"kind": "interval", "lower": v} for v in (.001, .002, .003, .004)]
         report = candidate_geometry(x,o,.05,.5,ncont=6)
         self.assertGreater(report["pre_EP_interval_cov_min_eigen"], 0.)
         self.assertGreater(report["pre_EP_interval_cov_cond"], 1.)
