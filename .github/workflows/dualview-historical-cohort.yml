@@ -1,0 +1,31 @@
+name: Read-only interrupted aircraft cohort analysis
+on:
+  push:
+    branches:
+      - research/ra-lsbo-risk-dualview-20261101
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download sealed interrupted evidence without running a model
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/historical
+          curl -fLsS --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/aircraft-corpus-pilot-interrupted-20261031/partial_output_records.zip' -o /tmp/historical/interrupted.zip
+          echo 'aa7f7b618eb126bcb0f7fa67c886664f235a7432ad43c269ce833262c05bd2e9  /tmp/historical/interrupted.zip' | sha256sum -c
+          python -m py_compile tools/audit_interrupted_pilot_cohorts.py
+          python tools/audit_interrupted_pilot_cohorts.py /tmp/historical/interrupted.zip /tmp/historical/read_only
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: partial-pilot-complete-cohort-description
+          path: /tmp/historical/read_only/
+          if-no-files-found: warn
+          retention-days: 30
