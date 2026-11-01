@@ -1,6 +1,5 @@
-# Third isolated smoke attempt: restore frozen corpus feature identity metadata.
-# Prior failed smoke ledgers, locks and CI artifacts are preserved.
-# The earlier smoke attempt remains an independent failed execution with its lock.
+# Independent full-roster smoke with exact source checksum and tamper-negative audit.
+# All previous CI smoke evidence, failed and successful, remains immutable.
 name: RA-LSBO dualview CI-only 42-call aircraft smoke
 on:
   push:
@@ -47,6 +46,30 @@ jobs:
         run: |
           python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot audit --output /tmp/ra_dualview_ci_smoke
           python -m ra_lsbo.experiments.simplified_aircraft.dualview_pilot report --output /tmp/ra_dualview_ci_smoke
+      - name: Verify completed audit rejects a tampered historical selected index
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a /tmp/ra_dualview_ci_smoke /tmp/ra_dualview_ci_tampered
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from ra_lsbo.experiments.simplified_aircraft.dualview_pilot import audit
+          root=Path('/tmp/ra_dualview_ci_tampered')
+          path=root/'optimization/aircraft_ordinary/9960_onehot_stable/proposals.jsonl'
+          rows=[json.loads(line) for line in path.read_text().splitlines() if line]
+          assert rows and len(rows[0]['metadata']['pool'])>1
+          before=rows[0]['metadata']['selected_index']
+          rows[0]['metadata']['selected_index']=0 if before!=0 else 1
+          path.write_text(''.join(json.dumps(r,sort_keys=True)+'\\n' for r in rows))
+          try:
+              audit(root,write=False)
+          except ValueError as error:
+              assert 'Dual-view selection' in str(error), repr(error)
+              print('Tampered selected-index correctly rejected by read-only audit')
+          else:
+              raise AssertionError('Audit incorrectly accepted altered proposal')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
