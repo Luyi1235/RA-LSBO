@@ -44,7 +44,9 @@ def audit(zip_path):
             if not match:continue
             case,seed,method=match.group(1),int(match.group(2)),match.group(3)
             if seed not in SEEDS:
-                raise ValueError("Out-of-roster trial")
+                # The immutable archive also contains its earlier 9930 smoke,
+                # which is not part of the 9931-9938 interrupted pilot cohort.
+                continue
             row=json.loads(archive.read(name))
             if ((row["case"],row["seed"],row["method"])!=(case,seed,method)
                     or row["online_calls"]!=30 or row["stopped"]
