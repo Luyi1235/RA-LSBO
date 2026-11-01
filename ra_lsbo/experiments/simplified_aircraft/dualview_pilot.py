@@ -64,11 +64,26 @@ def smoke_receipt(folder):
         raise ValueError('Smoke audit no longer matches its evidence')
     summaries = read(folder/'results.json')['summaries']
     evaluated = [r for r in summaries if r['step_verification']['status']=='evaluated']
-    if (len(summaries)!=len(CASES)*len(ARMS) or {r['case'] for r in evaluated}!=set(CASES) or
+    # A sparse 140km smoke can legitimately have no nominal feasible
+    # incumbent after only 6+2 observations. No 5s check is possible then.
+    # Smoke is a numerical-integration gate, never a guarantee of success.
+    # This criterion is an explicit preregistered amendment prompted by the
+    # first independent sparse smoke. It is NOT a seed/arm reroll.
+    if (len(summaries)!=len(CASES)*len(ARMS) or
+        {(r['case'],r['method']) for r in summaries} !=
+          {(c,m) for c in CASES for m in ARMS} or
+        any(r['online_calls'] != plan['profile']['horizon'] or r['stopped']
+            for r in summaries) or
+        any(r['step_verification']['status'] not in
+            {'evaluated','no_nominal_feasible_incumbent'} for r in summaries) or
         any(not r['step_verification']['verified_usable'] or
             r['step_verification']['screen']['status']!='passed_screen' for r in evaluated)):
         raise ValueError('Smoke numerical checks need review; do not automatically start pilot')
-    return {'root':str(folder), 'audit_sha256':sha(folder/'audit.json'),
+    return {'smoke_no_feasible_trial_count':sum(
+                r['step_verification']['status']=='no_nominal_feasible_incumbent'
+                for r in summaries),
+            'smoke_numerical_gate_only':True,
+            'root':str(folder), 'audit_sha256':sha(folder/'audit.json'),
             'registration_sha256':sha(folder/'registration.json'),
             'source_commit':plan['source_commit'], 'runtime':plan['runtime'],
             'evidence_hashes':original['evidence_hashes'], 'new_model_calls':0}
