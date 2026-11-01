@@ -181,6 +181,64 @@ class DualViewTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"Smoke numerical checks"):
                 pilot.smoke_receipt("/unused/smoke")
 
+    def test_real_staged_onehot_failure_uses_only_registered_coverage(self):
+        """Inject a surrogate failure without invoking any physical evaluator."""
+        from ra_lsbo.experiments.simplified_aircraft.transition import problem_for
+        from ra_lsbo.partial_bo.problems import candidate_pool
+        from ra_lsbo.partial_bo.records import DesignRecord
+        from ra_lsbo.risk_core.observations import RunObservation
+        from ra_lsbo.experiments.core.protocol import BASE
+        from ra_lsbo.budget import digest
+        problem=problem_for("aircraft_ordinary")
+        pool,_=candidate_pool(problem,919191,6)
+        settings=pr.model_settings("onehot_stable",pr.profile_for("smoke"))
+        engine=dv.StableOnehotDiscoveryBO(problem,BASE,77,settings,
+            cold_global=True,protect=True,feedback="interval",coverage_scope="cold")
+        # Deliberately position the synthetic optimizer at a nonscheduled
+        # proposal. This test exercises fail/coverage, not a completed trial.
+        engine.next_iteration=1
+        failure=dv.ModelNumericalFailure("constraint:soc",[
+            {"continuous_length":c,"discrete_length":d,
+             "status":"RuntimeError","error_message":"injected EP rejection"}
+            for c in dv.C_GRID for d in dv.D_GRID])
+        with patch.object(engine,"_build_posterior",side_effect=failure):
+            selected,meta=engine.propose([],pool,1)
+        self.assertEqual(meta["coverage_reason"],"model_failure")
+        self.assertEqual(meta["model_failure"]["head"],"constraint:soc")
+        self.assertEqual(len(meta["model_failure"]["candidate_failures"]),8)
+        self.assertEqual(meta["pool"][meta["selected_index"]],selected)
+        self.assertEqual(meta["selected_history_distance"],None)
+        self.assertEqual(meta["raw_history_digest"],digest([]))
+        self.assertIsNotNone(engine.pending)
+        # Synthetic feedback tests the pending/accept state machine; no
+        # model truth is evaluated or invented in the research experiment.
+        packet=RunObservation(
+            design_id=digest(selected),contract_id=problem.contract_id,
+            evidence_id="synthetic-unit-test",status="completed",
+            objective=OutputObservation("exact","synthetic-o",value=1000.),
+            constraints=tuple((name,OutputObservation("exact","synthetic-"+name,value=-.1))
+                              for name in problem.required_constraints))
+        record=DesignRecord(selected,packet,{"synthetic_unit_only":True})
+        engine.accept(record)
+        self.assertIsNone(engine.pending)
+        self.assertEqual(engine.next_iteration,2)
+        self.assertEqual(engine.expected_prefix,digest([record.to_dict()]))
+
+    def test_unexpected_surrogate_bug_cannot_be_silently_converted_to_coverage(self):
+        from ra_lsbo.experiments.simplified_aircraft.transition import problem_for
+        from ra_lsbo.partial_bo.problems import candidate_pool
+        from ra_lsbo.experiments.core.protocol import BASE
+        problem=problem_for("aircraft_ordinary")
+        pool,_=candidate_pool(problem,919192,3)
+        engine=dv.StableOnehotDiscoveryBO(
+            problem,BASE,11,pr.model_settings("onehot_stable",pr.profile_for("smoke")),
+            cold_global=True,protect=True,feedback="interval",coverage_scope="cold")
+        engine.next_iteration=1
+        with patch.object(engine,"_build_posterior",side_effect=ValueError("schema bug")):
+            with self.assertRaisesRegex(ValueError,"schema bug"):
+                engine.propose([],pool,1)
+        self.assertIsNone(engine.pending)
+
     def test_structure_sampler_not_changed_and_hybrid_has_no_hidden_weights(self):
         spec=pr.method_spec("hybrid_guard",pr.profile_for("pilot"))
         self.assertEqual(spec["response_policy"]["soc_min_feasibility"],
