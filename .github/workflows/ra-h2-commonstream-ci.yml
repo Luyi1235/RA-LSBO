@@ -1,0 +1,47 @@
+name: RA-LSBO-H2 Brier vs clipped log-mixture common synthetic stream
+on:
+  push:
+    branches:
+      - research/ra-lsbo-h2-causal-risk-20261102
+    paths:
+      - tools/compare_h2_controllers_common_stream.py
+      - tests/test_h2_commonstream.py
+      - .github/workflows/ra-h2-commonstream-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: 'Agg'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install original import dependencies, but do not fit models
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Tests for causal chronology and correct Gaussian-mixture scoring
+        run: |
+          python -m py_compile tools/compare_h2_controllers_common_stream.py
+          python -m pytest -q tests/test_h2_commonstream.py
+      - name: Run fixed 3072 observation shared-stream synthetic comparison
+        run: |
+          python -m tools.compare_h2_controllers_common_stream --output /tmp/ra-h2-commonstream-3072
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-brier-vs-logmix-common-synthetic-3072
+          path: /tmp/ra-h2-commonstream-3072/
+          if-no-files-found: warn
+          retention-days: 60
