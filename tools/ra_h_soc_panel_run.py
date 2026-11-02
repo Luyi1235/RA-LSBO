@@ -258,6 +258,12 @@ def _prefix(z,group,out):
                 predicted[view]={}
         else:
             predicted[view]={}
+    if group["anchor_original_forecast_available"]:
+        kernel=trained["hierarchical_onehot"].get("selected_kernel")
+        expected=group["saved_anchor_onehot_selected_kernel"]
+        if (kernel is None or
+            [kernel["continuous_length"],kernel["discrete_length"]]!=expected):
+            raise RuntimeError("Original saved onehot SOC kernel was not reproduced")
     anchor_target=next(x for x in targets if x["policy"]==ANCHOR)
     reference={"candidate":anchor_target["candidate"],
                "onehot_encoded":features["hierarchical_onehot"].transform(
