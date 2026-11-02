@@ -258,7 +258,8 @@ def _prefix(z,group,out):
                 predicted[view]={}
         else:
             predicted[view]={}
-    if group["anchor_original_forecast_available"]:
+    if group["anchor_original_forecast_available"] and (
+            group["saved_anchor_onehot_selected_kernel"] is not None):
         kernel=trained["hierarchical_onehot"].get("selected_kernel")
         expected=group["saved_anchor_onehot_selected_kernel"]
         if (kernel is None or
