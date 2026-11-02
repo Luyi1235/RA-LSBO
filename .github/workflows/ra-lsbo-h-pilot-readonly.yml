@@ -1,0 +1,43 @@
+name: RA-LSBO-H frozen pilot independent evidence audit
+on:
+  push:
+    branches:
+      - analysis/ra-lsbo-h-pilot-readonly-20261102
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download release ZIP and verify top-level SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ra_h
+          curl --fail --location --silent --show-error --retry 2 \
+            https://github.com/Luyi1235/RA-LSBO/releases/download/ra-lsbo-h-pilot-9961-9964-20261102/RA-LSBO-H-pilot-9961-9964-20261102.zip \
+            -o /tmp/ra_h/release.zip
+          echo "3d9cb4f684bbc9198c523bb44bf466463c2f85053d87ca1770eca9111b48fed1  /tmp/ra_h/release.zip" | sha256sum --check
+      - name: Independent zero-model-call evidence and paired analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/analyze_dualview_pilot_sealed.py
+          python tools/analyze_dualview_pilot_sealed.py /tmp/ra_h/release.zip /tmp/ra_h/output | tee /tmp/ra_h/summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-lsbo-h-readonly-pilot-audit
+          path: |
+            /tmp/ra_h/output/
+            /tmp/ra_h/summary.json
+          if-no-files-found: warn
+          retention-days: 60
