@@ -8,6 +8,7 @@ on:
       - tests/test_h2_*.py
       - tools/run_h2_hierarchical_synthetic.py
       - tools/run_h2_synthetic_decision.py
+      - tools/run_h2_crossing_stress.py
       - .github/workflows/ra-h2-controller-synthetic-ci.yml
   workflow_dispatch:
 permissions:
@@ -45,6 +46,7 @@ jobs:
         run: |
           python tools/run_h2_hierarchical_synthetic.py --output /tmp/h2-synthetic
           python tools/run_h2_synthetic_decision.py --output /tmp/h2-synthetic-decision
+          python tools/run_h2_crossing_stress.py --output /tmp/h2-crossing-stress
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -52,6 +54,7 @@ jobs:
           path: |
             /tmp/h2-synthetic/
             /tmp/h2-synthetic-decision/
+            /tmp/h2-crossing-stress/
             /tmp/h2-test-results.xml
           retention-days: 60
           if-no-files-found: warn
