@@ -92,5 +92,5 @@ def test_h2_saved_fitted_selected_gaussian_pair_replays_one_step():
         {"synthetic_only":True})
     audited=h2_pilot.replay_h2_controller([proposal],[record])
     assert audited["scored_events"]==1
-    assert audited["interval_after_settlement_log_scores"]==1
+    assert audited["interval_scores"]==1
     assert audited["new_GP_fits"]==0
