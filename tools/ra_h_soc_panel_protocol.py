@@ -165,15 +165,22 @@ def read_only_registration(archive,*,cross_platform_check=False):
                             not metadata.get("risk_feature_identity") or
                             not isinstance(metadata.get("forecasts"),dict)):
                             raise ValueError("Expected saved prior-to-evaluation GP identities/forecast")
+                        # Some original proposal serializers retain
+                        # predictions but omit individual head selections.
+                        # Never invent a historic kernel identity. The
+                        # saved candidate's mean/variance remain the strict
+                        # no-leakage numerical reproduction sentinel.
                         original_head=metadata.get("heads",{}).get("constraint:soc")
-                        if not isinstance(original_head,dict):
-                            raise ValueError("Saved historical onehot SOC kernel selection missing")
-                        original_kernel=original_head.get("selected",{})
-                        selected_original=[
-                            original_kernel.get("continuous_length"),
-                            original_kernel.get("discrete_length")]
-                        if selected_original[0] not in (.05,.15,.4,1.) or selected_original[1] not in (.5,1.5):
-                            raise ValueError("Historical onehot SOC selection outside registered 4x2 grid")
+                        if isinstance(original_head,dict):
+                            original_kernel=original_head.get("selected",{})
+                            if isinstance(original_kernel,dict) and all(
+                                    k in original_kernel for k in ("continuous_length","discrete_length")):
+                                selected_original=[
+                                    original_kernel["continuous_length"],
+                                    original_kernel["discrete_length"]]
+                                if (selected_original[0] not in (.05,.15,.4,1.)
+                                    or selected_original[1] not in (.5,1.5)):
+                                    raise ValueError("Saved SOC selection outside original 4x2 grid")
                     targets=[]
                     training_designs={digest(x["candidate"]) for x in prefix}
                     for arm in TARGET_ARMS:
