@@ -30,3 +30,20 @@ def test_control_arms_use_same_original_design_pool_and_synthetic_truth():
         assert result["synthetic_calls"]==STEPS
         assert result["arm"]==arm
         assert all(row["arm"]==arm for row in rows)
+
+
+def test_independent_crossing_stress_makes_both_views_pessimistic():
+    from tools.run_h2_crossing_stress import (
+        SEEDS as TEST_SEEDS,SCENARIOS as TEST_SCENARIOS,
+        forecasts,probability,run as crossing_run)
+    assert TEST_SEEDS[0]==18001
+    for scenario in TEST_SCENARIOS:
+        designs=pool_for(scenario,TEST_SEEDS[0],0)
+        favor_one=sum(probability(forecasts(d)[0])<probability(forecasts(d)[1])
+                      for d in designs)
+        favor_lat=sum(probability(forecasts(d)[1])<probability(forecasts(d)[0])
+                      for d in designs)
+        assert favor_one>=16 and favor_lat>=16
+        row=crossing_run(scenario,TEST_SEEDS[0],"h2")
+        assert row["synthetic_calls"]==24
+        assert .1<=row["final_onehot_weight"]<=.9
