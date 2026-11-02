@@ -112,7 +112,9 @@ jobs:
           def stub_fit(view,features,history,seed,problem):
               fits.append((view,seed,len(history)))
               selected=(current['saved_anchor_onehot_selected_kernel']
-                  if view=='hierarchical_onehot' else [.05,.5])
+                  if view=='hierarchical_onehot' and
+                     current['saved_anchor_onehot_selected_kernel'] is not None
+                  else [.05,.5])
               return DummyHead(),{
                   'view':view,'status':'ok','fit_seconds':0.,
                   'selected_kernel':{'continuous_length':selected[0],
