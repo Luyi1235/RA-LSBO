@@ -64,7 +64,7 @@ def test_parent_proposal_commit_and_settle_updates_only_after_real_feedback():
     assert selected==candidate
     assert engine.h2.n_scored==0 and engine.h2.weight==.5
     assert reported["H2_controller_before"]["scored"]==0
-    assert reported["H2_prior_forecast_commitment"]["onehot_prior"]=={
+    assert reported["H2_prior_forecast_commitment"]["onehot"]=={
         "mean":-.2,"variance":.03}
     result=RunObservation(
         design_id=digest(candidate),contract_id=problem.contract_id,
