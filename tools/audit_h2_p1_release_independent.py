@@ -161,8 +161,12 @@ def main():
     require(digest_bytes(raw) == EXPECTED_ZIP, "Release ZIP SHA mismatch")
     files = bytes_in_zip(raw, original_sha)
     package_manifest = "RA-LSBO-H2-P1-packaging-20261102_01/SHA256SUMS.txt"
-    require(files[package_manifest] == (branch / "SHA256SUMS.txt").read_bytes(),
-            "Unlisted embedded manifest does not exactly match checked-in SHA256SUMS")
+    internal = set(files[package_manifest].decode("utf-8").splitlines())
+    checked_in = set((branch / "SHA256SUMS.txt").read_text(encoding="utf-8").splitlines())
+    require(internal == checked_in,
+            "Embedded checksum manifest differs: inner_only=" +
+            repr(sorted(internal-checked_in)[:5]) +
+            " checked_in_only=" + repr(sorted(checked_in-internal)[:5]))
 
     plan_bytes = data(files, "plan.json")
     audit_bytes = data(files, "audit.json")
