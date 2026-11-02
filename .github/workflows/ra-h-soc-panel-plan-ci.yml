@@ -1,0 +1,151 @@
+name: RA-LSBO-H fixed cross-policy SOC panel plan-only CI
+on:
+  push:
+    branches:
+      - analysis/ra-h-soc-crosspolicy-panel-20261102
+    paths:
+      - 'tools/ra_h_soc_panel_*.py'
+      - 'tests/test_ra_h_soc_panel.py'
+      - '.github/workflows/ra-h-soc-panel-plan-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: 'Agg'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned CPU model imports; never perform model fits
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Unit test scoring and protocol source
+        run: |
+          python -m py_compile tools/ra_h_soc_panel_protocol.py tools/ra_h_soc_panel_run.py
+          python -m pytest -q tests/test_ra_h_soc_panel.py
+      - name: Download original fixed 856-call Windows evidence ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ra_h_panel
+          curl -fLsS --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/ra-lsbo-h-pilot-9961-9964-20261102/RA-LSBO-H-pilot-9961-9964-20261102.zip' -o /tmp/ra_h_panel/source.zip
+          echo '3d9cb4f684bbc9198c523bb44bf466463c2f85053d87ca1770eca9111b48fed1  /tmp/ra_h_panel/source.zip' | sha256sum -c
+      - name: Register fixed 24-prefix / 120-target plan in nonauthorizing CI preview
+        run: |
+          python tools/ra_h_soc_panel_run.py plan --archive /tmp/ra_h_panel/source.zip --output /tmp/ra_h_panel/plan --cross-platform-check
+      - name: Check canonical registration, no target leakage, and denied Linux fitting
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from tools.ra_h_soc_panel_protocol import read_only_registration
+          folder=Path('/tmp/ra_h_panel/plan')
+          plan=json.loads((folder/'plan.json').read_text())
+          expected=read_only_registration('/tmp/ra_h_panel/source.zip',cross_platform_check=True)
+          assert plan==expected, 'Plan round-trip mismatch'
+          assert plan['cross_platform_preview_only'] is True
+          assert plan['number_of_prefix_fits']==24
+          assert plan['number_of_heads']==48
+          assert plan['maximum_GP_kernel_candidate_attempts']==384
+          assert plan['number_of_target_policy_records']==120
+          assert len(plan['groups'])==24
+          assert all(len(g['targets'])==5 for g in plan['groups'])
+          assert all(g['checkpoint_iteration']==g['iteration']-1 for g in plan['groups'])
+          assert all(g['training_rows']==12+g['iteration'] for g in plan['groups'])
+          assert all(g['anchor_arm']=='hybrid_onehot' for g in plan['groups'])
+          assert plan['no_aircraft_evaluations'] and plan['no_VAE_train']
+          print('Precommitted 24 prefix, 120 labels, 384 maximum GP candidates; no model fits')
+          PY
+          if python tools/ra_h_soc_panel_run.py run --archive /tmp/ra_h_panel/source.zip --output /tmp/ra_h_panel/plan > /tmp/ra_h_panel/forbidden_attempt.log 2>&1; then
+            echo 'ERROR: Linux preview authorized actual fitting'
+            exit 1
+          fi
+          if test -e /tmp/ra_h_panel/plan/run.lock || test -e /tmp/ra_h_panel/plan/prefix_attempts.jsonl; then
+            echo 'ERROR: preview created a model execution lock or journal'
+            exit 1
+          fi
+          grep -q 'cannot authorize GP fits' /tmp/ra_h_panel/forbidden_attempt.log
+          echo 'Run from CI preview was rejected before any GP fitting'
+      - name: Read-only synthetic integration through all 24 prefix/target scoring loops
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from types import SimpleNamespace
+          from unittest.mock import patch
+          import numpy as np
+          from tools.ra_h_soc_panel_protocol import SealedPilot,digest
+          from tools import ra_h_soc_panel_run as runner
+          plan=json.loads(Path('/tmp/ra_h_panel/plan/plan.json').read_text())
+          fits=[]
+          class DummyFeatures:
+              def __init__(self,name): self.identity=name
+              def transform(self,candidates): return np.zeros((len(candidates),16))
+          class DummyHead:
+              def predict(self,x):
+                  return {'mean':np.zeros(len(x))-.1,
+                          'variance':np.zeros(len(x))+.02}
+          def stub_views(z,g,out,history):
+              assert len(history)==g['training_rows']
+              return SimpleNamespace(),{
+                  'hierarchical_onehot':DummyFeatures('synthetic-onehot'),
+                  'frozen_corpus_latent':DummyFeatures('synthetic-latent')}
+          def stub_fit(view,features,history,seed,problem):
+              fits.append((view,seed,len(history)))
+              selected=(current['saved_anchor_onehot_selected_kernel']
+                  if view=='hierarchical_onehot' and
+                     current['saved_anchor_onehot_selected_kernel'] is not None
+                  else [.05,.5])
+              return DummyHead(),{
+                  'view':view,'status':'ok','fit_seconds':0.,
+                  'selected_kernel':{'continuous_length':selected[0],
+                                     'discrete_length':selected[1]},
+                  'candidate_attempts':[{'status':'synthetic_only'}]*8,
+                  'feature_identity':features.identity}
+          with SealedPilot('/tmp/ra_h_panel/source.zip') as z:
+              with patch.object(runner,'_frozen_views',side_effect=stub_views), \
+                   patch.object(runner,'_fit',side_effect=stub_fit), \
+                   patch.object(runner,'_original_forecast_sentinel',
+                       return_value={'original_forecast_available':True,
+                                     'onehot_reproduced':True}):
+                  rows=[]
+                  for current in plan['groups']:
+                      row=runner._prefix(z,current,Path('/tmp/ra_h_panel/plan'))
+                      assert row['training_rows']==12+current['iteration']
+                      assert len(row['targets'])==5
+                      rows.append(row)
+          assert len(fits)==48 and len(rows)==24
+          assert sum(len(r['targets']) for r in rows)==120
+          assert all(x['new_aircraft_calls']==x['new_VAE_fits']==
+                     x['new_optimizer_calls']==0 for x in rows)
+          print('Synthetic no-fit integration completed: 24 source prefixes, 120 heldout scores')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-h-crosspolicy-nonauthorizing-plan
+          path: |
+            /tmp/ra_h_panel/plan/plan.json
+            /tmp/ra_h_panel/plan/registration.json
+            /tmp/ra_h_panel/forbidden_attempt.log
+          retention-days: 30
+          if-no-files-found: warn
