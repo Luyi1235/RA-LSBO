@@ -6,6 +6,7 @@
 - Independent audit passed; the read-only `smoke_receipt` numerical gate passed. Seven incumbent verifications passed. Five sparse trials had no nominal feasible incumbent, so no verification was run for them.
 - This is a single-seed, two-online-step infrastructure smoke, not a statistical comparison or physical validation. The four-score warmup cannot be crossed within this smoke; adaptive-weight performance remains untested in this run.
 - The full original output including ledger, lock, proposals, observations, checkpoints, source snapshots and console logs is provided in the associated GitHub Release asset. No prior pilot was resumed.
+- Logging limitation: the PowerShell transcript records native process exit codes but did not capture complete native stdout. The original transcript is preserved unchanged; per-trial and audit details remain available in the raw results and ledger. No log was reconstructed.
 - `RA-LSBO-H2-P1-smoke-evidence-20261102_01.zip` SHA-256: `76fa4f10b853d070bcc66e73d4d4a5f72aa5d036709311ffa9c75a368ca8ca1d`.
 - `SHA256SUMS.txt` lists the individual original evidence files. The archive itself and this manifest are hashed separately in the release.
 - The future 1,008-call pilot was neither started nor authorized by this smoke.
