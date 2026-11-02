@@ -128,7 +128,7 @@ class H2ControllerTests(unittest.TestCase):
         c=CausalRiskController()
         for t in range(4):
             c.begin(t,str(t),"prefix",forecast(.99,.01))
-            e=c.settle(t,str(t),OutputObservation("interval",f"c{t}",lower=0.))
+            e=c.settle(t,str(t),OutputObservation("interval",f"c{t}",lower=0.,lower_inclusive=False))
             self.assertTrue(0<=e["brier_by_view"]["onehot"]<=1)
             self.assertTrue(0<=e["brier_by_view"]["latent"]<=1)
             self.assertEqual(e["proper_evidence_score_diagnostic"]["latent"]["score_type"],
