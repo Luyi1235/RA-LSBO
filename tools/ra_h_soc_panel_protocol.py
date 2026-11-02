@@ -159,11 +159,21 @@ def read_only_registration(archive,*,cross_platform_check=False):
                     for n in ("metadata.json","state.npz","diagnostics.json"):
                         if hashlib.sha256(z.raw(path+n)).hexdigest()!=latest["files"][n]:
                             raise ValueError("Sealed checkpoint hash mismatch")
+                    selected_original=None
                     if metadata.get("posterior_fit_skipped") is False:
                         if (not metadata.get("feature_identity") or
                             not metadata.get("risk_feature_identity") or
                             not isinstance(metadata.get("forecasts"),dict)):
                             raise ValueError("Expected saved prior-to-evaluation GP identities/forecast")
+                        original_head=metadata.get("heads",{}).get("constraint:soc")
+                        if not isinstance(original_head,dict):
+                            raise ValueError("Saved historical onehot SOC kernel selection missing")
+                        original_kernel=original_head.get("selected",{})
+                        selected_original=[
+                            original_kernel.get("continuous_length"),
+                            original_kernel.get("discrete_length")]
+                        if selected_original[0] not in (.05,.15,.4,1.) or selected_original[1] not in (.5,1.5):
+                            raise ValueError("Historical onehot SOC selection outside registered 4x2 grid")
                     targets=[]
                     training_designs={digest(x["candidate"]) for x in prefix}
                     for arm in TARGET_ARMS:
@@ -188,10 +198,15 @@ def read_only_registration(archive,*,cross_platform_check=False):
                         "saved_anchor_latent_feature_identity":metadata.get("feature_identity"),
                         "saved_anchor_onehot_feature_identity":metadata.get("risk_feature_identity"),
                         "anchor_original_forecast_available":metadata.get("posterior_fit_skipped") is False,
+                        "saved_anchor_onehot_selected_kernel":selected_original,
                         "targets":targets,
                     })
         if len(groups)!=24 or sum(len(x["targets"]) for x in groups)!=120:
             raise AssertionError("Fixed 24 prefixes x 5 held-out policies not registered")
+        status=subprocess.run(["git","status","--porcelain","--untracked-files=no"],
+                              cwd=ROOT,text=True,capture_output=True)
+        if status.returncode or status.stdout.strip():
+            raise ValueError("Analysis worktree contains uncommitted tracked source changes")
         revision=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
         if subprocess.run(["git","merge-base","--is-ancestor",ORIGINAL_CODE_SHA,revision],
                           cwd=ROOT,capture_output=True).returncode:
