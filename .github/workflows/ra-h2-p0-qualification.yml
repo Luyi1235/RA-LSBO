@@ -62,10 +62,36 @@ jobs:
           assert h2_protocol.budget_for(pilot)['maximum_rcaide_mda_calls']==0
           print('P0 source-only gates: smoke cannot exercise H2 learned weights; model truth calls=0')
           PY
+      - name: Preview source-bound 48/1008-call plans without an evaluator
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+          from ra_lsbo.experiments.simplified_aircraft import h2_pilot
+          root=Path('/tmp/h2-p0-source-plan')
+          root.mkdir(parents=True,exist_ok=False)
+          expected_sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          for stage,maximum in (('smoke',48),('pilot',1008)):
+              plan=h2_pilot.build_plan(stage)
+              assert plan['source_commit']==expected_sha
+              assert plan['budget']['maximum_model_calls']==maximum
+              assert plan['budget']['maximum_rcaide_mda_calls']==0
+              assert len(plan['sources'])>=170
+              assert any(path.endswith('/h2_risk_controller.py') for path in plan['sources'])
+              (root/(stage+'.json')).write_text(json.dumps({
+                  'non_authorizing_linux_preview':True,
+                  'model_evaluator_calls':0,
+                  'registered_plan':plan},sort_keys=True,indent=2,allow_nan=False)+'\\n')
+              print(stage,'source',expected_sha,'cap',maximum,'snapshots',len(plan['sources']),
+                    'truth calls=0; Linux preview cannot authorize Windows run')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ra-h2-p0-source-only-qualification
-          path: /tmp/h2-p0-qualification.xml
+          path: |
+            /tmp/h2-p0-qualification.xml
+            /tmp/h2-p0-source-plan/
           retention-days: 60
           if-no-files-found: warn
