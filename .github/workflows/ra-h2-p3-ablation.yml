@@ -1,0 +1,62 @@
+name: RA-LSBO-H2 P3 fixed-mixture zero-aircraft gates
+on:
+  push:
+    branches: [research/h2-p3-fixed-mixture-ablation-20261102]
+  pull_request:
+    branches: [qa/h2-p0-causal-numerics-20261102]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  zero_aircraft_regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: Agg
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned research dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Zero-aircraft mathematical and historical regression tests
+        run: |
+          python -m pytest -q \
+            tests/test_h2_p3_ablation.py \
+            tests/test_h2_p0_qualification.py \
+            tests/test_h2_risk_controller.py \
+            tests/test_h2_metrics.py \
+            tests/test_h2_optimizer_integration.py \
+            tests/test_h2_pilot_protocol.py \
+            tests/test_aircraft_dualview.py \
+            tests/test_ep_stability_candidate.py \
+            --junitxml=/tmp/h2-p3-regression.xml
+      - name: Inspect source-bound plans without running either campaign
+        run: |
+          python - <<'PY'
+          from ra_lsbo.experiments.simplified_aircraft import h2_p3_pilot as p
+          for profile, maximum in [('smoke', 24), ('pilot', 800)]:
+              plan = p.build_plan(profile)
+              assert plan['budget']['maximum_model_calls'] == maximum
+              assert plan['budget']['maximum_rcaide_mda_calls'] == 0
+              assert all(not path.startswith('/') for path in plan['sources'])
+              print(profile, 'cap', maximum, 'source bindings', len(plan['sources']), 'physical calls: 0')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-p3-zero-aircraft-regression
+          path: /tmp/h2-p3-regression.xml
+          if-no-files-found: warn

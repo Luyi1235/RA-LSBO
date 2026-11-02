@@ -114,3 +114,21 @@ does not transform them into independent publication confirmation.
 No physical model calls are authorized by **drafting or implementing this
 protocol alone**. The coordinating research agent will review the code-level
 CI and new smoke qualifications before issuing next local execution steps.
+
+## Implementation and prerequisite binding
+
+The independent entry point is `ra_lsbo.experiments.simplified_aircraft.h2_p3_pilot`.
+Both profiles require the complete original 316-call qualification directory
+through `--qualification`; the pilot additionally requires a successfully
+audited, numerically qualified P3 smoke through `--smoke`. Smoke and pilot
+each require their own new write-once output directory. `prepare` seals source,
+runtime, physical contracts, the qualification receipt and the applicable
+budget; `run` additionally requires the exact approved call limit. The source
+manifest uses repository-relative paths, so the same fixed commit and runtime
+can be checked from another clean worktree without changing historical files.
+
+`h2_fixed50` still registers each forecast and scores each settled SOC outcome;
+only the effective one-hot weight remains 0.5. P3 audit independently replays
+each arm's committed predictions and subsequent outcomes. The mathematical
+runner tests use synthetic observations and explicitly prohibit aircraft
+evaluators; they do not qualify or replace a real future smoke.
