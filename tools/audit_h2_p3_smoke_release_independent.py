@@ -47,7 +47,15 @@ def main():
             with z.open(info) as f:
                 for b in iter(lambda:f.read(1048576),b""): h.update(b); n+=len(b)
             ck(n==info.file_size,"member size mismatch"); actual[name]=(h.hexdigest(),n)
-        ck(len(manifest)==len(actual)==263 and set(manifest)==set(actual),"ZIP manifest mismatch")
+        extra=set(actual)-set(manifest)
+        package_manifest="RA-LSBO-H2-P3-smoke-package-20261102_01/SHA256SUMS.txt"
+        ck(len(manifest)==263 and len(actual)==264 and set(manifest).issubset(actual)
+           and extra=={package_manifest},"ZIP manifest/member set mismatch")
+        embedded={}
+        for line in z.read(package_manifest).decode().splitlines():
+            if line.strip():
+                h,n,p=line.split(maxsplit=2); embedded[p]=(h.lower(),int(n))
+        ck(embedded==manifest,"Embedded package checksum list differs from published manifest")
         for p,v in manifest.items(): ck(actual[p]==v,"member SHA mismatch: "+p)
         plan=j(z,ROOT+"plan.json"); reg=j(z,ROOT+"registration.json"); audit=j(z,ROOT+"audit.json"); res=j(z,ROOT+"results.json")
         checks=j(z,DG+"checks.json"); receipt=j(z,DG+"smoke-receipt.json")
