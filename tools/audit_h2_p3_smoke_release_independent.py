@@ -71,7 +71,7 @@ def main():
         ck(reg["plan_sha256"]==sha(z.read(ROOT+"plan.json")) and reg["maximum_model_calls"]==24,"registration")
         ck(audit["passed"] and audit["settled_calls"]==24 and audit["checked_proposals"]==8 and audit["trial_count"]==4 and audit["source_bindings"]==186 and audit["H2_controller_replayed"] and not audit["algorithm_replay"] and not audit["physical_validation"] and len(audit["evidence_hashes"])==41,"audit scope")
         for p,h in audit["evidence_hashes"].items(): ck(actual.get(ROOT+p,(None,None))[0]==h,"evidence hash: "+p)
-        ck(plan["qualification"]["settled_calls"]==316 and plan["qualification"]["new_evaluations"]==0,"qualification")
+        ck(plan["reviewed_qualification"]["settled_calls"]==316 and plan["reviewed_qualification"]["new_evaluations"]==0,"qualification")
         for f in ("load-plan-exit-code.txt","checks-exit-code.txt","run-exit-code.txt","audit-exit-code.txt","report-exit-code.txt","smoke-receipt-exit-code.txt"): ck(z.read(DG+f).decode().strip()=="0","exit code: "+f)
         ck(z.read(DG+"run-stderr.txt")==b"" and all(v.get("status")=="PASS" for v in checks.values()),"stderr/checks")
         ck(receipt["source_commit"]==CODE and receipt["smoke_numerical_gate_only"] and receipt["smoke_no_feasible_trial_count"]==0 and receipt["audit_sha256"]==sha(z.read(ROOT+"audit.json")) and receipt["registration_sha256"]==sha(z.read(ROOT+"registration.json")) and receipt["evidence_hashes"]==audit["evidence_hashes"],"smoke receipt")
