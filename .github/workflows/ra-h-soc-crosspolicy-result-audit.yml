@@ -1,0 +1,50 @@
+name: Independent RA-LSBO-H frozen SOC cross-policy release audit
+on:
+  push:
+    branches:
+      - analysis/ra-h-soc-crosspolicy-result-audit-20261102
+    paths:
+      - tools/audit_ra_h_soc_crosspolicy_release.py
+      - .github/workflows/ra-h-soc-crosspolicy-result-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent_audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install independent numerical primitives; no BO or GP packages
+        run: |
+          python -m pip install numpy==2.0.2 scipy==1.13.1
+          python -m pip check
+      - name: Download fixed original pilot and new GP panel releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ra-h-soc-verify
+          curl -fLsS --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/ra-lsbo-h-pilot-9961-9964-20261102/RA-LSBO-H-pilot-9961-9964-20261102.zip' -o /tmp/ra-h-soc-verify/pilot.zip
+          curl -fLsS --retry 2 'https://github.com/Luyi1235/RA-LSBO/releases/download/ra-lsbo-h-soc-crosspolicy-panel-20261102/RA-LSBO-H-SOC-crosspolicy-panel-20261102_01.zip' -o /tmp/ra-h-soc-verify/panel.zip
+          echo '3d9cb4f684bbc9198c523bb44bf466463c2f85053d87ca1770eca9111b48fed1  /tmp/ra-h-soc-verify/pilot.zip' | sha256sum -c
+          echo 'a8b177391b5c6fdbbd2f8a00f60f6f2501191f0c87341762c5daef825b5cbe01  /tmp/ra-h-soc-verify/panel.zip' | sha256sum -c
+      - name: Independent raw outcome score replay and 24-prefix audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/audit_ra_h_soc_crosspolicy_release.py
+          python tools/audit_ra_h_soc_crosspolicy_release.py /tmp/ra-h-soc-verify/panel.zip /tmp/ra-h-soc-verify/pilot.zip /tmp/ra-h-soc-verify/output | tee /tmp/ra-h-soc-verify/summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-h-soc-panel-independent-raw-truth-audit
+          path: |
+            /tmp/ra-h-soc-verify/output/
+            /tmp/ra-h-soc-verify/summary.json
+          if-no-files-found: warn
+          retention-days: 60
