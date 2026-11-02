@@ -1,0 +1,97 @@
+name: RA-LSBO-H2 P0 causal/numerical gates (zero aircraft)
+on:
+  push:
+    branches:
+      - qa/h2-p0-causal-numerics-20261102
+  pull_request:
+    branches:
+      - research/ra-lsbo-h2-causal-risk-20261102
+    paths:
+      - 'ra_lsbo/experiments/simplified_aircraft/h2_*.py'
+      - 'tests/test_h2_p0_qualification.py'
+      - '.github/workflows/ra-h2-p0-qualification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  numerical_and_chronology:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: 'Agg'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned CPU research dependencies (no aircraft)
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Regress H2 centered moments, real adapter chronology, and mixed EP
+        run: |
+          python -m pytest -q \
+            tests/test_h2_p0_qualification.py \
+            tests/test_h2_risk_controller.py \
+            tests/test_h2_metrics.py \
+            tests/test_h2_optimizer_integration.py \
+            tests/test_h2_pilot_protocol.py \
+            tests/test_aircraft_dualview.py \
+            tests/test_ep_stability_candidate.py \
+            --junitxml=/tmp/h2-p0-qualification.xml
+      - name: Confirm only the original unapproved 48/1008 research budget
+        run: |
+          python - <<'PY'
+          from ra_lsbo.experiments.simplified_aircraft import h2_protocol
+          from ra_lsbo.experiments.simplified_aircraft.h2_risk_controller import H2Settings
+          smoke=h2_protocol.profile_for('smoke')
+          pilot=h2_protocol.profile_for('pilot')
+          assert h2_protocol.budget_for(smoke)['maximum_model_calls']==48
+          assert h2_protocol.budget_for(pilot)['maximum_model_calls']==1008
+          assert smoke['horizon']<H2Settings().warmup_scored
+          assert h2_protocol.budget_for(smoke)['maximum_rcaide_mda_calls']==0
+          assert h2_protocol.budget_for(pilot)['maximum_rcaide_mda_calls']==0
+          print('P0 source-only gates: smoke cannot exercise H2 learned weights; model truth calls=0')
+          PY
+      - name: Preview source-bound 48/1008-call plans without an evaluator
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+          from ra_lsbo.experiments.simplified_aircraft import h2_pilot
+          root=Path('/tmp/h2-p0-source-plan')
+          root.mkdir(parents=True,exist_ok=False)
+          expected_sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          for stage,maximum in (('smoke',48),('pilot',1008)):
+              plan=h2_pilot.build_plan(stage)
+              assert plan['source_commit']==expected_sha
+              assert plan['budget']['maximum_model_calls']==maximum
+              assert plan['budget']['maximum_rcaide_mda_calls']==0
+              assert len(plan['sources'])>=170
+              assert any(path.endswith('/h2_risk_controller.py') for path in plan['sources'])
+              (root/(stage+'.json')).write_text(json.dumps({
+                  'non_authorizing_linux_preview':True,
+                  'model_evaluator_calls':0,
+                  'registered_plan':plan},sort_keys=True,indent=2,allow_nan=False)+'\n')
+              print(stage,'source',expected_sha,'cap',maximum,'snapshots',len(plan['sources']),
+                    'truth calls=0; Linux preview cannot authorize Windows run')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-h2-p0-source-only-qualification
+          path: |
+            /tmp/h2-p0-qualification.xml
+            /tmp/h2-p0-source-plan/
+          retention-days: 60
+          if-no-files-found: warn

@@ -89,7 +89,10 @@ def component_mixture(onehot,latent,weight,scale):
     means=np.stack([a,b])
     vars_=np.stack([av,bv])
     mean=weights@means
-    var=weights@(vars_+means**2)-mean**2
+    # Center around the mixture mean: E[Var(X | view)] + Var(E[X | view]).
+    # The raw second-moment subtraction can return zero for two valid
+    # high-offset, low-variance GP components due to catastrophic cancellation.
+    var=weights@(vars_+(means-mean[None,:])**2)
     if not np.isfinite(var).all() or (var<=0).any():
         raise FloatingPointError("Invalid mixture moments")
     return {"mean":mean,"variance":var,"scale":float(scale),
