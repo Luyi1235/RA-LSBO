@@ -116,8 +116,9 @@ def check_records(files, raw_plan, audit, result):
     for index, (start, end) in enumerate(zip(ledger[::2], ledger[1::2]), 1):
         require(start["event"] == "started" and end["event"] == "settled",
                 "Non-paired ledger events")
-        require(start["number"] == index and end["number"] == index,
-                "Ledger numbering changed")
+        require(start["number"] == index,
+                "Ledger start numbering changed")
+        # Settled records are keyed by call_id/tag; they do not repeat the number.
         identity = {key: start[key] for key in
                     ("number", "tag", "role", "candidate", "contract", "new_rcaide_mda")}
         call_id = digest_object(identity)
