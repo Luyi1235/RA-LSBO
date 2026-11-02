@@ -33,7 +33,7 @@ jobs:
           python -m pip check
       - name: Whole H2 test suite including actual mathematical GP fits
         run: |
-          python -m pytest -q             tests/test_ra_h2_controller.py             tests/test_h2_risk_controller.py             tests/test_h2_optimizer_integration.py             tests/test_h2_synthetic_decision.py             tests/test_h2_commonstream.py             tests/test_aircraft_dualview.py             tests/test_ep_stability_candidate.py             --junitxml=/tmp/ra_h2_qualification.xml
+          python -m pytest -q             tests/test_ra_h2_controller.py             tests/test_h2_risk_controller.py             tests/test_h2_optimizer_integration.py             tests/test_h2_synthetic_decision.py             tests/test_h2_commonstream.py             tests/test_h2_metrics.py             tests/test_h2_crossing_stress.py             tests/test_aircraft_dualview.py             tests/test_ep_stability_candidate.py             --junitxml=/tmp/ra_h2_qualification.xml
       - name: H2-B hard-head toy closed-loop, 2304 mathematical outcomes
         run: |
           python -m ra_lsbo.experiments.simplified_aircraft.h2_synthetic --output /tmp/ra_h2_brier_policy
@@ -46,6 +46,9 @@ jobs:
       - name: H2-B versus H2-M shared forecast stream, 3072 mathematical outcomes
         run: |
           python -m tools.compare_h2_controllers_common_stream --output /tmp/ra_h2_cross_controller
+      - name: Independently registered H2-M crossing-risk stress, 1536 math outcomes
+        run: |
+          python -m tools.run_h2_crossing_stress --output /tmp/ra_h2_crossing
       - name: Seal explicit zero-aircraft charges and source SHA
         shell: bash
         run: |
@@ -58,13 +61,16 @@ jobs:
           b=json.loads(Path('/tmp/ra_h2_logscore_common/registered_design.json').read_text())
           c=json.loads(Path('/tmp/ra_h2_logscore_policy/registration.json').read_text())
           d=json.loads(Path('/tmp/ra_h2_cross_controller/registration.json').read_text())
+          e=json.loads(Path('/tmp/ra_h2_crossing/registration.json').read_text())
           assert a['synthetic_truth_calls']==2304
           assert b['new_aircraft_calls']==b['new_RCAIDE_calls']==b['new_GP_fits']==0
           assert c['total_synthetic_truth_calls']==3072
           assert d['synthetic_oracle_calls']==3072
           assert c['new_aircraft_calls']==c['new_RCAIDE_calls']==c['new_GP_fits']==0
           assert d['new_aircraft_calls']==d['new_RCAIDE_calls']==d['new_GP_fits']==0
-          print('All four distinct mathematical benchmarks sealed; aircraft and RCAIDE charges 0')
+          assert e['max_synthetic_truth_calls']==1536
+          assert e['new_aircraft_calls']==e['new_RCAIDE_calls']==e['new_GP_fits']==e['new_VAE_fits']==0
+          print('Five math-only experiment families sealed: 13056 synthetic outcomes, zero aircraft and RCAIDE')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -80,5 +86,8 @@ jobs:
             /tmp/ra_h2_logscore_policy/arm_comparisons.json
             /tmp/ra_h2_cross_controller/registration.json
             /tmp/ra_h2_cross_controller/summaries.json
+            /tmp/ra_h2_crossing/registration.json
+            /tmp/ra_h2_crossing/arm_summaries.json
+            /tmp/ra_h2_crossing/view_crossing_precheck.json
           retention-days: 60
           if-no-files-found: warn
