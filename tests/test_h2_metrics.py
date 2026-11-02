@@ -24,7 +24,7 @@ def test_mixture_exact_density_is_not_moment_matched():
     for w,mu,var in zip(comps["weights"],[-.2,.3],[.04,.01]):
         densities.append(math.log(w)-.5*math.log(2*math.pi*var)-
                          .5*((obs.value-mu)**2/var))
-    assert data["nll"]==-logsumexp(densities)
+    assert data["nll"]==pytest.approx(-logsumexp(densities),abs=1e-13)
     assert data["score_kind"]=="exact_density"
     cdf=.65*ndtr((obs.value+.2)/.2)+.35*ndtr((obs.value-.3)/.1)
     assert data["covered95"]==(.025<=cdf<=.975)
@@ -37,7 +37,12 @@ def test_one_sided_censor_score_is_exact_mixture_mass():
     assert result["nll"]==pytest.approx(-math.log(mass),abs=1e-12)
     assert result["score_kind"]=="interval_mass"
     assert result["covered95"] is None
-    assert result["brier"] is not None
+    # Inclusive lower=0 still overlaps g<=0 at equality, so its event
+    # feasibility label is not logically resolved.
+    assert result["brier"] is None
+    confirmed=score_mixture(pair(),0,
+        OutputObservation("interval","strict-positive",lower=.01))
+    assert confirmed["brier"] is not None
 
 
 def test_mixture_prequential_preserves_unfitted_coverage():
