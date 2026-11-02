@@ -13,6 +13,10 @@ from dataclasses import asdict
 from pathlib import Path
 import json
 import math
+import sys
+
+# Direct python tools/... invocation otherwise hides the repository root.
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 from scipy.special import ndtr,logsumexp
