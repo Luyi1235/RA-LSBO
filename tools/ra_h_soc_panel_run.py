@@ -33,7 +33,7 @@ import numpy as np
 from scipy.special import ndtr, log_ndtr
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from ra_h_soc_panel_protocol import (
+from tools.ra_h_soc_panel_protocol import (
     RELEASE_SHA, ORIGINAL_CODE_SHA,
     CASES, SEEDS, TARGET_ARMS, ANCHOR, STEPS, MODEL_VIEWS,
     SealedPilot, read_only_registration, hash_file, digest, save_exclusive,
