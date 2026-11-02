@@ -83,6 +83,60 @@ jobs:
           fi
           grep -q 'cannot authorize GP fits' /tmp/ra_h_panel/forbidden_attempt.log
           echo 'Run from CI preview was rejected before any GP fitting'
+      - name: Read-only synthetic integration through all 24 prefix/target scoring loops
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from types import SimpleNamespace
+          from unittest.mock import patch
+          import numpy as np
+          from tools.ra_h_soc_panel_protocol import SealedPilot,digest
+          from tools import ra_h_soc_panel_run as runner
+          plan=json.loads(Path('/tmp/ra_h_panel/plan/plan.json').read_text())
+          fits=[]
+          class DummyFeatures:
+              def __init__(self,name): self.identity=name
+              def transform(self,candidates): return np.zeros((len(candidates),16))
+          class DummyHead:
+              def predict(self,x):
+                  return {'mean':np.zeros(len(x))-.1,
+                          'variance':np.zeros(len(x))+.02}
+          def stub_views(z,g,out,history):
+              assert len(history)==g['training_rows']
+              return SimpleNamespace(),{
+                  'hierarchical_onehot':DummyFeatures('synthetic-onehot'),
+                  'frozen_corpus_latent':DummyFeatures('synthetic-latent')}
+          def stub_fit(view,features,history,seed,problem):
+              fits.append((view,seed,len(history)))
+              selected=(current['saved_anchor_onehot_selected_kernel']
+                  if view=='hierarchical_onehot' else [.05,.5])
+              return DummyHead(),{
+                  'view':view,'status':'ok','fit_seconds':0.,
+                  'selected_kernel':{'continuous_length':selected[0],
+                                     'discrete_length':selected[1]},
+                  'candidate_attempts':[{'status':'synthetic_only'}]*8,
+                  'feature_identity':features.identity}
+          with SealedPilot('/tmp/ra_h_panel/source.zip') as z:
+              with patch.object(runner,'_frozen_views',side_effect=stub_views), \
+                   patch.object(runner,'_fit',side_effect=stub_fit), \
+                   patch.object(runner,'_original_forecast_sentinel',
+                       return_value={'original_forecast_available':True,
+                                     'onehot_reproduced':True}):
+                  rows=[]
+                  for current in plan['groups']:
+                      row=runner._prefix(z,current,Path('/tmp/ra_h_panel/plan'))
+                      assert row['training_rows']==12+current['iteration']
+                      assert len(row['targets'])==5
+                      rows.append(row)
+          assert len(fits)==48 and len(rows)==24
+          assert sum(len(r['targets']) for r in rows)==120
+          assert all(x['new_aircraft_calls']==x['new_VAE_fits']==
+                     x['new_optimizer_calls']==0 for x in rows)
+          print('Synthetic no-fit integration completed: 24 source prefixes, 120 heldout scores')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
