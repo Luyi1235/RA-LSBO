@@ -108,6 +108,7 @@ def run(seed,scenario):
             "SOC_event_resolved":obs.constraint_satisfaction(),
             "H2B_commit":priorB["commitment_sha256"],
             "H2M_commit":priorM["commitment"],
+            "H2B_prior_onehot_weight":priorB["decision_state_before"]["onehot_weight"],
             "H2B_update_scored":bsettle["feedback_pair_scored"],
             "H2M_delta_capped":msettle["delta_capped"],
             "H2B_weight_after":brier.state()["onehot_weight"],
