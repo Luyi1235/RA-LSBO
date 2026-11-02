@@ -90,7 +90,11 @@ def bytes_in_zip(source, manifest):
                 unlisted.append(name)
             files[name] = body
     require(len(files) >= 250, "Unexpectedly small sealed archive")
-    require(not unlisted, "ZIP has members absent from SHA256SUMS: " + repr(unlisted[:6]))
+    # A checksum list cannot include its own digest without a self-reference.
+    # The packaging copy is checked separately, byte-for-byte, in main().
+    allowed = "RA-LSBO-H2-P1-packaging-20261102_01/SHA256SUMS.txt"
+    require(unlisted == [allowed],
+            "Unexpected unlisted ZIP members: " + repr(unlisted[:6]))
     return files
 
 
@@ -156,6 +160,9 @@ def main():
     raw = args.zip_file.read_bytes() if args.zip_file else read_zip(RELEASE_URL)
     require(digest_bytes(raw) == EXPECTED_ZIP, "Release ZIP SHA mismatch")
     files = bytes_in_zip(raw, original_sha)
+    package_manifest = "RA-LSBO-H2-P1-packaging-20261102_01/SHA256SUMS.txt"
+    require(files[package_manifest] == (branch / "SHA256SUMS.txt").read_bytes(),
+            "Unlisted embedded manifest does not exactly match checked-in SHA256SUMS")
 
     plan_bytes = data(files, "plan.json")
     audit_bytes = data(files, "audit.json")
