@@ -166,7 +166,7 @@ def test_real_stable_tail_EP_mixed_SOC_heads_with_math_only_hierarchy():
     assert np.all(soc["variance"]>0)
     before=model.diagnostics()
     assert before["SOC_probability_rule"]=="componentwise_gaussian_mixture_CDF"
-    assert len(before["heads"]["constraint:soc"]["candidates"])==8
+    assert len(before["heads"]["soc"]["candidates"])==8
     assert len(before["heads"]["soc:latent_guard"]["candidates"])==8
-    assert before["heads"]["constraint:soc"]["selected"]["status"]=="ok"
+    assert before["heads"]["soc"]["selected"]["status"]=="ok"
     assert before["heads"]["soc:latent_guard"]["selected"]["status"]=="ok"
