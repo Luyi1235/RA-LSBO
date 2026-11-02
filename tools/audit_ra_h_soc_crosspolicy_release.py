@@ -329,6 +329,34 @@ def audit(panel_zip,pilot_zip):
                                 "seed_mean_delta":(sum(x["mean_delta"] for x in seeds.values())/len(seeds)) if seeds else None,
                                 "onehot_better_rows":sum(r["latent_minus_onehot_nll"]>0 for r in cases),
                                 "latent_better_rows":sum(r["latent_minus_onehot_nll"]<0 for r in cases)})
+        # Influence analysis stays descriptive; it exposes whether the
+        # average is carried by an isolated extreme censored observation.
+        influence=[]
+        for case in CASES:
+            for kind in ("exact","interval"):
+                group_rows=[r for r in rows if r["case"]==case and r["kind"]==kind]
+                diffs=[r["latent_minus_onehot_nll"] for r in group_rows]
+                brier_diffs=[r["latent_brier"]-r["onehot_brier"] for r in group_rows]
+                largest=max(diffs) if diffs else None
+                influence.append({
+                    "case":case,"kind":kind,"n":len(diffs),
+                    "median_latent_minus_onehot_nll":median(diffs) if diffs else None,
+                    "onehot_lower_nll_count":sum(v>0 for v in diffs),
+                    "latent_lower_nll_count":sum(v<0 for v in diffs),
+                    "mean_delta_after_removing_largest_positive":(
+                        (sum(diffs)-largest)/(len(diffs)-1)
+                        if len(diffs)>1 else None),
+                    "largest_positive_delta":largest,
+                    "largest_delta_share_of_net_sum":(
+                        largest/sum(diffs) if diffs and sum(diffs)>0 else None),
+                    "onehot_brier_mean":sum(r["onehot_brier"] for r in group_rows)/len(group_rows) if group_rows else None,
+                    "latent_brier_mean":sum(r["latent_brier"] for r in group_rows)/len(group_rows) if group_rows else None,
+                    "mean_delta_brier":sum(brier_diffs)/len(brier_diffs) if brier_diffs else None,
+                    "duplicate_policy_records":len(group_rows)-len({
+                        (r["case"],r["seed"],r["iteration"],r["candidate_id"])
+                        for r in group_rows}),
+                    "sample_dependence":"Four independent seeds maximum; repeated and adaptively selected target designs",
+                })
         integrity={"panel_zip_sha256":PANEL_SHA,"pilot_zip_sha256":PILOT_SHA,
                     "audited_panel_files":87,"audited_pilot_files":641,
                     "prefixes":24,"GP_heads":48,"GP_kernel_attempts":384,
@@ -337,21 +365,23 @@ def audit(panel_zip,pilot_zip):
                     "exact":89,"interval":31,"resolved_feasibility":120,
                     "recalculated_from_original_truth":True,
                     "new_model_fits":0,"new_truth_calls":0,"new_optimizer_calls":0}
-        return integrity,rows,fit_rows,summary
+        return integrity,rows,fit_rows,summary,influence
 
 
 def main():
     if len(sys.argv)!=4:raise SystemExit("usage: audit_ra_h_soc_crosspolicy_release.py PANEL_ZIP PILOT_ZIP NEW_DIR")
     out=Path(sys.argv[3])
     if out.exists():raise FileExistsError("Analysis output must be a NEW write-once directory")
-    integrity,rows,fits,summary=audit(sys.argv[1],sys.argv[2])
+    integrity,rows,fits,summary,influence=audit(sys.argv[1],sys.argv[2])
     out.mkdir(parents=True)
     write_json(out/"integrity.json",integrity)
     write_json(out/"case_seed_scores.json",summary)
+    write_json(out/"stratified_influence_and_brier.json",influence)
     write_csv(out/"paired_120_historical_recomputed.csv",rows,list(rows[0]))
     write_csv(out/"fit_48_heads.csv",fits,list(fits[0]))
     print(json.dumps({"independent_audit_passed":True,"integrity":integrity,
-                      "case_seed_scores":summary},allow_nan=False))
+                      "case_seed_scores":summary,
+                      "stratified_influence_and_brier":influence},allow_nan=False))
 
 
 if __name__=="__main__":
