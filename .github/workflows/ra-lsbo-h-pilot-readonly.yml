@@ -32,6 +32,8 @@ jobs:
           set -euo pipefail
           python -m py_compile tools/analyze_dualview_pilot_sealed.py
           python tools/analyze_dualview_pilot_sealed.py /tmp/ra_h/release.zip /tmp/ra_h/output | tee /tmp/ra_h/summary.json
+          python -m py_compile tools/analyze_dualview_guard_mechanism.py
+          python tools/analyze_dualview_guard_mechanism.py /tmp/ra_h/release.zip /tmp/ra_h/mechanism | tee /tmp/ra_h/mechanism_summary.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -39,5 +41,7 @@ jobs:
           path: |
             /tmp/ra_h/output/
             /tmp/ra_h/summary.json
+            /tmp/ra_h/mechanism/
+            /tmp/ra_h/mechanism_summary.json
           if-no-files-found: warn
           retention-days: 60
