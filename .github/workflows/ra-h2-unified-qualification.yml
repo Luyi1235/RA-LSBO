@@ -1,0 +1,84 @@
+name: RA-LSBO-H2 unified algorithm qualification — zero aircraft
+on:
+  push:
+    branches:
+      - research/ra-lsbo-h2-causal-risk-20261102
+    paths:
+      - '.github/workflows/ra-h2-unified-qualification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      MPLBACKEND: 'Agg'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Original CPU model dependencies and pytest
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Whole H2 test suite including actual mathematical GP fits
+        run: |
+          python -m pytest -q             tests/test_ra_h2_controller.py             tests/test_h2_risk_controller.py             tests/test_h2_optimizer_integration.py             tests/test_h2_synthetic_decision.py             tests/test_h2_commonstream.py             tests/test_aircraft_dualview.py             tests/test_ep_stability_candidate.py             --junitxml=/tmp/ra_h2_qualification.xml
+      - name: H2-B hard-head toy closed-loop, 2304 mathematical outcomes
+        run: |
+          python -m ra_lsbo.experiments.simplified_aircraft.h2_synthetic --output /tmp/ra_h2_brier_policy
+      - name: H2-M fixed candidate synthetic prequential, 3072 mathematical outcomes
+        run: |
+          python -m tools.run_h2_hierarchical_synthetic --output /tmp/ra_h2_logscore_common
+      - name: H2-M on-policy decision toy, 3072 mathematical outcomes
+        run: |
+          python -m tools.run_h2_synthetic_decision --output /tmp/ra_h2_logscore_policy
+      - name: H2-B versus H2-M shared forecast stream, 3072 mathematical outcomes
+        run: |
+          python -m tools.compare_h2_controllers_common_stream --output /tmp/ra_h2_cross_controller
+      - name: Seal explicit zero-aircraft charges and source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > /tmp/ra_h2_code_sha.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('/tmp/ra_h2_brier_policy/summary.json').read_text())
+          b=json.loads(Path('/tmp/ra_h2_logscore_common/registered_design.json').read_text())
+          c=json.loads(Path('/tmp/ra_h2_logscore_policy/registration.json').read_text())
+          d=json.loads(Path('/tmp/ra_h2_cross_controller/registration.json').read_text())
+          assert a['synthetic_truth_calls']==2304
+          assert b['new_aircraft_calls']==b['new_RCAIDE_calls']==b['new_GP_fits']==0
+          assert c['total_synthetic_truth_calls']==3072
+          assert d['synthetic_oracle_calls']==3072
+          assert c['new_aircraft_calls']==c['new_RCAIDE_calls']==c['new_GP_fits']==0
+          assert d['new_aircraft_calls']==d['new_RCAIDE_calls']==d['new_GP_fits']==0
+          print('All four distinct mathematical benchmarks sealed; aircraft and RCAIDE charges 0')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra-h2-unified-numerical-qualification
+          path: |
+            /tmp/ra_h2_qualification.xml
+            /tmp/ra_h2_code_sha.txt
+            /tmp/ra_h2_brier_policy/summary.json
+            /tmp/ra_h2_logscore_common/registered_design.json
+            /tmp/ra_h2_logscore_common/summary.json
+            /tmp/ra_h2_logscore_policy/registration.json
+            /tmp/ra_h2_logscore_policy/arm_comparisons.json
+            /tmp/ra_h2_cross_controller/registration.json
+            /tmp/ra_h2_cross_controller/summaries.json
+          retention-days: 60
+          if-no-files-found: warn
