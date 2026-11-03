@@ -36,9 +36,13 @@ def test_six_distinct_real_engine_constructors_without_evaluations(
     assert type(getattr(engine,"engine",engine)).__name__ != "SimulationAdapter"
 
 
-def test_seventh_arm_explicitly_unimplemented(tmp_path):
-    with pytest.raises(RuntimeError, match="CBOB-adapted is not implemented"):
-        create_engine("aircraft_ordinary",3,"cbob_adapted",tmp_path/"x")
+def test_seventh_arm_real_independent_adaptation_still_unqualified(tmp_path):
+    problem, engine, receipt = create_engine(
+        "aircraft_ordinary",3,"cbob_adapted",tmp_path/"x")
+    assert problem is not None and callable(engine.propose)
+    assert "EICB_independent" in receipt.origin_h1_method
+    assert receipt.authorization_to_evaluate is False
+    assert receipt.confirmed_for_experiment is False
     report = qualification_report()
     assert set(report) == set(ALL_REQUESTED) and len(report)==7
     assert all(not row["confirmatory_qualified"] for row in report.values())
@@ -137,7 +141,7 @@ def test_real_candidate_random_closed_loop_no_evaluator(monkeypatch,tmp_path):
                     reason="costly true surrogate/encoder fitting is explicit opt-in")
 @pytest.mark.parametrize(
     "method", ("full_onehot","full_latent","ra_lsbo",
-               "reverse_representation","interval_as_missing"))
+               "reverse_representation","interval_as_missing","cbob_adapted"))
 def test_real_candidate_gp_closed_loop_one_step(monkeypatch,tmp_path,method):
     from ra_lsbo.experiments.core.problems import AircraftCase
     monkeypatch.setattr(AircraftCase,"evaluate",forbidden)
