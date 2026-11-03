@@ -1,0 +1,48 @@
+name: RA-LSBO H2 P4 zero-aircraft evidence analysis
+on:
+  push:
+    branches: [analysis/h2-p4-decision-sensitivity-20261103]
+  pull_request:
+    branches: [results/h2-p3-windows-pilot-20261103]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+      H2_P4_OUTPUT: /tmp/h2-p4-output
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned analysis dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Download frozen historical archive
+        run: |
+          curl --fail --location --retry 3 --output /tmp/p3.zip \
+            https://github.com/Luyi1235/RA-LSBO/releases/download/h2-p3-windows-pilot-20261103/RA-LSBO-H2-P3-pilot-evidence-20261103_01.zip
+          echo 'bd170195201b45942e4fe2c2e04e1e994263bb0a4566a467b28816cdce0473b4  /tmp/p3.zip' | sha256sum -c -
+      - name: Reconstruct from existing evidence only
+        run: python tools/h2_p4_decision_sensitivity.py --archive /tmp/p3.zip --output "$H2_P4_OUTPUT"
+      - name: Verify mathematical and causal diagnostics
+        run: |
+          python -m pytest -q tests/test_h2_p4_decision_sensitivity.py \
+            tests/test_h2_risk_controller.py tests/test_h2_metrics.py tests/test_h2_p3_ablation.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-p4-offline-diagnosis
+          path: /tmp/h2-p4-output/
+          if-no-files-found: warn
