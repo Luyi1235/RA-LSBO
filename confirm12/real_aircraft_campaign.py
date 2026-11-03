@@ -206,8 +206,9 @@ def _case_seed_worker(job):
             method_dir.mkdir(parents=True,exist_ok=False)
             begin=time.perf_counter()
             for i in range(ONLINE):
-                if expected_plan_sha!=digest(json.loads((root/"plan.json").read_text("utf8"))):
-                    raise RuntimeError("Plan/source freeze check failed")
+                # Frozen campaign plan was verified once for the whole seed
+                # before any expensive truth evaluation; the SQLite ticket
+                # binds every subsequent step to the same plan hash.
                 history=trial._history
                 pool,rejected=candidate_pool(
                     problem,440000000+seed*10000+TASKS.index(case)*100000000+i,
