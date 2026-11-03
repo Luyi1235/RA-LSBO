@@ -131,3 +131,43 @@ def test_full_run_rejects_implicit_worker_reduction(tmp_path):
     with pytest.raises(ValueError,match="exactly 12"):
         campaign.run(tmp_path/"never_created",workers=8)
     assert not (tmp_path/"never_created").exists()
+
+
+def test_genuine_evaluator_route_with_mocked_aircraft_no_physics(monkeypatch,tmp_path):
+    """Exercise the production path, but forbid expensive physical work in CI."""
+    from ra_lsbo.experiments.core.problems import AircraftCase
+    case="aircraft_ordinary";seed=31
+    plan=_plan(case,seed)
+    db=tmp_path/"route.sqlite"
+    ledger.create(db,plan)
+    problem=problem_for(case)
+    value=problem.space.default().to_dict()
+    called=[]
+    def fake_evaluate(self,design):
+        called.append(digest(design))
+        outputs=dict(self.precheck(design))
+        outputs.update({name:-.1 for name in self.required_constraints
+                        if name not in self.analytical_constraints})
+        return self.record(design,32000.,outputs,
+                           {"mock_evaluator_route_not_truth":True})
+    monkeypatch.setattr(AircraftCase,"evaluate",fake_evaluate)
+    actual=campaign._real_evaluate(db,problem,case,seed,"initial","",0,value)
+    assert called==[digest(value)]
+    audit=ledger.audit(db,plan)
+    assert audit["ledger_contract_passed"],audit
+    assert audit["calls"]==1
+    assert actual.diagnostics["confirm12_real_call"]["evaluator"]=="AircraftCase.evaluate"
+    assert audit["scientific_qualification_inferred"] is False
+
+
+def test_stopped_truth_ledger_never_dispatches_more_calls(tmp_path):
+    case="aircraft_ordinary";seed=781
+    p=_plan(case,seed)
+    db=tmp_path/"stop.sqlite"
+    ledger.create(db,p)
+    ledger.stop(db)
+    problem=problem_for(case)
+    with pytest.raises(RuntimeError,match="stopped"):
+        ledger.start(db,case,seed,"initial","",0,
+                     problem.space.default().to_dict(),problem)
+    assert ledger.audit(db,p)["ledger_state"]=="INCOMPLETE"
