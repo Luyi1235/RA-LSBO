@@ -46,7 +46,7 @@ def load_shared_initial(path, expected_plan, case, seed):
 
 class OfflineLedgerTrial:
     """Real H1 propose and accept, fake/archived feedback supplied separately."""
-    def __init__(self, db_path, frozen_plan, case, seed, historical_method, output):
+    def __init__(self, db_path, frozen_plan, case, seed, historical_method, output, *, engine_builder=None):
         allowed = frozen_plan["cases"][case]["arms_by_seed"].get(str(seed), [])
         if historical_method not in allowed:
             raise ValueError("Historical method not registered for this seed")
@@ -54,7 +54,8 @@ class OfflineLedgerTrial:
         self.case, self.seed, self.method = case, seed, historical_method
         self.policy = OfflineHistoricalTrial(
             case,seed,historical_method,output,
-            load_shared_initial(db_path,frozen_plan,case,seed))
+            load_shared_initial(db_path,frozen_plan,case,seed),
+            engine_builder=engine_builder)
         self.ticket = None
         self.failed = False
 

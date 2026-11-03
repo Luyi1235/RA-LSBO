@@ -13,8 +13,11 @@ from .real_legacy_adapters import build_historical_engine
 
 
 class OfflineHistoricalTrial:
-    def __init__(self, case, seed, method, output, initial_records):
-        self.problem, self.engine, self.probe = build_historical_engine(case, seed, method, output)
+    def __init__(self, case, seed, method, output, initial_records, *, engine_builder=None):
+        # Optional factory is for proposed real BO engine *offline* analysis.
+        # Existing historical trials still use exactly the frozen H1 factory.
+        builder = build_historical_engine if engine_builder is None else engine_builder
+        self.problem, self.engine, self.probe = builder(case, seed, method, output)
         self._history = []
         self._pending = None
         self._failed = False
