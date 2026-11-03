@@ -8,8 +8,15 @@ import math
 from pathlib import Path
 import sqlite3
 
-from ra_lsbo.budget import digest
+from ra_lsbo.budget import digest as _json_digest
 from ra_lsbo.partial_bo.records import DesignRecord
+from ra_lsbo.experiments.core.runner import plain
+
+
+def digest(value):
+    # Real aircraft diagnostics contain numpy scalar/array values. Preserve
+    # numeric contents exactly, rather than raising after the true model ran.
+    return _json_digest(plain(value))
 
 SCHEMA = "ra_lsbo_real_aircraft_campaign_ledger_v1"
 SCOPE = "REAL_AIRCRAFT_USER_INITIATED"
@@ -18,7 +25,7 @@ KNOWN_TERMINAL = ("settled", "unknown")
 
 
 def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return json.dumps(plain(value), sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
 def _validate_plan(plan):
