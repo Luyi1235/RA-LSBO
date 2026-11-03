@@ -9,6 +9,7 @@ on:
       - 'confirm12/offline_historical_trial.py'
       - 'confirm12/offline_ledger_trial.py'
       - 'tests/test_confirm12_real_candidate_engines.py'
+      - 'tests/test_confirm12_six_arm_shared_ledger.py'
       - '.github/workflows/ra-confirm12-real-six-arm.yml'
 permissions:
   contents: read
@@ -22,6 +23,7 @@ jobs:
       OPENBLAS_NUM_THREADS: '1'
       PYTHONHASHSEED: '0'
       CONFIRM12_RUN_REAL_SIX_GP: '1'
+      CONFIRM12_TEST_SIX_ARM_LEDGER: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,4 +38,4 @@ jobs:
           python -m pip check
       - name: Run real H1-derived GP/VAE BO one-step and original tests, no evaluator
         run: |
-          python -m pytest -q tests/test_confirm12_real_candidate_engines.py tests/test_confirm12_offline_historical_trial.py tests/test_confirm12_offline_ledger_trial.py tests/test_confirm12_structured_record_ledger.py
+          python -m pytest -q tests/test_confirm12_real_candidate_engines.py tests/test_confirm12_six_arm_shared_ledger.py tests/test_confirm12_offline_historical_trial.py tests/test_confirm12_offline_ledger_trial.py tests/test_confirm12_structured_record_ledger.py
