@@ -65,6 +65,7 @@ def preflight():
             'hardware': hardware(),
             'workers_default': 12, 'main_maximum': MAIN_MAX, 'aux_maximum': AUX_MAX,
             'total_maximum': MAIN_MAX + AUX_MAX, 'new_aircraft_calls': 0, 'new_rcaide_calls': 0,
+            'confirmation_wall_time_limit_seconds': None,
             'algorithm_qualification': adapters.QUALIFICATION,
             'qualification_review': review,
             'execution_ready': False, 'blockers': [
@@ -72,7 +73,7 @@ def preflight():
                 'historical seed clearance and task qualification incomplete',
                 'seven actual algorithm adapters and CBOB qualification incomplete',
                 'synthetic ledger has not been certified for real truth calls',
-                'real-load throughput and 24-hour resource gate not established',
+                '12-worker real optimizer memory, isolation and long-run stability not established',
                 'phase-specific signed-off execution receipt not implemented',
             ]}
 
@@ -82,7 +83,8 @@ def main():
     parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'proposed_plan', 'legacy_probe', 'execute'), default='preflight')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--workers', type=int, default=12)
-    parser.add_argument('--max-wall-seconds', type=float, default=86400)
+    parser.add_argument('--max-wall-seconds', type=float, default=86400,
+                        help='deadline for the optional simulation mode only; not a confirmation limit')
     args = parser.parse_args()
     print(json.dumps(preflight(), indent=2), flush=True)
     if args.mode == 'proposed_plan':

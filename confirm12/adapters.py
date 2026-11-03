@@ -6,7 +6,7 @@ QUALIFICATION = {
     'ra_lsbo': ('BLOCKED', 'output/evidence-sensitive method not frozen or qualified'),
     'full_latent': ('BLOCKED', 'historical corpus optimizer exists; confirmation adapter not qualified'),
     'full_onehot': ('BLOCKED', 'historical one-hot optimizer exists; confirmation adapter not qualified'),
-    'reverse_representation': ('BLOCKED', 'reverse assignment not implemented or qualified'),
+    'reverse_representation': ('BLOCKED', 'candidate view routing exists; full adapter and fallback not qualified'),
     'interval_as_missing': ('BLOCKED', 'ablation semantics not frozen or qualified'),
     'random': ('BLOCKED', 'historical random exists; common q_A and call contract not qualified'),
     'cbob_adapted': ('BLOCKED', 'CBOB reference, mixed-variable and feedback adaptation not qualified'),
