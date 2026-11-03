@@ -26,6 +26,44 @@ TEST_SEEDS={"aircraft_ordinary":918001,"aircraft_sparse":918002}
 def _forbidden(*args,**kwargs):
     raise RuntimeError("OFFLINE only: aircraft evaluator must never run")
 
+def _process_peak_rss_bytes():
+    """Best available per-process peak, never a system-simultaneous memory claim."""
+    import sys
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            class Counters(ctypes.Structure):
+                _fields_ = [
+                    ("cb",ctypes.c_ulong), ("PageFaultCount",ctypes.c_ulong),
+                    ("PeakWorkingSetSize",ctypes.c_size_t),
+                    ("WorkingSetSize",ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage",ctypes.c_size_t),
+                    ("QuotaPagedPoolUsage",ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage",ctypes.c_size_t),
+                    ("QuotaNonPagedPoolUsage",ctypes.c_size_t),
+                    ("PagefileUsage",ctypes.c_size_t),
+                    ("PeakPagefileUsage",ctypes.c_size_t),
+                ]
+            counter=Counters()
+            counter.cb=ctypes.sizeof(Counters)
+            if ctypes.windll.psapi.GetProcessMemoryInfo(
+                ctypes.windll.kernel32.GetCurrentProcess(),
+                ctypes.byref(counter), counter.cb
+            ):
+                return int(counter.PeakWorkingSetSize)
+        except (OSError,AttributeError):
+            return None
+    else:
+        try:
+            import resource
+            kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # Linux ru_maxrss reports KiB; macOS reports bytes.
+            return int(kb*(1 if sys.platform=="darwin" else 1024))
+        except (OSError,ImportError):
+            pass
+    return None
+
+
 
 def _patch_physics():
     # Called independently inside each spawned worker, before construction.
@@ -112,6 +150,7 @@ def _worker(job):
         "is_actual_candidate_policy":True,
         "flight_simulations":0,
         "run_seconds":time.perf_counter()-started,
+        "worker_peak_rss_bytes":_process_peak_rss_bytes(),
         "pool_rejected_geometry":rejected,
     }
     path=output/case/str(seed)/method
@@ -175,6 +214,11 @@ def run(output,workers=12):
         "completed_policy_steps":len(results),
         "expected_policy_steps":len(jobs),
         "total_fake_records_charged":audit["calls"],
+        "worker_processes_seen":len({row["pid"] for row in results}),
+        "max_reported_single_worker_peak_rss_bytes":max(
+            (row["worker_peak_rss_bytes"] or 0) for row in results
+        ) if results else 0,
+        "peak_rss_not_simultaneous_system_sample": True,
         "atomic_ledger_contract_passed":audit["ledger_contract_passed"],
         "errors":errors,
         "audit_errors":audit["errors"],
