@@ -203,7 +203,10 @@ def _case_seed_worker(job):
             # Must not pre-create method_dir; the frozen H1 adapter checks it.
             trial=OfflineCandidateTrial(
                 case,seed,method,method_dir,initial)
-            method_dir.mkdir(parents=True,exist_ok=False)
+            # The original engine may have created this new method directory
+            # while initializing a corpus session; the campaign root was
+            # exclusively created, so no prior experiment can be overwritten.
+            method_dir.mkdir(parents=True,exist_ok=True)
             begin=time.perf_counter()
             for i in range(ONLINE):
                 # Frozen campaign plan was verified once for the whole seed
