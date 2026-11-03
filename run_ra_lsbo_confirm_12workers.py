@@ -79,12 +79,49 @@ def preflight():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'execute'), default='preflight')
+    parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'proposed_plan', 'legacy_probe', 'execute'), default='preflight')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--workers', type=int, default=12)
     parser.add_argument('--max-wall-seconds', type=float, default=86400)
     args = parser.parse_args()
     print(json.dumps(preflight(), indent=2), flush=True)
+    if args.mode == 'proposed_plan':
+        from confirm12.nested_seed_plan import write_candidate_plan
+        if args.output is None:
+            parser.error('proposed_plan requires a new --output directory')
+        args.output.mkdir(parents=True, exist_ok=False)
+        name = args.output / 'proposed_nested_confirmation_plan.json'
+        plan_hash = write_candidate_plan(name)
+        print(json.dumps({'plan_sha256': plan_hash, 'path': str(name),
+                          'execution_authorized': False,
+                          'note': 'Candidate roster requires historical seed, methods, task and budget approval'}, indent=2))
+        return
+    if args.mode == 'legacy_probe':
+        from dataclasses import asdict
+        from unittest.mock import patch
+        from ra_lsbo.experiments.core.problems import AircraftCase
+        from ra_lsbo.structure_corpus import CorpusRepresentation
+        from confirm12.real_legacy_adapters import LEGACY_METHODS, build_historical_engine
+        if args.output is None:
+            parser.error('legacy_probe requires a new --output directory')
+        args.output.mkdir(parents=True, exist_ok=False)
+        def forbidden(*unused_args, **unused_kwargs):
+            raise RuntimeError('No model evaluation or encoder training allowed in legacy_probe')
+        receipts = []
+        with patch.object(AircraftCase, 'evaluate', forbidden), patch.object(
+                CorpusRepresentation, 'fit', forbidden):
+            for case, seed in (('aircraft_ordinary', 390001),
+                               ('aircraft_sparse', 390002)):
+                for method in sorted(LEGACY_METHODS):
+                    _, _, receipt = build_historical_engine(
+                        case, seed, method, args.output / case / method)
+                    receipts.append(asdict(receipt))
+        result = {'status': 'LEGACY_INTERFACE_ONLY', 'new_truth_calls': 0,
+                  'execution_authorized': False, 'legacy_engines': receipts}
+        with (args.output / 'legacy_adapter_probe.json').open('x', encoding='utf-8') as stream:
+            json.dump(result, stream, indent=2)
+        print(json.dumps(result, indent=2))
+        return
     if args.mode == 'execute':
         raise RuntimeError('REAL EXECUTION DISABLED: missing algorithms, qualification, certified accounting and approval gate')
     if args.mode == 'qualification':
