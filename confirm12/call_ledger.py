@@ -60,6 +60,8 @@ def create(path, plan):
 def _identity(plan, case, seed, role, arm, index):
     if case not in plan['cases'] or type(seed) is not int or seed not in plan['seeds']:
         raise ValueError('unregistered case or seed')
+    if 'seeds_by_case' in plan and seed not in plan['seeds_by_case'].get(case, []):
+        raise ValueError('seed not registered for this task')
     if type(index) is not int:
         raise ValueError('invalid index')
     if role == 'initial':
