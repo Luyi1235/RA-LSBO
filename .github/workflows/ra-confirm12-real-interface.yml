@@ -1,0 +1,38 @@
+name: RA-LSBO confirm12 real legacy interface, zero aircraft
+on:
+  push:
+    branches: [research/confirm12-real-adapter-bridge-20261103]
+  pull_request:
+    paths:
+      - 'confirm12/real_legacy_adapters.py'
+      - 'confirm12/nested_seed_plan.py'
+      - 'tests/test_confirm12_real_legacy_adapters.py'
+      - 'tests/test_confirm12_nested_seed_plan.py'
+      - 'run_ra_lsbo_confirm_12workers.py'
+      - '.github/workflows/ra-confirm12-real-interface.yml'
+permissions:
+  contents: read
+jobs:
+  zero-aircraft-native-interface:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the historical optimizer dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Check frozen H1 classes and 151040-call plan without evaluations
+        run: |
+          python -m pytest -q tests/test_confirm12_real_legacy_adapters.py tests/test_confirm12_nested_seed_plan.py
