@@ -1,0 +1,22 @@
+name: Zero-call Windows spawn preflight
+on:
+  pull_request:
+    paths:
+      - 'run_ra_lsbo_pycharm.py'
+      - 'offline_parallel.py'
+      - 'tests/test_pycharm_parallel.py'
+      - '.github/workflows/ra-pycharm-parallel-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  spawn:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_pycharm_parallel.py
