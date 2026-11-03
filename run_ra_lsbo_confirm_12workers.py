@@ -73,7 +73,7 @@ def preflight():
                 'historical seed clearance and task qualification incomplete',
                 'seven actual algorithm adapters and CBOB qualification incomplete',
                 'synthetic ledger has not been certified for real truth calls',
-                '12-worker real optimizer memory, isolation and long-run stability not established',
+                'seven-arm 12-worker memory, isolation and long-run stability not qualified; no 24-hour requirement',
                 'phase-specific signed-off execution receipt not implemented',
             ]}
 
