@@ -1,8 +1,9 @@
-"""Six genuinely different BO policy *candidates* backed by the original H1 code.
+"""Seven BO policy *candidates*: six H1-derived and one EICB adaptation.
 
 Not a confirmatory authorization. Four methods reuse the frozen H1 code,
-and two implement explicit experimental changes. CBOB-adapted remains
-unavailable until a traceable reference port is independently accepted.
+and two implement explicit experimental changes. The seventh method is an
+independent adapted EICB scorer on the same EP/one-hot model, not a copy of
+the official CBOB GPy implementation and not yet scientifically qualified.
 Nothing in this module imports an evaluator at module import or calls
 AircraftCase.evaluate.
 
@@ -34,8 +35,7 @@ CANDIDATE_ARMS = (
     "ra_lsbo", "full_latent", "full_onehot",
     "reverse_representation", "interval_as_missing", "random",
 )
-EXTERNAL_UNQUALIFIED = ("cbob_adapted",)
-ALL_REQUESTED = CANDIDATE_ARMS + EXTERNAL_UNQUALIFIED
+ALL_REQUESTED = CANDIDATE_ARMS + ("cbob_adapted",)
 
 
 class IntervalMissingHybridCandidate(StableCorpusDiscoveryBO):
@@ -116,11 +116,8 @@ def create_engine(case, seed, method, output):
     """Construct genuine BO policy, but never grant production qualification."""
     if method not in ALL_REQUESTED:
         raise ValueError("Unregistered confirmatory BO method: " + str(method))
-    if method == "cbob_adapted":
-        raise RuntimeError(
-            "CBOB-adapted is not implemented: upstream license, likelihood/EP, "
-            "EICB, mixed hierarchy and feedback-contract parity must be reviewed")
-    if case not in ("aircraft_ordinary", "aircraft_sparse"):
+    # The adapted method is real code but remains explicitly unqualified.
+    # Do not label it an upstream source-code reproduction.    if case not in ("aircraft_ordinary", "aircraft_sparse"):
         raise ValueError("Unregistered aircraft task")
     if type(seed) is not int or seed < 0:
         raise ValueError("Unregistered seed")
@@ -137,6 +134,13 @@ def create_engine(case, seed, method, output):
     source = H1_SOURCE.get(method)
     if source is not None:
         engine = h1.engine_for(problem, source, seed, profile, output)
+    elif method == "cbob_adapted":
+        from .cbob_eicb_candidate import CBOBAdaptedResearchCandidate
+        settings = h1.model_settings("onehot_stable", profile)
+        engine = Labelled(
+            CBOBAdaptedResearchCandidate(problem, h1.BASE, seed, settings, output),
+            method)
+        source = "CBOB_EICB_independent_formula_EP_mixed_domain_adaptation"
     else:
         settings = h1.model_settings("hybrid_onehot", profile)
         factory = (ReverseRepresentationCandidate if method == "reverse_representation"
@@ -161,7 +165,7 @@ def qualification_report():
         method: {
             "engine_construction": ("real_H1_or_candidate"
                                     if method in CANDIDATE_ARMS
-                                    else "not_implemented"),
+                                    else "independent_EICB_CBOB_adaptation"),
             "source_method": H1_SOURCE.get(method),
             "confirmatory_qualified": False,
             "physical_evaluation_enabled": False,
