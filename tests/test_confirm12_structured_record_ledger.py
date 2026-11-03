@@ -1,5 +1,6 @@
 """No aircraft calls: tests use authentic DesignRecord objects fabricated in memory."""
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import multiprocessing
 import sqlite3
 import pytest
 
@@ -50,6 +51,13 @@ def record(i, contract="contract20_00000000", *, status="completed"):
     constraints = (("soc",OutputObservation("exact",evid+":soc", value=-.1)),)
     run = RunObservation(digest(c), contract, evid, status, objective, constraints)
     return DesignRecord(c, run, {"offline_fixture_no_physics":True})
+
+
+def process_ticket(job):
+    path, seed = job
+    cid = l.start(path, 'aircraft_ordinary', seed, 'initial', '', 0, candidate(seed), FakeProblem())
+    l.settle(path, cid, record(seed))
+    return cid
 
 
 def test_12_initials_and_first_online_use_real_record_contract(tmp_path):
@@ -129,8 +137,43 @@ def test_12_thread_concurrent_independent_initial_tickets(tmp_path):
     assert report["calls"]==12
 
 
+def test_12_spawn_processes_charge_independent_structured_records_once(tmp_path):
+    path = tmp_path / 'processes.sqlite'
+    p = plan(seeds=tuple(range(201, 213)), maximum=12)
+    l.create(path, p)
+    with ProcessPoolExecutor(max_workers=12, mp_context=multiprocessing.get_context('spawn')) as pool:
+        ids = list(pool.map(process_ticket, [(path, i) for i in range(201, 213)]))
+    assert len(ids) == len(set(ids)) == 12
+    result = l.audit(path, p)
+    assert result['ledger_contract_passed'] and result['states'] == {'settled': 12}
+    assert not result['production_approved'] and not result['real_physics_provenance_verified']
+
+
 def test_validation_only_scope_rejects_production_flag(tmp_path):
     p=plan()
     p["execution_authorized"]=True
     with pytest.raises(ValueError,match="No real-campaign authorization"):
         l.create(tmp_path/"never_created.sqlite",p)
+
+
+@pytest.mark.parametrize('verification_index,expected', [(0, True), (99, False)])
+def test_independent_reconciliation_checks_nominal_incumbent(tmp_path, verification_index, expected):
+    from confirm12 import structured_reconciliation
+    path = tmp_path / 'ledger.sqlite'
+    p = plan(maximum=31)
+    l.create(path, p)
+    for i in range(12):
+        cid = l.start(path, 'aircraft_ordinary', 42, 'initial', '', i, candidate(i), FakeProblem())
+        l.settle(path, cid, record(i))
+    for i in range(18):
+        cid = l.start(path, 'aircraft_ordinary', 42, 'online', 'real_random', i, candidate(100+i), FakeProblem())
+        l.settle(path, cid, record(100+i))
+    cid = l.start(path, 'aircraft_ordinary', 42, 'verification', 'real_random', 0,
+                  candidate(verification_index), FakeProblem('contract05_00000000'))
+    l.settle(path, cid, record(verification_index, contract='contract05_00000000'))
+    assert l.audit(path, p)['ledger_contract_passed']
+    result = structured_reconciliation.audit(path, p)
+    assert result['structural_reconciliation_passed'] is expected
+    assert not result['production_approved'] and not result['real_physics_provenance_verified']
+    if not expected:
+        assert 'verification differs from nominal best feasible design' in result['errors']

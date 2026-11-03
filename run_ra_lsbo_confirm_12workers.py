@@ -60,6 +60,12 @@ def preflight():
         review = qualification.inspect(ROOT / 'results/iid-qualification-preflight-20261103/plan.json')
     except Exception as error:
         review = {'qualification_ready': False, 'error': type(error).__name__ + ': ' + str(error)}
+    try:
+        from confirm12.aircraft_contract_preflight import inspect as inspect_aircraft_contracts
+        aircraft_contracts = inspect_aircraft_contracts()
+    except Exception as error:
+        aircraft_contracts = {'task_qualified': False, 'production_authorized': False,
+                              'error': type(error).__name__ + ': ' + str(error)}
     return {'mode': 'preflight', 'platform': platform.platform(), 'python': sys.executable,
             'logical_cpu': os.cpu_count(), 'disk_free_bytes': shutil.disk_usage(ROOT).free,
             'hardware': hardware(),
@@ -68,6 +74,7 @@ def preflight():
             'confirmation_wall_time_limit_seconds': None,
             'algorithm_qualification': adapters.QUALIFICATION,
             'qualification_review': review,
+            'aircraft_contract_preflight': aircraft_contracts,
             'execution_ready': False, 'blockers': [
                 'no frozen independent 1024-seed plan or 256-seed subset',
                 'historical seed clearance and task qualification incomplete',
