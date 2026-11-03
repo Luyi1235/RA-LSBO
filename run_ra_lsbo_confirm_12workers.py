@@ -141,7 +141,19 @@ def main():
         print(json.dumps(output, indent=2, default=str, ensure_ascii=False))
         return
     if args.mode == 'execute':
-        raise RuntimeError('REAL EXECUTION DISABLED: missing algorithms, qualification, certified accounting and approval gate')
+        # This is the *actual* user-initiated reduced-aircraft campaign.
+        # No synthetic evaluator is ever used on this route.
+        from datetime import datetime, timezone
+        from confirm12.real_aircraft_campaign import run as true_campaign
+        if args.output is None:
+            stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+            args.output = ROOT / 'results' / ('true_aircraft_12workers_' + stamp)
+        print('STARTING GENUINE AircraftCase.evaluate(), 12 workers,'
+              ' max 151040 calls; scientific status PROVISIONAL',
+              flush=True)
+        result = true_campaign(args.output, workers=args.workers)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return
     if args.mode == 'qualification':
         from confirm12 import qualification
         print(json.dumps(qualification.inspect(ROOT / 'results/iid-qualification-preflight-20261103/plan.json'), indent=2))
