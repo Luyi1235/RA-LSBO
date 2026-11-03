@@ -119,7 +119,7 @@ def create(path, plan):
     with _db(path, write=True) as db:
         db.executemany("INSERT INTO meta VALUES (?,?)", (
             ("plan",canonical(plan)),("plan_sha",digest(plan)),
-            ("state","RUNNING_REAL"),("scope",SCOPE)))
+            ("state","RUNNING_REAL"),("scope",SCOPE),("charged_count","0")))
         _event(db,"campaign","created",digest(plan))
 
 
@@ -145,7 +145,9 @@ def start(path, case, seed, role, arm, index, candidate, problem):
     """Reserve a global call ticket before physical evaluation."""
     with _db(path, write=True) as db:
         meta = dict(db.execute("SELECT key,value FROM meta"))
-        plan = _validate_plan(json.loads(meta["plan"]))
+        # The plan was fully validated at write-once creation; only its
+        # immutable SHA and this ticket identity are checked per new call.
+        plan = json.loads(meta["plan"])
         if digest(plan) != meta["plan_sha"] or meta["state"] != "RUNNING_REAL":
             raise RuntimeError("Frozen plan changed or ledger stopped")
         ident = _identity(plan,case,seed,role,arm,index)
@@ -156,7 +158,7 @@ def start(path, case, seed, role, arm, index, candidate, problem):
         values = list(problem.precheck(candidate).values())
         if any(not math.isfinite(float(v)) or v > 0 for v in values):
             raise ValueError("Analytically invalid candidate")
-        if db.execute("SELECT count(*) FROM calls").fetchone()[0] >= plan["max_calls"]:
+        if int(meta["charged_count"]) >= plan["max_calls"]:
             raise RuntimeError("Global call cap exceeded")
         if role != "initial":
             n = db.execute("SELECT count(*) FROM calls WHERE case_name=? AND seed=? AND role='initial' AND state='settled'",
@@ -178,6 +180,8 @@ def start(path, case, seed, role, arm, index, candidate, problem):
                    (call_id,case,seed,role,arm,index,canonical(candidate),
                     candidate_hash,contract,"started",None,None))
         _event(db,call_id,"started",candidate_hash)
+        db.execute("UPDATE meta SET value=? WHERE key='charged_count'",
+                   (str(int(meta["charged_count"])+1),))
     return call_id
 
 
@@ -226,7 +230,13 @@ def audit(path, expected_plan):
     with _db(path) as db:
         meta = dict(db.execute("SELECT key,value FROM meta"))
         events = db.execute("SELECT seq,call_id,kind,payload,prev,chain FROM events ORDER BY seq").fetchall()
-        rows = db.execute("SELECT id,case_name,seed,role,arm,idx,candidate,candidate_hash,contract,state,record,record_hash FROM calls").fetchall()
+    # Stream large physical traces instead of materializing up to 151040
+    # full DesignRecord JSON strings in the parent's 32GiB RAM.
+    def stream_calls():
+        with _db(path) as source:
+            yield from source.execute(
+                "SELECT id,case_name,seed,role,arm,idx,candidate,candidate_hash,"
+                "contract,state,record,record_hash FROM calls")
     errors = []
     if (meta.get("plan") != canonical(expected_plan) or meta.get("plan_sha") != digest(expected_plan)
             or meta.get("scope") != SCOPE):
@@ -242,13 +252,16 @@ def audit(path, expected_plan):
     if event_map.pop("campaign",None) != [("created",digest(expected_plan))]:
         errors.append("Missing campaign creation receipt")
     statuses = {}
-    if len(rows) > expected_plan["max_calls"]:
-        errors.append("Budget exceeded")
-    for cid,case,seed,role,arm,index,raw,chash,contract,status,raw_record,rhash in rows:
+    count=0
+    plan_hash=digest(expected_plan)
+    for cid,case,seed,role,arm,index,raw,chash,contract,status,raw_record,rhash in stream_calls():
+        count+=1
+        if count > expected_plan["max_calls"]:
+            errors.append("Budget exceeded")
         statuses[status] = statuses.get(status,0)+1
         try:
             ident = _identity(expected_plan,case,seed,role,arm,index)
-            expected_id = digest({"plan_sha":digest(expected_plan),"call":ident})
+            expected_id = digest({"plan_sha":plan_hash,"call":ident})
             expected_contract = expected_plan["cases"][case]["contracts"]["5s" if role=="verification" else "20s"]
             if cid != expected_id or digest(json.loads(raw)) != chash or contract != expected_contract:
                 errors.append("Call identity/contract mismatch")
@@ -275,7 +288,9 @@ def audit(path, expected_plan):
         errors.append("Orphan evidence events")
     if statuses.get("started",0) or statuses.get("unknown",0):
         errors.append("Unsettled or unknown physical evidence")
-    return {"ledger_contract_passed":not errors,"errors":errors,"calls":len(rows),
+    if int(meta.get("charged_count","-1")) != count:
+        errors.append("Charged-counter and event-call count mismatch")
+    return {"ledger_contract_passed":not errors,"errors":errors,"calls":count,
             "states":statuses,"ledger_state":meta.get("state"),
             "event_chain_head":prev,"scope":SCOPE,
             "evaluator_receipts_consistent":not errors,
