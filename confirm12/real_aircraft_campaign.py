@@ -24,7 +24,14 @@ from . import real_call_ledger as ledger
 from .nested_seed_plan import candidate_plan
 from .real_candidate_engines import ALL_REQUESTED
 from . import design
-from ra_lsbo.budget import digest
+from ra_lsbo.budget import digest as _json_digest
+from ra_lsbo.experiments.core.runner import plain
+
+
+def digest(value):
+    # Physical trace dictionaries can contain numpy scalars/arrays.
+    return _json_digest(plain(value))
+
 
 TASKS=("aircraft_ordinary","aircraft_sparse")
 SHARED_INITIAL=12
@@ -135,7 +142,7 @@ def _real_evaluate(db,problem,case,seed,role,arm,index,candidate):
         actual=problem.evaluate(candidate)
         if not isinstance(actual,DesignRecord):
             raise TypeError("AircraftCase.evaluate did not return DesignRecord")
-        record=replace(actual,diagnostics={
+        record=replace(actual,diagnostics=plain({
             **actual.diagnostics,
             "confirm12_real_call":{
                 "call_id":ticket,
@@ -145,7 +152,7 @@ def _real_evaluate(db,problem,case,seed,role,arm,index,candidate):
                 "case":case,"seed":seed,"role":role,
                 "arm":arm,"index":index,
             },
-        })
+        }))
         state=ledger.settle(db,ticket,record)
         if state!="settled":
             raise RuntimeError("Unknown evaluator outcome; global ledger marked incomplete")
