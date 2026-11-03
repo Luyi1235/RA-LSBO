@@ -217,7 +217,7 @@ def settle(path, call_id, record):
 
 def stop(path):
     with _db(path, write=True) as db:
-        db.execute("UPDATE meta SET value='INCOMPLETE' WHERE key='state' AND value='RUNNING_VALIDATION'")
+        db.execute("UPDATE meta SET value='INCOMPLETE' WHERE key='state' AND value='RUNNING_REAL'")
 
 
 def audit(path, expected_plan):
