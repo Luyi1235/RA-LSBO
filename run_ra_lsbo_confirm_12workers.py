@@ -87,7 +87,7 @@ def preflight():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'proposed_plan', 'legacy_probe', 'execute'), default='preflight')
+    parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'proposed_plan', 'legacy_probe', 'offline_actual_seven', 'execute'), default='preflight')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--workers', type=int, default=12)
     parser.add_argument('--max-wall-seconds', type=float, default=86400,
@@ -130,6 +130,15 @@ def main():
         with (args.output / 'legacy_adapter_probe.json').open('x', encoding='utf-8') as stream:
             json.dump(result, stream, indent=2)
         print(json.dumps(result, indent=2))
+        return
+    if args.mode == 'offline_actual_seven':
+        # The seven *real* BO codes run against fabricated evidence only.
+        # Deliberately separate from any physical model execution route.
+        if args.output is None:
+            parser.error('offline_actual_seven requires a new --output directory')
+        from confirm12.offline_actual_seven_spawn import run as offline_workload
+        output = offline_workload(args.output, workers=args.workers)
+        print(json.dumps(output, indent=2, default=str, ensure_ascii=False))
         return
     if args.mode == 'execute':
         raise RuntimeError('REAL EXECUTION DISABLED: missing algorithms, qualification, certified accounting and approval gate')
