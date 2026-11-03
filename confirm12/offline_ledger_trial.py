@@ -20,20 +20,27 @@ def load_shared_initial(path, expected_plan, case, seed):
     if seed not in expected_plan["cases"][case]["seeds"]:
         raise ValueError("Unregistered seed")
     with sqlite3.connect(str(path)) as db:
+        db.execute('BEGIN')
         meta = dict(db.execute("SELECT key,value FROM meta"))
         if meta["plan_sha"] != digest(expected_plan) or meta["scope"] != ledger.SCOPE:
             raise RuntimeError("Frozen plan identity changed")
         rows = db.execute(
-            "SELECT idx,record,state,candidate FROM calls WHERE case_name=? "
+            "SELECT idx,record,state,candidate,record_hash,contract,id FROM calls WHERE case_name=? "
             "AND seed=? AND role='initial' AND arm='' ORDER BY idx",
             (case,seed)).fetchall()
+        events = {cid: db.execute('SELECT kind,payload FROM events WHERE call_id=? ORDER BY seq',
+                                  (cid,)).fetchall() for *_, cid in rows}
     if len(rows) != 12 or [row[0] for row in rows] != list(range(12)):
         raise RuntimeError("Exactly twelve sequential shared initial records required")
-    if any(state != "settled" for _,_,state,_ in rows):
+    if any(state != "settled" for _,_,state,_,_,_,_ in rows):
         raise RuntimeError("Unsettled initial record cannot train an optimizer")
-    records = [DesignRecord.from_dict(json.loads(blob)) for _,blob,_,_ in rows]
-    if any(row.candidate != json.loads(raw) for row,(_,_,_,raw) in zip(records,rows)):
-        raise RuntimeError("Ledger initial observations do not match frozen candidates")
+    records = [DesignRecord.from_dict(json.loads(blob)) for _,blob,_,_,_,_,_ in rows]
+    contract = expected_plan['cases'][case]['contracts']['20s']
+    if any(record.candidate != json.loads(raw) or digest(record.to_dict()) != record_hash
+           or row_contract != contract or record.observation.contract_id != contract
+           or events[cid] != [('started', digest(record.candidate)), ('settled', record_hash)]
+           for record,(_,_,_,raw,record_hash,row_contract,cid) in zip(records,rows)):
+        raise RuntimeError("Ledger initial observation, digest, or contract mismatch")
     return records
 
 
