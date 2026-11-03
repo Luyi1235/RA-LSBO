@@ -88,8 +88,8 @@ def confirmation_readiness():
         "ra_lsbo": "BLOCKED: main candidate math/adapter not independently frozen",
         "full_latent": "BLOCKED: historical corpus_stable exists; confirm adapter not qualified",
         "full_onehot": "BLOCKED: historical onehot_stable exists; confirm adapter not qualified",
-        "reverse_representation": "BLOCKED: not implemented",
-        "interval_as_missing": "BLOCKED: treatment-specific evidence semantics not frozen",
+        "reverse_representation": "BLOCKED: candidate feature routing exists; end-to-end and metadata not qualified",
+        "interval_as_missing": "BLOCKED: offline evidence transformation exists; policy isolation not qualified",
         "random": "BLOCKED: historical random exists; registered q_A/feedback not qualified",
         "cbob_adapted": "BLOCKED: upstream/license/EP/EICB and mixed-domain port not qualified",
     }
