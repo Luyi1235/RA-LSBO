@@ -171,3 +171,43 @@ def test_stopped_truth_ledger_never_dispatches_more_calls(tmp_path):
         ledger.start(db,case,seed,"initial","",0,
                      problem.space.default().to_dict(),problem)
     assert ledger.audit(db,p)["ledger_state"]=="INCOMPLETE"
+
+
+def test_whole_seed_12_initial_18_random_1verification_true_route_mock(
+        monkeypatch,tmp_path):
+    """Runs a full 31-ticket campaign-seed through real code, no physics."""
+    from ra_lsbo.experiments.core.problems import AircraftCase
+    case="aircraft_ordinary";seed=509111
+    p=_plan(case,seed)
+    # The full-seed worker runs only the registered real historical random arm.
+    p["cases"][case]["arms_by_seed"][str(seed)]=["random"]
+    p["max_calls"]=31
+    root=tmp_path/"experiment"
+    root.mkdir()
+    campaign._json_new(root/"plan.json",p)
+    db=root/"real.sqlite"
+    ledger.create(db,p)
+    called=[]
+    def fake(self,design):
+        called.append(self.contract_id)
+        constraints=dict(self.precheck(design))
+        constraints.update({
+            name:-.2 for name in self.required_constraints
+            if name not in self.analytical_constraints})
+        return self.record(design,33000.,constraints,
+                           {"unit_test_fabricated_evaluation":True})
+    monkeypatch.setattr(AircraftCase,"evaluate",fake)
+    result=campaign._case_seed_worker(
+        (case,seed,["random"],str(root),str(db),digest(p)))
+    assert result["methods"]==1
+    assert result["true_calls"]==31
+    assert len(called)==31
+    assert called[:30]==[p["cases"][case]["contracts"]["20s"]]*30
+    assert called[30]==p["cases"][case]["contracts"]["5s"]
+    receipt=ledger.audit(db,p)
+    assert receipt["ledger_contract_passed"],receipt
+    assert receipt["calls"]==31
+    assert campaign._audit_all_groups(db,p)==[]
+    path=root/"trials"/case/str(seed)
+    assert (path/"random"/"verification.json").is_file()
+    assert (path/"complete.json").is_file()
