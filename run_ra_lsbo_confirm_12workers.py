@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import sys
 
-from confirm12 import simulation
+from confirm12 import simulation, ledger_simulation, call_ledger, adapters
 
 ROOT = Path(__file__).resolve().parent
 MAIN_MAX = 2 * 1024 * (12 + 2 * (18 + 1))
@@ -55,11 +55,18 @@ def hardware():
 
 
 def preflight():
+    try:
+        from confirm12 import qualification
+        review = qualification.inspect(ROOT / 'results/iid-qualification-preflight-20261103/plan.json')
+    except Exception as error:
+        review = {'qualification_ready': False, 'error': type(error).__name__ + ': ' + str(error)}
     return {'mode': 'preflight', 'platform': platform.platform(), 'python': sys.executable,
             'logical_cpu': os.cpu_count(), 'disk_free_bytes': shutil.disk_usage(ROOT).free,
             'hardware': hardware(),
             'workers_default': 12, 'main_maximum': MAIN_MAX, 'aux_maximum': AUX_MAX,
             'total_maximum': MAIN_MAX + AUX_MAX, 'new_aircraft_calls': 0, 'new_rcaide_calls': 0,
+            'algorithm_qualification': adapters.QUALIFICATION,
+            'qualification_review': review,
             'execution_ready': False, 'blockers': [
                 'no frozen independent 1024-seed plan or 256-seed subset',
                 'historical seed clearance and task qualification incomplete',
@@ -72,23 +79,32 @@ def preflight():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode', choices=('preflight', 'simulate', 'status', 'execute'), default='preflight')
+    parser.add_argument('--mode', choices=('preflight', 'qualification', 'simulate', 'status', 'execute'), default='preflight')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--workers', type=int, default=12)
+    parser.add_argument('--max-wall-seconds', type=float, default=86400)
     args = parser.parse_args()
     print(json.dumps(preflight(), indent=2), flush=True)
     if args.mode == 'execute':
         raise RuntimeError('REAL EXECUTION DISABLED: missing algorithms, qualification, certified accounting and approval gate')
+    if args.mode == 'qualification':
+        from confirm12 import qualification
+        print(json.dumps(qualification.inspect(ROOT / 'results/iid-qualification-preflight-20261103/plan.json'), indent=2))
     if args.mode == 'simulate':
         if args.output is None:
             parser.error('simulation requires a new --output directory')
-        print(json.dumps(simulation.run(args.output, workers=args.workers), indent=2))
+        print(json.dumps(ledger_simulation.run(args.output, workers=args.workers,
+                                                max_wall_seconds=args.max_wall_seconds), indent=2))
     if args.mode == 'status':
         if args.output is None:
             parser.error('status requires --output')
         plan = json.loads((args.output / 'plan.json').read_text(encoding='utf-8'))
-        expected = len(plan['cases']) * len(plan['seeds']) * (12 + len(plan['arms']) * 19)
-        print(json.dumps(simulation.audit_simulation(args.output, plan, expected), indent=2))
+        if (args.output / 'calls.sqlite').exists():
+            result = ledger_simulation.audit(args.output)
+        else:
+            expected = len(plan['cases']) * len(plan['seeds']) * (12 + len(plan['arms']) * 19)
+            result = simulation.audit_simulation(args.output, plan, expected)
+        print(json.dumps(result, indent=2))
 
 
 if __name__ == '__main__':
