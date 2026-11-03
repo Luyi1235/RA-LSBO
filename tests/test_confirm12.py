@@ -88,10 +88,15 @@ def test_twelve_process_end_to_end(tmp_path):
         simulation.run(output, seeds=(7,), workers=12)
 
 
-def test_formal_is_disabled():
+def test_default_is_zero_call_preflight_and_real_execution_requires_explicit_mode():
     root = Path(__file__).resolve().parents[1]
     script = root / 'run_ra_lsbo_confirm_12workers.py'
-    a = subprocess.run([sys.executable, str(script)], capture_output=True, text=True)
-    b = subprocess.run([sys.executable, str(script), '--mode', 'execute'], capture_output=True, text=True)
-    assert a.returncode == 0 and '"total_maximum": 151040' in a.stdout
-    assert b.returncode != 0 and 'REAL EXECUTION DISABLED' in b.stderr
+    run = subprocess.run([sys.executable, str(script)], capture_output=True, text=True)
+    assert run.returncode == 0 and '"total_maximum": 151040' in run.stdout
+    assert '"new_aircraft_calls": 0' in run.stdout
+    # NEVER invoke --mode execute in synthetic-only CI: this is now the genuine
+    # user-initiated 151040-call model route, not a zero-truth exception test.
+    source = script.read_text(encoding='utf8')
+    assert "default='preflight'" in source
+    assert "if args.mode == 'execute':" in source
+    assert 'from confirm12.real_aircraft_campaign import run as true_campaign' in source
