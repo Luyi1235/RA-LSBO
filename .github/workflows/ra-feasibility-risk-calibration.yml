@@ -1,0 +1,28 @@
+name: RA-LSBO PR51 risk semantics calibration (ZERO aircraft)
+on:
+  pull_request:
+    paths:
+      - 'confirm12/feasibility_risk_calibration.py'
+      - 'tests/test_feasibility_risk_calibration.py'
+      - 'run_ra_lsbo_feasibility_risk_pycharm.py'
+      - '.github/workflows/ra-feasibility-risk-calibration.yml'
+  push:
+    paths:
+      - 'confirm12/feasibility_risk_calibration.py'
+      - 'tests/test_feasibility_risk_calibration.py'
+      - 'run_ra_lsbo_feasibility_risk_pycharm.py'
+      - '.github/workflows/ra-feasibility-risk-calibration.yml'
+jobs:
+  risk-audit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_feasibility_risk_calibration.py tests/test_risk_event_semantics.py
+      - run: python -m py_compile confirm12/feasibility_risk_calibration.py run_ra_lsbo_feasibility_risk_pycharm.py
