@@ -156,7 +156,10 @@ def load_study(path, study):
             tuple(registration.get("cases",
                 registration.get("analytical_cases", []))) != expected["cases"] or
             tuple(registration["arms"]) != ARMS or
-            registration.get("online_horizon") != ONLINE_HORIZON):
+            registration.get("online_horizon") != ONLINE_HORIZON or
+            registration.get("initial_shared",registration.get("shared_initial")) != 12 or
+            registration.get("observed_online_failure_cap",
+                registration.get("observed_online_nonfeasible_stop")) != HARD_FAILURE_STOP):
         raise ValueError("Original registered task/arm/seed roster drift")
     trials = data.get(expected["trial_key"])
     if not isinstance(trials, list) or len(trials) != expected["n_trials"]:
@@ -180,6 +183,10 @@ def load_study(path, study):
                      for seed in expected["seeds"] for arm in ARMS}
     if set(found) != expected_keys:
         raise ValueError("Missing or unregistered original on-policy trials")
+    charged = len(expected["cases"]) * len(expected["seeds"]) * 12 + sum(
+        row["online_calls"] for row in found.values())
+    if charged != expected["n_analytical"]:
+        raise ValueError("Original actual charged analytical evaluations do not reconcile")
     for case in expected["cases"]:
         for seed in expected["seeds"]:
             initials = [found[(case, seed, arm)]["initial_best"] for arm in ARMS]
