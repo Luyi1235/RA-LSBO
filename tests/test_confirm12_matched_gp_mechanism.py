@@ -1,5 +1,6 @@
 """No-truth tests for paired GP view experiment and leakage resistance."""
 from types import SimpleNamespace
+import os
 import math
 import numpy as np
 import pytest
@@ -152,3 +153,31 @@ def test_seed_clustered_paired_differences_refuse_missing_view():
     assert result["normal_approx_cluster_95_interval"] is not None
     with pytest.raises(ValueError,match="Unpaired"):
         m.paired_view_differences(rows[:-1])
+
+
+@pytest.mark.skipif(os.environ.get("CONFIRM12_RUN_MATCHED_GP_SMOKE")!="1",
+                    reason="explicit actual VAE + grouped EP fitting with synthetic shapes")
+def test_actual_latent_and_onehot_gp_fits_without_aircraft(monkeypatch):
+    """Actual VAE and GP machinery; only responses are synthetic fixtures."""
+    from ra_lsbo.experiments.core.problems import AircraftCase
+    def forbidden(*args,**kwargs):
+        pytest.fail("Real aircraft evaluation must not run in mechanism CI")
+    monkeypatch.setattr(AircraftCase,"evaluate",forbidden)
+    problem=problem_for("aircraft_ordinary")
+    pool,_=candidate_pool(problem,1100311,30)
+    def make(candidate):
+        area=float(candidate["continuous"]["wing_area"])
+        objective=30000.+(area-14.)**2*30
+        margins=dict(problem.precheck(candidate))
+        margins.update({name:-.1-.001*(area-14.) for name in problem.required_constraints
+                        if name not in problem.analytical_constraints})
+        return problem.record(candidate,objective,margins,
+                              {"synthetic_GP_smoke_not_aircraft":True})
+    training=[make(x) for x in pool[:12]]
+    holdout=[make(x) for x in pool[12:24]]
+    scored,receipt=m.score_pair("aircraft_ordinary",19,20,training,holdout)
+    assert receipt["fitted_models"]==2
+    assert receipt["representation_fit_count"]==1
+    assert receipt["representation_initial_epochs"]==30
+    assert len(scored)>24
+    assert all(np.isfinite(float(x["mean"])) for x in scored)
