@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from ra_lsbo.experiments.risk_budget55_report_audit import audit
+from ra_lsbo.experiments.risk_budget56_report_audit import audit
 from ra_lsbo.experiments.risk_budget55_protocol import SCHEMA, CASES, ARMS, SEEDS
 
 
