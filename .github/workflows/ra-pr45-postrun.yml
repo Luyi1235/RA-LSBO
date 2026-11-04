@@ -1,0 +1,37 @@
+name: PR45 independent postrun audit and paired analysis (no aircraft)
+on:
+  push:
+    branches: [research/pr45-postrun-analysis-20261104]
+  pull_request:
+    paths:
+      - 'confirm12/postrun_pr45.py'
+      - 'run_pr45_postrun_audit_pycharm.py'
+      - 'tests/test_confirm12_pr45_postrun.py'
+      - '.github/workflows/ra-pr45-postrun.yml'
+permissions:
+  contents: read
+jobs:
+  windows-independent-postrun:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install historical model dependencies for true DesignRecord parser
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt pytest==8.3.5
+          python -m pip check
+      - name: Verify independent postrun budget, paired effects, ZIP reader and provenance guards
+        run: |
+          python -m pytest -q tests/test_confirm12_pr45_postrun.py
+      - name: Import one-click PyCharm postrun without executing aircraft
+        run: |
+          python -c "import runpy; runpy.run_path('run_pr45_postrun_audit_pycharm.py',run_name='__dry_import__')"
