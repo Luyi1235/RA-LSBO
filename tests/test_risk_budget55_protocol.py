@@ -34,9 +34,11 @@ def trial(case, seed, arm, *, cold=False, succeeds=True, steps=12,
         "best_feasible_after_each_actual_online_call":curve,
         "selected_path_digest":f"{case}/{seed}/{arm}",
         "pre_evaluation_risk_receipts":[
-            {"iteration":i,"forecast_available":arm!="legacy",
+            {"iteration":i,"prediction_available_for_selected":arm!="legacy",
              "budget_gate_fallback":"predicted_allowance_filter",
              "realized_nonfeasible":int(i<failures),
+             "selected_predicted_nonfeasible":0.2 if arm!="legacy" else None,
+             "candidate_risk_within_allowance":True if arm!="legacy" else None,
              "probability_guarantee":False}
             for i in range(steps)],
     }
@@ -169,3 +171,38 @@ def test_full_predeclared_16_seed_4_task_pairing():
     assert agg["branin_ordinary/legacy"]["failure_cap_reached"]==4
     assert agg["branin_ordinary/legacy"]["mean_online_calls"]==10.5
     assert agg["rosenbrock_sparse/budgeted"]["n_seeds"]==16
+
+
+def test_runner_schema_risk_receipts_are_counted_without_alias_guessing():
+    rows=[]
+    for case in CASES:
+        for seed in SEEDS[:1]:
+            for arm in ARMS:
+                row=trial(case,seed,arm,steps=2,failures=1)
+                if arm=="budgeted":
+                    row["pre_evaluation_risk_receipts"][0].update({
+                        "prediction_available_for_selected":True,
+                        "budget_gate_fallback":"no_candidate_below_allowance_min_predicted_failure",
+                        "candidate_risk_within_allowance":False,
+                        "selected_predicted_nonfeasible":.8,
+                        "realized_nonfeasible":1,
+                    })
+                    row["pre_evaluation_risk_receipts"][1].update({
+                        "prediction_available_for_selected":True,
+                        "budget_gate_fallback":"predicted_allowance_filter",
+                        "candidate_risk_within_allowance":True,
+                        "selected_predicted_nonfeasible":.1,
+                        "realized_nonfeasible":0,
+                    })
+                rows.append(row)
+    by_arm,_=summarize(rows,"smoke")
+    for case in CASES:
+        b=by_arm[f"{case}/budgeted"]
+        assert b["predicted_risk_receipt_coverage"]==2
+        assert b["predicted_allowance_gate_fallbacks"]==1
+        assert b["observed_nonfeasible_in_predicted_gate_fallbacks"]==1
+        assert b["predicted_receipt_observed_nonfeasible"]==1
+        assert b["predicted_receipt_actual_nonfeasible_rate"]==.5
+        assert b["mean_selected_predicted_nonfeasible_proxy"]==pytest.approx(.45)
+        assert b["budget_gate_passed_count"]==1
+        assert b["budget_gate_failed_count"]==1
