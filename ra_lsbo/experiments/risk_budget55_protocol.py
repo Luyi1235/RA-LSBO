@@ -98,6 +98,9 @@ def validate_trial(row, steps=ONLINE):
     if first is not None and (type(first) is not int or
                               not 0 <= first < row["online_calls"]):
         raise ValueError("Invalid first online feasible iteration")
+    if (initial is None and final is not None and first is None) or (
+            first is not None and final is None):
+        raise ValueError("Feasible discovery record inconsistent with actual incumbent")
     if row["online_nonfeasible"] < OBSERVED_FAILURE_CAP and row["online_calls"] < steps:
         raise ValueError("Trial stopped without reaching failure cap or horizon")
     if row["online_calls"] < steps and row["online_nonfeasible"] != OBSERVED_FAILURE_CAP:
