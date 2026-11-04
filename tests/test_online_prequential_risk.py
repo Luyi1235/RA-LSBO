@@ -14,11 +14,14 @@ from confirm12.online_prequential_risk import (
 
 
 def roster():
-    arms = ["ra_lsbo", "full_latent"]
+    main = ["ra_lsbo", "full_latent"]
+    aux = ["full_onehot", "reverse_representation", "interval_as_missing",
+           "random", "cbob_adapted"]
     return {"max_calls": 151040, "workers": 12,
             "cases": {case: {
                 "seeds": list(range(n, n + 1024)),
-                "arms_by_seed": {str(s): arms for s in range(n, n+1024)}
+                "arms_by_seed": {str(s): main + (aux if s < n + 256 else [])
+                                 for s in range(n, n+1024)}
             } for case, n in (("aircraft_ordinary", 500001),
                               ("aircraft_sparse", 600001))}}
 
