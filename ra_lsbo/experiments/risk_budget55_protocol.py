@@ -101,6 +101,11 @@ def validate_trial(row, steps=ONLINE):
     if (initial is None and final is not None and first is None) or (
             first is not None and final is None):
         raise ValueError("Feasible discovery record inconsistent with actual incumbent")
+    if initial is None:
+        derived_first = next((i for i, value in enumerate(curve[1:]) if value is not None),
+                             None)
+        if derived_first != first:
+            raise ValueError("First feasible discovery does not match recorded chronology")
     if row["online_nonfeasible"] < OBSERVED_FAILURE_CAP and row["online_calls"] < steps:
         raise ValueError("Trial stopped without reaching failure cap or horizon")
     if row["online_calls"] < steps and row["online_nonfeasible"] != OBSERVED_FAILURE_CAP:
