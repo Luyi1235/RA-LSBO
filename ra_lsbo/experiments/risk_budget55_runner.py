@@ -186,6 +186,14 @@ def run(output, *, profile="smoke"):
     if output.exists():
         raise FileExistsError("A fresh analytical results folder is required")
     sha=clean_commit()
+    # Verify the two ACTIVE PR54 decision modules are exactly those used in
+    # the successful original PR54 on-policy trial; no undisclosed tuning.
+    expected_policy = "d2c32b77d096d46ca4d20b74d165b0e601877c3aa28741bc16a1f2bf255b1437"
+    expected_engine = "3f6105f073f01918b95de413a46cedda8b46c5aa56ced78b0eec8f1302c6a677"
+    here = Path(__file__).resolve()
+    if (_sha(here.with_name("risk_budget54_policy.py")) != expected_policy or
+            _sha(here.with_name("risk_budget54_engine.py")) != expected_engine):
+        raise RuntimeError("PR55 refuses a modified PR54 risk acquisition/engine")
     planned=registration(profile,sha)
     output.mkdir(parents=True,exist_ok=False)
     _write(output/"plan.json",planned)
