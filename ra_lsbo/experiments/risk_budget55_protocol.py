@@ -142,7 +142,7 @@ def summarize(results, profile):
             cold = [r for r in trials if r["initial_best"] is None]
             risk = [rcpt for r in trials
                     for rcpt in r["pre_evaluation_risk_receipts"]
-                    if rcpt.get("forecast_available")]
+                    if rcpt.get("prediction_available_for_selected")]
             by_arm[f"{case}/{arm}"] = {
                 "n_seeds":len(trials),
                 "initial_feasible":sum(r["initial_best"] is not None for r in trials),
@@ -166,6 +166,20 @@ def summarize(results, profile):
                     x.get("realized_nonfeasible") == 1 and
                     x.get("budget_gate_fallback") ==
                     "no_candidate_below_allowance_min_predicted_failure" for x in risk),
+                "predicted_receipt_observed_nonfeasible":sum(
+                    x.get("realized_nonfeasible") == 1 for x in risk),
+                "predicted_receipt_actual_nonfeasible_rate":(
+                    sum(x.get("realized_nonfeasible") == 1 for x in risk)/len(risk)
+                    if risk else None),
+                "mean_selected_predicted_nonfeasible_proxy":(
+                    statistics.mean(x["selected_predicted_nonfeasible"] for x in risk
+                                    if x.get("selected_predicted_nonfeasible") is not None)
+                    if any(x.get("selected_predicted_nonfeasible") is not None for x in risk)
+                    else None),
+                "budget_gate_passed_count":sum(
+                    x.get("candidate_risk_within_allowance") is True for x in risk),
+                "budget_gate_failed_count":sum(
+                    x.get("candidate_risk_within_allowance") is False for x in risk),
                 "new_objective_improvement_groups":sum(
                     r["final_best"] is not None and r["initial_best"] is not None and
                     r["final_best"] < r["initial_best"] - 1e-10 for r in trials),
