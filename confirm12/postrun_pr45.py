@@ -30,6 +30,11 @@ AUX=("full_onehot","reverse_representation","interval_as_missing","random","cbob
 EXPECTED_GROUPS=2048
 EXPECTED_TRIALS=6656
 CALL_CAP=151040
+# Exact artifacts verified on the PR45 GitHub result branch / Release.
+FROZEN_SOURCE_SHA="386082beeacac8ae43d0dfb1ccda5c5ad3b356cf"
+FROZEN_PLAN_SHA256="ac5f1424f3c8d52eff9ffd835cb5004224be965afee8ec15069e1fea38c43012"
+FROZEN_REAL_SQLITE_SHA256="a30b0dadb5d619be9b6c0d70c5aa29fe115f86b85d62a449e4acf05325d6f1b7"
+FROZEN_METHOD_ARCHIVE_SHA256="02227a77d3ba7b9b0427c99f8f2671fbc7c781e919930539d3f08808c5b71ef1"
 
 
 def _read(path):
@@ -358,6 +363,19 @@ def analyze(root,output,archive=None,*,check_event_chain=True):
     expected_online=EXPECTED_TRIALS*18
     expected_ver=len(verified)
     errors=list(ledger["errors"])+list(progress["errors"])
+    # Bind local originals to the *already uploaded* external SHA-256 receipts.
+    if plan.get("source_commit")!=FROZEN_SOURCE_SHA:
+        errors.append("Campaign source differs from uploaded PR45 source")
+    if _sha(root/"plan.json")!=FROZEN_PLAN_SHA256:
+        errors.append("Campaign plan bytes differ from GitHub preserved plan")
+    db_sha=_sha(root/"real_calls.sqlite")
+    if db_sha!=FROZEN_REAL_SQLITE_SHA256:
+        errors.append("Real-call SQLite bytes differ from Release-verified handoff")
+    if archive is not None and _sha(archive)!=FROZEN_METHOD_ARCHIVE_SHA256:
+        errors.append("Method result ZIP bytes differ from GitHub preserved archive")
+    if (check_event_chain and
+            ledger["chain_head_recomputed"]!=original_audit.get("event_chain_head")):
+        errors.append("Independent event chain head differs from original evidence")
     if (ledger["by_role"]!={"initial":expected_initial,
                             "online":expected_online,"verification":expected_ver}):
         errors.append("Actual charged calls differ from exact 12/18/optional-verification design")
@@ -381,7 +399,7 @@ def analyze(root,output,archive=None,*,check_event_chain=True):
         "schema":"ra_lsbo_pr45_independent_postrun_v1",
         "source_sha":plan.get("source_commit"),
         "original_result_directory":str(root),
-        "original_sqlite_sha256":_sha(root/"real_calls.sqlite"),
+        "original_sqlite_sha256":db_sha,
         "frozen_plan_sha256":_sha(root/"plan.json"),
         "methods":EXPECTED_TRIALS,
         "verifications":expected_ver,
