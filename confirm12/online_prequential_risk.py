@@ -13,12 +13,13 @@ import math
 from pathlib import Path
 import statistics
 
-from .postrun_pr45 import (
-    FROZEN_SOURCE_SHA, FROZEN_PLAN_SHA256, FROZEN_REAL_SQLITE_SHA256,
-    _sqlite, _read, verify_roster,
-)
 from .feasibility_risk_calibration import fit_intercept, _calibrate, _score
-from .risk_event_semantics import label_record, sha_file, digest
+from .risk_event_semantics import (
+    FROZEN_SOURCE as FROZEN_SOURCE_SHA,
+    FROZEN_PLAN_SHA256,
+    FROZEN_SQLITE_SHA256 as FROZEN_REAL_SQLITE_SHA256,
+    label_record, sha_file, digest,
+)
 
 SCHEMA = "ra_lsbo_pr52_original_online_prequential_risk_v1"
 CASES = ("aircraft_ordinary", "aircraft_sparse")
@@ -48,10 +49,15 @@ def fixed_splits(plan, per_block=MAX_SEEDS_PER_BLOCK):
     """128 seed groups/task maximum; completely disjoint from PR48/49/51 panels."""
     if type(per_block) is not int or not 1 <= per_block <= MAX_SEEDS_PER_BLOCK:
         raise ValueError("per_block must be in 1..64")
-    verify_roster(plan)
+    # Lightweight planner contract; the full independent PR45 roster check
+    # runs in run() before ANY evidence is read or output is created.
+    if plan.get("max_calls") != 151040 or plan.get("workers") != 12 or set(plan.get("cases", {})) != set(CASES):
+        raise ValueError("Wrong original PR45 two-task roster")
     selections = []
     for case in CASES:
         seeds = sorted(plan["cases"][case]["seeds"])
+        if len(seeds) != 1024 or len(set(seeds)) != 1024:
+            raise ValueError("Wrong PR45 seed registry")
         cal = seeds[CAL_START:CAL_START + per_block]
         test = seeds[TEST_START:TEST_START + per_block]
         if (len(cal) != per_block or len(test) != per_block or
@@ -378,12 +384,16 @@ def run(source, output, *, per_block=64):
     root, dest = Path(source).resolve(), Path(output).resolve()
     if dest.exists() or root == dest or root in dest.parents:
         raise ValueError("Output must be a fresh directory outside the original evidence")
+    # Only the actual workstation read imports the existing complete roster
+    # audit (which transitively imports the full numerical modeling package).
+    from .postrun_pr45 import _sqlite, _read, verify_roster
     plan_path, db_path = root/"plan.json", root/"real_calls.sqlite"
     if sha_file(plan_path) != FROZEN_PLAN_SHA256:
         raise ValueError("Wrong frozen PR45 plan")
     plan = _read(plan_path)
     if plan.get("source_commit") != FROZEN_SOURCE_SHA:
         raise ValueError("Wrong original PR45 source SHA")
+    verify_roster(plan)
     selections = fixed_splits(plan, per_block)
     before_sha = sha_file(db_path)
     if before_sha != FROZEN_REAL_SQLITE_SHA256:
