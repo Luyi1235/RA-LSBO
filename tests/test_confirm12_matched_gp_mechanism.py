@@ -131,3 +131,24 @@ def test_aggregate_displays_false_feasible_and_boundary():
     assert item["near_boundary_exact"]==1
     assert math.isclose(item["mean_brier"],.34)
     assert math.isclose(item["rmse"],math.sqrt(.13))
+
+
+def test_seed_clustered_paired_differences_refuse_missing_view():
+    rows=[]
+    for seed in (1,2,3):
+        for idx in range(12):
+            for view in ("latent","onehot"):
+                rows.append({
+                    "case":"aircraft_ordinary","head":"soc","view":view,
+                    "train_seed":seed,"holdout_seed":seed+128,"heldout_index":idx,
+                    "candidate_id":str(idx),
+                    "brier":0.2 if view=="latent" else 0.3,
+                    "squared_error":None,
+                })
+    output=m.paired_view_differences(rows)
+    result=output["aircraft_ordinary/soc/brier"]
+    assert result["cluster_count"]==3
+    assert math.isclose(result["mean_of_per_seed_mean_differences"],-.1)
+    assert result["normal_approx_cluster_95_interval"] is not None
+    with pytest.raises(ValueError,match="Unpaired"):
+        m.paired_view_differences(rows[:-1])
