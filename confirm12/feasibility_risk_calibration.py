@@ -114,9 +114,9 @@ def _sigmoid(t):
 
 
 def _logit(p):
-    q = max(EPS, min(1.0 - EPS, float(p)))
-    if not math.isfinite(q):
+    if not math.isfinite(float(p)):
         raise ValueError("Nonfinite probability")
+    q = max(EPS, min(1.0 - EPS, float(p)))
     return math.log(q / (1.0 - q))
 
 
@@ -271,7 +271,8 @@ def run(source, output, *, folds=2, sizes=SIZES):
     if dest == root or root in dest.parents or dest.exists():
         raise ValueError("Refuse existing or original-result output directory")
     planpath, dbpath = root / "plan.json", root / "real_calls.sqlite"
-    if (sha_file(planpath) != FROZEN_PLAN_SHA256 != FROZEN_PLAN_SHA or
+    if (sha_file(planpath) != FROZEN_PLAN_SHA or
+            FROZEN_PLAN_SHA256 != FROZEN_PLAN_SHA or
             FROZEN_SOURCE_SHA != FROZEN_SOURCE or
             FROZEN_REAL_SQLITE_SHA256 != FROZEN_SQLITE_SHA):
         raise ValueError("Source constants drift")
