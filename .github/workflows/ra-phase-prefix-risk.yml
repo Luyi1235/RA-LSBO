@@ -1,0 +1,28 @@
+name: RA-LSBO PR53 phase/prefix online risk diagnostics (NO aircraft or GP fits)
+on:
+  push:
+    paths:
+      - 'confirm12/phase_prefix_risk.py'
+      - 'tests/test_phase_prefix_risk.py'
+      - 'run_ra_lsbo_phase_prefix_risk_pycharm.py'
+      - '.github/workflows/ra-phase-prefix-risk.yml'
+  pull_request:
+    paths:
+      - 'confirm12/phase_prefix_risk.py'
+      - 'tests/test_phase_prefix_risk.py'
+      - 'run_ra_lsbo_phase_prefix_risk_pycharm.py'
+      - '.github/workflows/ra-phase-prefix-risk.yml'
+jobs:
+  no-physical-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_phase_prefix_risk.py tests/test_online_prequential_risk.py tests/test_feasibility_risk_calibration.py tests/test_risk_event_semantics.py
+      - run: python -m py_compile confirm12/phase_prefix_risk.py run_ra_lsbo_phase_prefix_risk_pycharm.py
