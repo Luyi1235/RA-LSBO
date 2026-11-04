@@ -39,6 +39,7 @@ def test_fixed_size_roster_no_outcome_selection():
         all_tests={t["target_seed"] for t in subset}
         assert len(all_training)==128
         assert len(all_tests)==8
+        assert all_tests==set(sorted(plan["cases"][case]["seeds"])[256:264])
         assert not all_training.intersection(all_tests)
     with pytest.raises(ValueError):
         m.fixed_study_plan(plan,folds=9)
