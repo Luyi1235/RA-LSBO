@@ -43,12 +43,14 @@ def test_prior_only_calibration_no_current_outcome_leakage():
 def test_phase_calibration_shrinkage_and_fallback():
     rows = []
     for i in range(96):
-        for arm in p.ARMS:
-            mode = "budgeted_boundary_information" if i<24 else "probability_weighted_feasible_improvement"
-            row = fake(arm=arm,split="calibration",seed=600641+i//18,iteration=i%18,
-                       mode=mode,raw=.7,
-                       success=(int(i%3==0) if i<24 else int(i%3!=0)))
-            rows.append(row)
+        for case,base in (("aircraft_ordinary",500641),
+                          ("aircraft_sparse",600641)):
+            for arm in p.ARMS:
+                mode = "budgeted_boundary_information" if i<24 else "probability_weighted_feasible_improvement"
+                row = fake(case=case,arm=arm,split="calibration",seed=base+i//18,
+                           iteration=i%18,mode=mode,raw=.7,
+                           success=(int(i%3==0) if i<24 else int(i%3!=0)))
+                rows.append(row)
     fitted,coverage = p.cross_seed_calibrators(rows,full=False)
     model = fitted[("aircraft_sparse","ra_lsbo","feasible")]
     assert coverage["aircraft_sparse/ra_lsbo/feasible/boundary"]["phase_fit_supported"] is False
