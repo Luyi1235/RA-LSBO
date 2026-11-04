@@ -53,7 +53,7 @@ def fixed_study_plan(plan, *, folds=2, sizes=SIZES):
     verify_roster(plan)
     if type(folds) is not int or not 1<=folds<=FOLDS_LIMIT:
         raise ValueError("folds must be in 1..8")
-    if (not isinstance(sizes,(tuple,list)) or
+    if (not isinstance(sizes,(tuple,list)) or not sizes or
             tuple(sizes)!=tuple(sorted(set(sizes))) or
             any(type(n) is not int or n not in SIZES for n in sizes)):
         raise ValueError("Require a nonempty, ascending subset of 12,24,48,96,192")
