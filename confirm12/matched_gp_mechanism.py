@@ -243,8 +243,55 @@ def aggregate(rows):
     return summary
 
 
+def paired_view_differences(rows):
+    """Compute within-target deltas, with independent training seeds as clusters."""
+    keyed=defaultdict(dict)
+    for r in rows:
+        key=(r["case"],r["head"],r["train_seed"],r["holdout_seed"],
+             r["heldout_index"],r["candidate_id"])
+        if r["view"] in keyed[key]:
+            raise ValueError("Duplicate same-view prediction")
+        keyed[key][r["view"]]=r
+    groups=defaultdict(lambda:defaultdict(list))
+    for (case,head,train_seed,_,_,_),views in keyed.items():
+        if set(views)!=set(VIEWS):
+            raise ValueError("Unpaired GP representation target")
+        a,b=views["latent"],views["onehot"]
+        for metric in ("brier","squared_error"):
+            va,vb=a[metric],b[metric]
+            if (va is None)!=(vb is None):
+                raise ValueError("Paired views see inconsistent heldout evidence")
+            if va is not None:
+                groups[(case,head,metric)][train_seed].append(float(va-vb))
+    report={}
+    for (case,head,metric),clusters in sorted(groups.items()):
+        per_seed=[statistics.mean(v) for _,v in sorted(clusters.items())]
+        if not per_seed:continue
+        k=len(per_seed)
+        mean=float(statistics.mean(per_seed))
+        sem=(statistics.stdev(per_seed)/math.sqrt(k) if k>1 else None)
+        report[f"{case}/{head}/{metric}"]={
+            "metric":"latent_minus_onehot",
+            "mean_of_per_seed_mean_differences":mean,
+            "cluster_count":k,
+            "independent_unit":"training_seed_and_disjoint_holdout_seed_pair",
+            "normal_approx_cluster_95_interval":(
+                [mean-1.96*sem,mean+1.96*sem] if sem is not None else None),
+            "direction":"negative favors latent representation",
+            "posthoc_repeated_targets_not_iid":True,
+        }
+    return report
+
+
 def run(original,output,*,per_case=8):
     """Only reads the existing immutable PR45 ledger; zero expensive calls."""
+    # Explicit no-physical-call guard even if future refactors import an evaluator.
+    from ra_lsbo.experiments.core.problems import AircraftCase
+    from ra_lsbo.partial_bo.problems import SimplifiedElectricAircraft
+    def prohibited(*args,**kwargs):
+        raise RuntimeError("MECHANISM ANALYSIS FORBIDS AIRCRAFT EVALUATIONS")
+    AircraftCase.evaluate=prohibited
+    SimplifiedElectricAircraft.evaluate=prohibited
     original=Path(original).resolve()
     output=Path(output).resolve()
     if output.exists():raise FileExistsError("Output must be a new directory")
@@ -292,6 +339,7 @@ def run(original,output,*,per_case=8):
         "heldout_only_disjoint_other_seed_initials":True,
         "2x2_allocation_from_two_independent_GP_view_models":True,
         "methods":list(ARMS),"model_heads":aggregate(results),
+        "paired_view_differences":paired_view_differences(results),
         "receipts":receipts,
         "notes":[
             "Retrospective independent-seed initial holdout, not original online trajectories.",
