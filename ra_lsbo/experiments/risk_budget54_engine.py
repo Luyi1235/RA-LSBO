@@ -46,7 +46,27 @@ class BudgetedDualViewMathBO(StableCorpusDiscoveryBO):
         failed = observed_failures(records,self.pr54_initial,iteration)
         if failed >= self.pr54_cap:
             raise ObservedFailureCapReached("hard_observed_online_failure_cap")
-        return super().propose(records,global_pool,iteration)
+        candidate, meta = super().propose(records,global_pool,iteration)
+        # The inherited DiscoveryBO can replace a model selection with a
+        # deterministic cold-start/degenerate-gate coverage decision. The
+        # originally model-selected candidate's risk receipt must NOT be
+        # mislabeled as a forecast of the final coverage design.
+        bypass = meta.get("coverage_reason") is not None or (
+            "coverage" in str(meta.get("mode", "")))
+        if bypass and "risk_budget" in meta:
+            original = meta.pop("risk_budget")
+            meta["risk_selection_bypassed"] = {
+                "reason":meta.get("coverage_reason",meta.get("mode")),
+                "former_model_selection_rule":original["selection_rule"],
+                "recorded_probability_for_actual_coverage_candidate":False,
+            }
+        elif "risk_budget" in meta:
+            index = meta.get("selected_index")
+            proxy = meta["feasibility_proxy_no_status"]
+            if (type(index) is not int or not 0<=index<len(proxy) or
+                    abs(proxy[index]-meta["risk_budget"]["selected_predicted_feasible_proxy"])>1e-12):
+                raise ValueError("Budget prediction receipt does not bind to selected candidate")
+        return candidate, meta
 
     def _choose_acquisition(self,predictions,best,iteration,acquisition,records):
         _, frozen = super()._choose_acquisition(
