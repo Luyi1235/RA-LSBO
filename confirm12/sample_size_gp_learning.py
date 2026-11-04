@@ -44,7 +44,7 @@ from .postrun_pr45 import (
 SCHEMA="ra_lsbo_cross_seed_real_initial_learning_curve_v1"
 SIZES=(12,24,48,96,192)
 TRAIN_SEEDS_PER_FOLD=16
-TEST_START_OFFSET=128
+TEST_START_OFFSET=256
 FOLDS_LIMIT=8
 
 
