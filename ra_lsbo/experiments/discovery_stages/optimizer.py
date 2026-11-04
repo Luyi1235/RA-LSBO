@@ -22,6 +22,15 @@ class DiscoveryBO(RiskRefiningBO):
         coverage_enabled(coverage_scope, False)  # validate even before a proposal
         self.coverage_scope = coverage_scope
 
+    def _choose_acquisition(self, predictions, best, iteration, acquisition, records):
+        """Default historical selector; subclass hook for isolated opt-in studies.
+
+        All previous engines preserve exactly their frozen acquisition logic.
+        Only the new PR54 research subclass overrides this hook.
+        """
+        return choose_acquisition(predictions, best, iteration,
+                                  acquisition, self.settings.probability_exploitation)
+
     def _build_posterior(self, records):
         return RiskPosterior(self.problem, self.base, records, self.seed, self.settings)
 
@@ -83,8 +92,8 @@ class DiscoveryBO(RiskRefiningBO):
         posterior.best = min((r.observation.objective.value for r in records if r.usable_feasible), default=None)
         acquisition = PartialBOSettings(horizon=self.settings.horizon,
                                         boundary_fraction=self.settings.boundary_fraction)
-        _, before = choose_acquisition(posterior.predict(pool), posterior.best, iteration,
-                                        acquisition, self.settings.probability_exploitation)
+        _, before = self._choose_acquisition(posterior.predict(pool), posterior.best,
+                                               iteration, acquisition, records)
         local = self.settings.local and not (self.cold_global and cold)
         candidates, search = (self._augment(posterior, records, pool, before) if local else
             (pool, {'local_reports': [], 'local_rejections': {},
@@ -95,8 +104,8 @@ class DiscoveryBO(RiskRefiningBO):
         if not candidates:
             raise RuntimeError('No novel model candidates; stop without a model call')
         predictions = posterior.predict(candidates)
-        index, selection = choose_acquisition(predictions, posterior.best, iteration,
-                                              acquisition, self.settings.probability_exploitation)
+        index, selection = self._choose_acquisition(predictions, posterior.best,
+                                                      iteration, acquisition, records)
         candidate = candidates[index]
         global_ids = {digest(c) for c in pool}
         metadata = {**common, **posterior.diagnostics(), **search, **selection,
