@@ -70,7 +70,7 @@ def test_actual_six_charged_calls_and_feasible_discovery_are_required():
                  final=2.,discovery=2,fail=2)
     assert pr.check_trial(v,profile="full")==v
     wrong=copy.deepcopy(v)
-    wrong["first_online_feasible_iteration"]=2
+    wrong["first_online_feasible_iteration"]=1
     with pytest.raises(ValueError,match="first feasible"):
         pr.check_trial(wrong,profile="full")
     wrong=copy.deepcopy(v)
@@ -141,7 +141,7 @@ def test_full_24_seed_4_case_matched_results_and_fallback_coverage():
 
 
 def test_missing_duplicate_or_different_initial_evidence_rejected():
-    rows=[mock_trial(case,pr.SEEDS[0],arm)
+    rows=[mock_trial(case,pr.SEEDS[0],arm,n=2,fail=1)
           for case in pr.CASES for arm in pr.ARMS]
     with pytest.raises(ValueError,match="Duplicate"):
         pr.summarize(rows+[rows[0]],profile="smoke")
