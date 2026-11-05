@@ -1,0 +1,36 @@
+name: RA-LSBO PR60 branch-evidence risk UQ (CI pure, zero aircraft)
+on:
+  push:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget60_branch_uq_policy.py'
+      - 'ra_lsbo/experiments/risk_budget60_branch_uq_engine.py'
+      - 'ra_lsbo/experiments/risk_budget60_protocol.py'
+      - 'ra_lsbo/experiments/risk_budget60_runner.py'
+      - 'tests/test_risk_budget60_branch_uq.py'
+      - 'tests/test_risk_budget60_protocol.py'
+      - 'run_ra_lsbo_risk_budget60_branch_uq_pycharm.py'
+      - '.github/workflows/ra-risk-budget60.yml'
+  pull_request:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget60_branch_uq_policy.py'
+      - 'ra_lsbo/experiments/risk_budget60_branch_uq_engine.py'
+      - 'ra_lsbo/experiments/risk_budget60_protocol.py'
+      - 'ra_lsbo/experiments/risk_budget60_runner.py'
+      - 'tests/test_risk_budget60_branch_uq.py'
+      - 'tests/test_risk_budget60_protocol.py'
+      - 'run_ra_lsbo_risk_budget60_branch_uq_pycharm.py'
+      - '.github/workflows/ra-risk-budget60.yml'
+jobs:
+  pure-branch-risk-policy:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_risk_budget60_branch_uq.py tests/test_risk_budget60_protocol.py tests/test_risk_budget54_policy.py tests/test_risk_budget59_diagnostics.py
+      - run: python -m py_compile ra_lsbo/experiments/risk_budget60_branch_uq_policy.py ra_lsbo/experiments/risk_budget60_branch_uq_engine.py ra_lsbo/experiments/risk_budget60_protocol.py ra_lsbo/experiments/risk_budget60_runner.py run_ra_lsbo_risk_budget60_branch_uq_pycharm.py
