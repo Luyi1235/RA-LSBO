@@ -155,7 +155,9 @@ def _prepare(tmp_path,monkeypatch):
 
 
 def test_complete_240_paired_seed_rows_only_with_actual_outcomes(tmp_path, monkeypatch):
-    files=_prepare(tmp_path,monkeypatch)
+    source_dir=tmp_path/"inputs"
+    source_dir.mkdir()
+    files=_prepare(source_dir,monkeypatch)
     out=tmp_path/"new_audit"
     report=a.run(files["pr54"],files["pr55_corrected_pr56"],out)
     assert report["status"]=="COMPLETE_RETROSPECTIVE_FIXED_EFFORT_ANYTIME_AUDIT"
@@ -171,7 +173,9 @@ def test_complete_240_paired_seed_rows_only_with_actual_outcomes(tmp_path, monke
 
 
 def test_byte_identity_failure_rejects_tampering_before_output(tmp_path,monkeypatch):
-    files=_prepare(tmp_path,monkeypatch)
+    source_dir=tmp_path/"inputs"
+    source_dir.mkdir()
+    files=_prepare(source_dir,monkeypatch)
     files["pr54"].write_text(files["pr54"].read_text(encoding="utf8")+" ",encoding="utf8")
     with pytest.raises(ValueError,match="Git blob SHA1"):
         a.run(files["pr54"],files["pr55_corrected_pr56"],tmp_path/"out")
