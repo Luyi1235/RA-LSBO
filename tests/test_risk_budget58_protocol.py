@@ -35,7 +35,8 @@ def mock_trial(case, seed, arm, *, n=6, initial=10., final=8.,
         "final_best":curve[-1],
         "online_calls":n,
         "observed_nonfeasible":fail,
-        "first_online_feasible_iteration":discovery if initial is None else 0,
+        "first_online_feasible_iteration":discovery if initial is None else
+            (fail if fail<n else None),
         "initial_prefix_sha256":"a"*64,
         "best_feasible_at_each_actual_call":curve,
         "risk_receipts":receipts,
@@ -66,7 +67,7 @@ def test_registration_prespecified_fresh_seeds_unchanged_horizons():
 
 def test_actual_six_charged_calls_and_feasible_discovery_are_required():
     v=mock_trial("branin_sparse",pr.SEEDS[0],"budgeted",initial=None,
-                 final=2.,discovery=3,fail=4)
+                 final=2.,discovery=2,fail=2)
     assert pr.check_trial(v,profile="full")==v
     wrong=copy.deepcopy(v)
     wrong["first_online_feasible_iteration"]=2
@@ -115,6 +116,7 @@ def test_full_24_seed_4_case_matched_results_and_fallback_coverage():
                     discover=None
                 rows.append(mock_trial(case,seed,arm,initial=initial,
                                       final=final,discovery=discover,
+                                      fail=2 if not cold or found else 6,
                                       fallback=arm=="budgeted" and cold))
     group,pairs=pr.summarize(rows,profile="full")
     assert len(rows)==4*24*3
@@ -171,4 +173,3 @@ def test_runner_reuses_pinned_original_policy_engine_and_forbids_aircraft():
     assert "patch.object(AircraftCase" in source
     assert "patch.object(SimplifiedElectricAircraft" in source
     assert "problem.evaluate(candidate)" in source
-    assert "record" not in source.split("def run(")[0][:40] or True
