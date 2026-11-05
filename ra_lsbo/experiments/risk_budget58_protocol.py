@@ -83,8 +83,10 @@ def _valid_score(x):
 def check_trial(row, *, profile):
     cap = 2 if profile == "smoke" else REAL_ONLINE_CALLS
     if (row.get("case") not in CASES or row.get("seed") not in SEEDS or
-        row.get("arm") not in ARMS or row.get("online_calls") != cap or
-        row.get("observed_nonfeasible") not in range(cap+1) or
+        row.get("arm") not in ARMS or type(row.get("online_calls")) is not int or
+        row["online_calls"] != cap or
+        type(row.get("observed_nonfeasible")) is not int or
+        row["observed_nonfeasible"] not in range(cap+1) or
         row.get("six_call_horizon") != REAL_ONLINE_CALLS or
         row.get("forecast_internal_horizon") != ENGINE_PLANNING_HORIZON):
         raise ValueError("PR58 actual fixed-call trial roster/observation budget changed")
@@ -105,13 +107,35 @@ def check_trial(row, *, profile):
              r["realized_nonfeasible"] not in (0,1) for r in receipts) or
         sum(r["realized_nonfeasible"] for r in receipts)!=row["observed_nonfeasible"]):
         raise ValueError("PR58 actual nonfeasible count differs from serial receipts")
+    for i,(before,after) in enumerate(zip(curve,curve[1:])):
+        receipt=receipts[i]
+        forecast=receipt.get("forecast_available_for_selected")
+        predicted=receipt.get("predicted_nonfeasible")
+        if type(forecast) is not bool:
+            raise ValueError("PR58 explicit forecast coverage must be Boolean")
+        if (forecast and
+                (type(predicted) not in (int,float) or not math.isfinite(predicted)
+                 or not 0 <= predicted <= 1)):
+            raise ValueError("PR58 selected GP risk proxy is missing, nonfinite or invalid")
+        if not forecast and predicted is not None:
+            raise ValueError("PR58 model-free coverage cannot fabricate probability")
+        if receipt["realized_nonfeasible"]==1 and before != after:
+            raise ValueError("PR58 infeasible actual evaluation cannot improve feasible objective")
     first=row.get("first_online_feasible_iteration")
     if first is not None and (type(first) is not int or not 0 <= first < cap):
         raise ValueError("PR58 first online feasible discovery out of range")
+    observed_first=next((i for i,r in enumerate(receipts)
+                         if r["realized_nonfeasible"]==0),None)
+    if first!=observed_first:
+        raise ValueError("PR58 first feasible discovery differs from actual outcome receipts")
     if row["initial_best"] is None:
         derived=next((i for i,v in enumerate(curve[1:]) if v is not None),None)
         if first!=derived:
             raise ValueError("PR58 first feasible discovery not bound to actual evaluation")
+    if type(row.get("initial_prefix_sha256")) is not str or len(row["initial_prefix_sha256"])!=64:
+        raise ValueError("PR58 shared initial identity missing")
+    if type(row.get("selected_path_sha256")) is not str or len(row["selected_path_sha256"])!=64:
+        raise ValueError("PR58 actual selected path digest missing")
     if not row.get("evidence_before_result_was_future_blind",False):
         raise ValueError("No registered future-blind proposal/evaluation contract")
     return row
