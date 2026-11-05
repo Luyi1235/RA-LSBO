@@ -68,7 +68,7 @@ def test_audit_corrects_field_mismatch_from_trial_receipts_and_preserves_origina
 def test_audit_rejects_non_pr55_and_missing_trial_details(tmp_path):
     source=tmp_path/"bad.json"
     source.write_text(json.dumps({"schema":"wrong"}),encoding="utf8")
-    with pytest.raises(ValueError,match="not a PR55"):
+    with pytest.raises(ValueError,match="Not a PR55"):
         audit(source,tmp_path/"out.json")
     source.write_text(json.dumps({"schema":SCHEMA,"plan":{"profile":"full"}}),encoding="utf8")
     with pytest.raises(ValueError,match="lacks full"):

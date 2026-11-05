@@ -1,0 +1,28 @@
+name: RA-LSBO PR57 exact-budget anytime audit (NO model or physical calls)
+on:
+  push:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget57_anytime_audit.py'
+      - 'run_ra_lsbo_risk_budget57_anytime_pycharm.py'
+      - 'tests/test_risk_budget57_anytime_audit.py'
+      - '.github/workflows/ra-risk-budget57.yml'
+  pull_request:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget57_anytime_audit.py'
+      - 'run_ra_lsbo_risk_budget57_anytime_pycharm.py'
+      - 'tests/test_risk_budget57_anytime_audit.py'
+      - '.github/workflows/ra-risk-budget57.yml'
+jobs:
+  pure-prefix-audit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_risk_budget57_anytime_audit.py tests/test_risk_budget56_report_audit.py tests/test_risk_budget55_protocol.py tests/test_risk_budget54_policy.py
+      - run: python -m py_compile ra_lsbo/experiments/risk_budget57_anytime_audit.py run_ra_lsbo_risk_budget57_anytime_pycharm.py
