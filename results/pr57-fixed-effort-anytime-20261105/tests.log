@@ -1,0 +1,121 @@
+...FF.F                                                                  [100%]
+================================== FAILURES ===================================
+________ test_complete_240_paired_seed_rows_only_with_actual_outcomes _________
+
+tmp_path = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_complete_240_paired_seed_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000183BEEC9880>
+
+    def test_complete_240_paired_seed_rows_only_with_actual_outcomes(tmp_path, monkeypatch):
+        files=_prepare(tmp_path,monkeypatch)
+        out=tmp_path/"new_audit"
+>       report=a.run(files["pr54"],files["pr55_corrected_pr56"],out)
+
+tests\test_risk_budget57_anytime_audit.py:160: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+pr54 = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_complete_240_paired_seed_0/pr54.json')
+pr56 = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_complete_240_paired_seed_0/pr55_corrected_pr56.json')
+out_dir = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_complete_240_paired_seed_0/new_audit')
+
+    def run(pr54,pr56,out_dir):
+        """Read exact frozen Git-blob inputs; write ONLY a new output directory."""
+        paths=(Path(pr54).resolve(),Path(pr56).resolve())
+        out=Path(out_dir).resolve()
+        if out.exists() or any(out==p.parent or p.parent in out.parents for p in paths):
+>           raise ValueError("Output must be a fresh directory outside both source result folders")
+E           ValueError: Output must be a fresh directory outside both source result folders
+
+ra_lsbo\experiments\risk_budget57_anytime_audit.py:426: ValueError
+_________ test_byte_identity_failure_rejects_tampering_before_output __________
+
+tmp_path = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_byte_identity_failure_rej0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000183BEF5AA30>
+
+    def test_byte_identity_failure_rejects_tampering_before_output(tmp_path,monkeypatch):
+        files=_prepare(tmp_path,monkeypatch)
+        files["pr54"].write_text(files["pr54"].read_text(encoding="utf8")+" ",encoding="utf8")
+        with pytest.raises(ValueError,match="Git blob SHA1"):
+>           a.run(files["pr54"],files["pr55_corrected_pr56"],tmp_path/"out")
+
+tests\test_risk_budget57_anytime_audit.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+pr54 = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_byte_identity_failure_rej0/pr54.json')
+pr56 = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_byte_identity_failure_rej0/pr55_corrected_pr56.json')
+out_dir = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_byte_identity_failure_rej0/out')
+
+    def run(pr54,pr56,out_dir):
+        """Read exact frozen Git-blob inputs; write ONLY a new output directory."""
+        paths=(Path(pr54).resolve(),Path(pr56).resolve())
+        out=Path(out_dir).resolve()
+        if out.exists() or any(out==p.parent or p.parent in out.parents for p in paths):
+>           raise ValueError("Output must be a fresh directory outside both source result folders")
+E           ValueError: Output must be a fresh directory outside both source result folders
+
+ra_lsbo\experiments\risk_budget57_anytime_audit.py:426: ValueError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_byte_identity_failure_rej0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000183BEF5AA30>
+
+    def test_byte_identity_failure_rejects_tampering_before_output(tmp_path,monkeypatch):
+        files=_prepare(tmp_path,monkeypatch)
+        files["pr54"].write_text(files["pr54"].read_text(encoding="utf8")+" ",encoding="utf8")
+        with pytest.raises(ValueError,match="Git blob SHA1"):
+>           a.run(files["pr54"],files["pr55_corrected_pr56"],tmp_path/"out")
+E           AssertionError: Regex pattern did not match.
+E            Regex: 'Git blob SHA1'
+E            Input: 'Output must be a fresh directory outside both source result folders'
+
+tests\test_risk_budget57_anytime_audit.py:177: AssertionError
+____________ test_audit_rejects_non_pr55_and_missing_trial_details ____________
+
+tmp_path = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_audit_rejects_non_pr55_an0')
+
+    def test_audit_rejects_non_pr55_and_missing_trial_details(tmp_path):
+        source=tmp_path/"bad.json"
+        source.write_text(json.dumps({"schema":"wrong"}),encoding="utf8")
+        with pytest.raises(ValueError,match="not a PR55"):
+>           audit(source,tmp_path/"out.json")
+
+tests\test_risk_budget56_report_audit.py:72: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+source = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_audit_rejects_non_pr55_an0/bad.json')
+destination = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_audit_rejects_non_pr55_an0/out.json')
+
+    def audit(source, destination):
+        source=Path(source).resolve()
+        destination=Path(destination).resolve()
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        if source==destination or destination.exists():
+            raise FileExistsError("Choose a distinct, not-yet-existing corrected report path")
+        raw=source.read_bytes()
+        original=json.loads(raw.decode("utf8"))
+        if original.get("schema")!=SCHEMA:
+>           raise ValueError("Not a PR55 frozen report")
+E           ValueError: Not a PR55 frozen report
+
+ra_lsbo\experiments\risk_budget56_report_audit.py:31: ValueError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/pc/AppData/Local/Temp/pytest-of-pc/pytest-70/test_audit_rejects_non_pr55_an0')
+
+    def test_audit_rejects_non_pr55_and_missing_trial_details(tmp_path):
+        source=tmp_path/"bad.json"
+        source.write_text(json.dumps({"schema":"wrong"}),encoding="utf8")
+        with pytest.raises(ValueError,match="not a PR55"):
+>           audit(source,tmp_path/"out.json")
+E           AssertionError: Regex pattern did not match.
+E            Regex: 'not a PR55'
+E            Input: 'Not a PR55 frozen report'
+
+tests\test_risk_budget56_report_audit.py:72: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_risk_budget57_anytime_audit.py::test_complete_240_paired_seed_rows_only_with_actual_outcomes
+FAILED tests/test_risk_budget57_anytime_audit.py::test_byte_identity_failure_rejects_tampering_before_output
+FAILED tests/test_risk_budget56_report_audit.py::test_audit_rejects_non_pr55_and_missing_trial_details
+3 failed, 4 passed in 0.18s

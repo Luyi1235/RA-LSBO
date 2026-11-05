@@ -1,0 +1,39 @@
+# 指定 pytest 的 3 个失败（工作机未修改代码）
+
+命令：
+
+```text
+python -m pytest -q tests/test_risk_budget57_anytime_audit.py tests/test_risk_budget56_report_audit.py
+```
+
+结果：`4 passed, 3 failed`（0.18 s），完整输出见 `tests.log`。
+
+## 1. test_complete_240_paired_seed_rows_only_with_actual_outcomes
+
+- 用例把两个输入 JSON 和输出目录都放在同一个 `tmp_path` 下；
+- `risk_budget57_anytime_audit.run` 的守卫要求输出目录不能在任一输入文件的父目录内，于是先抛出
+  `ValueError: Output must be a fresh directory outside both source result folders`；
+- 这是测试夹具与输出守卫的布局冲突，不是数据内容或轨迹校验失败。生产运行时输入在
+  `D:\LSBO\pr57_exact_inputs`，输出在 `D:\LSBO\RA-LSBO-pr57-anytime-20261105-full`，守卫正常通过。
+
+## 2. test_byte_identity_failure_rejects_tampering_before_output
+
+- 同一 `tmp_path` 布局问题导致输出守卫先于字节身份校验触发；
+- 测试期望 `ValueError` 匹配 `Git blob SHA1`，实际先得到输出目录错误。
+
+## 3. test_audit_rejects_non_pr55_and_missing_trial_details
+
+- 测试正则：`match="not a PR55"`；
+- 实际消息：`Not a PR55 frozen report`；
+- 仅大小写不匹配（`not` vs `Not`），测试的正则缺少大小写不敏感标志。
+
+## 生产运行
+
+生产入口使用从 Git blob 精确取出的两个输入，校验 `source_git_blob_sha1` 与
+`source_sha256` 通过，输出到全新目录，状态：
+
+```text
+COMPLETE_RETROSPECTIVE_FIXED_EFFORT_ANYTIME_AUDIT
+```
+
+因此本分支同时保留：分析结果、完整 pytest 日志和上述测试侧失败说明。分析代码本身未做任何修改。
