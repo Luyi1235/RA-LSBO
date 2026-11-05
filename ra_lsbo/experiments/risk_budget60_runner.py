@@ -1,7 +1,8 @@
 """PR60: new six-arm branch-risk UQ on-policy experiment with EQUAL six calls.
 
-The three original control arms use the exact PR54 GP/VAE/acquisition sources,
-an independent 24-seed panel, exactly 12 shared initial plus 6 individually
+The three original control arms use the exact PR54 GP/VAE/acquisition sources.
+Three opt-in, predeclared branch-risk variants use those same GP/VAE models.
+An independent 12-seed panel uses exactly 12 shared initial plus 6 individually
 chosen and evaluated analytical designs per arm. No PR45/54/55 data replay.
 No aircraft or RCAIDE calls. Real GP and VAE fits DO occur.
 
@@ -22,7 +23,7 @@ from ra_lsbo.experiments.core.protocol import BASE
 from .risk_budget54_runner import _engine as _legacy_engine, _status, _write, _append, _sha, clean_commit
 from .risk_budget60_branch_uq_engine import BranchUQDualViewMathBO
 from .risk_budget54_policy import observed_failures
-from .risk_budget58_protocol import (
+from .risk_budget60_protocol import (
     SCHEMA, CASES, ARMS, SEEDS, INITIAL, REAL_ONLINE_CALLS,
     ENGINE_PLANNING_HORIZON, OBSERVED_FAILURE_CAP, POOL, INIT_DRAW_BASE,
     ONLINE_DRAW_BASE, PR54_POLICY_SHA256, PR54_ENGINE_SHA256,
