@@ -1,14 +1,16 @@
 """PR60: prospectively frozen equal-six-call on-policy mechanism verification.
 
-PR54/55/57 motivated this independent new-seed fixed-effort design.  We do
-not change the acquisition or its internal twelve-call planning horizon;
-only schedule SIX actual online evaluations per arm, where all arms have
-not yet been able to stop *before* the sixth call under a six-failure cap.
+PR54-59 results motivated this independent new-seed fixed-effort design.
+The original PR54 acquisition and its internal 12-step planning horizon are
+unchanged for the three controls; three new, fully opt-in branch-evidence
+acquisitions also use the identical GP/VAE surrogate. All six strategies
+execute SIX real online evaluations, without early-stop censoring.
 
 New data and a different seed block are used. All rankings and evaluations
 happen on-policy, with no counterfactual labels or post-stop extrapolation.
 This is an exploratory mathematical mechanism validation, NOT aircraft safety.
 """
+from collections import Counter
 import math
 import statistics
 
@@ -135,6 +137,17 @@ def check_trial(row, *, profile):
             raise ValueError("PR60 model-free coverage cannot fabricate probability")
         if receipt["realized_nonfeasible"]==1 and before != after:
             raise ValueError("PR60 infeasible actual evaluation cannot improve feasible objective")
+        if row["arm"].startswith("branch_") and forecast:
+            ep=receipt.get("selected_branch_posterior")
+            raw=receipt.get("original_gp_predicted_failure")
+            if (not isinstance(ep,dict) or
+                type(ep.get("n_settled_in_branch")) is not int or
+                ep["n_settled_in_branch"]<0 or
+                type(raw) not in (float,int) or not math.isfinite(raw) or
+                not 0<=raw<=1 or
+                not (0<=ep.get("posterior_failure_mean",-1)<=1) or
+                not (0<=ep.get("posterior_failure_sd",-1)<=1)):
+                raise ValueError("PR60 branch posterior selection receipt absent or invalid")
     first=row.get("first_online_feasible_iteration")
     if first is not None and (type(first) is not int or not 0 <= first < cap):
         raise ValueError("PR60 first online feasible discovery out of range")
@@ -200,9 +213,8 @@ def summarize(rows, *, profile):
             scores=[t["final_best"] for t in group if t["final_best"] is not None]
             model_receipts=[r for t in group for r in t["risk_receipts"]
                             if r.get("forecast_available_for_selected")]
-            fallbacks=[r for r in model_receipts if
-                       r.get("budget_rule")==
-                       "no_candidate_below_allowance_min_predicted_failure"]
+            fallbacks=[r for r in model_receipts if str(
+                       r.get("budget_rule","")).startswith("no_candidate_below_allowance_")]
             invalid=[r for t in group for r in t["risk_receipts"]
                      if r.get("forecast_available_for_selected") and
                      (r.get("predicted_nonfeasible") is None or
@@ -229,7 +241,7 @@ def summarize(rows, *, profile):
                 "realized_nonfeasible_on_scored_calls":_mean([
                     r["realized_nonfeasible"] for r in model_receipts]),
                 "no_safety_guarantee":True,
-                "phase_selected_mode_counts":dict(__import__("collections").Counter(
+                "phase_selected_mode_counts":dict(Counter(
                     r.get("mode") for t in group for r in t["risk_receipts"])),
             }
         for candidate,control in PAIRS:
