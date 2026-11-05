@@ -1,0 +1,74 @@
+{
+  "actual_online_calls_per_arm": 6,
+  "arms": [
+    "legacy",
+    "semantic_only",
+    "budgeted",
+    "branch_mean",
+    "branch_dispersion",
+    "branch_explore"
+  ],
+  "arms_train_their_own_real_observed_history": true,
+  "branch_beta_prior": [
+    1.0,
+    1.0
+  ],
+  "branch_dispersion_multiplier": 1.0,
+  "branch_evidence_only_from_this_arm_settled_prefix": true,
+  "cases": [
+    "branin_ordinary",
+    "branin_sparse",
+    "rosenbrock_ordinary",
+    "rosenbrock_sparse"
+  ],
+  "design_after_pr59_is_exploratory": true,
+  "engine_internal_horizon_unmodified": 12,
+  "fixed_full_online_calls": 6,
+  "fresh_nonoverlap_with_pr54_pr55_pr58": true,
+  "immutable_engine_sha256": "3f6105f073f01918b95de413a46cedda8b46c5aa56ced78b0eec8f1302c6a677",
+  "immutable_policy_sha256": "d2c32b77d096d46ca4d20b74d165b0e601877c3aa28741bc16a1f2bf255b1437",
+  "initial": 12,
+  "initial_shared_once_per_case_seed": true,
+  "matched_same_six_real_evaluations": true,
+  "method_definition": {
+    "branch_dispersion": "same but Beta mean+one posterior standard deviation",
+    "branch_explore": "branch_dispersion with explicit high-uncertainty fallback if no candidate passes",
+    "branch_mean": "GP risk upper-envelope with Beta(1,1) mean by discrete branch",
+    "budgeted": "exact PR54 estimated-failure budget gating",
+    "legacy": "exact PR54 original completion+constraints",
+    "semantic_only": "exact PR54 constraint-only re-ranking"
+  },
+  "new_analytic_evaluation_ceiling": 2304,
+  "new_rcaide_calls": 0,
+  "new_reduced_aircraft_calls": 0,
+  "no_probability_safety_guarantee": true,
+  "observed_failure_cap": 6,
+  "online_candidate_stream": 499000000,
+  "pool_per_online_iteration": 128,
+  "predeclared_primary_metric": "paired feasible-first wins/losses/ties at six true online calls for each registered risk-UQ ablation",
+  "predeclared_secondary_metrics": [
+    "paired objective delta only where both have known feasible exact values",
+    "pairwise real nonfeasible count difference at six charged calls",
+    "new feasible discovery when shared initial set is all nonfeasible",
+    "branch posterior mean/dispersion receipts from same-arm earlier outcomes",
+    "fallback failure rate and scored-forecast-vs-realized failure gap"
+  ],
+  "profile": "full",
+  "schema": "ra_lsbo_pr60_branch_evidence_dispersion_onpolicy_v1",
+  "seeds": [
+    997101,
+    997102,
+    997103,
+    997104,
+    997105,
+    997106,
+    997107,
+    997108,
+    997109,
+    997110,
+    997111,
+    997112
+  ],
+  "shared_initial_stream": 498000000,
+  "source_sha": "8675ee94b23bc06779788907dafa3a068c226c29"
+}
