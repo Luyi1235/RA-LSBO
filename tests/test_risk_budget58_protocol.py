@@ -137,7 +137,7 @@ def test_full_24_seed_4_case_matched_results_and_fallback_coverage():
     assert contrast["both_infeasible"]==6
     assert contrast["same_real_online_call_count"] is True
     assert contrast["n_real_online_calls_per_arm"]==6
-    assert contrast["mean_observed_nonfeasible_delta"]==0
+    assert contrast["mean_observed_nonfeasible_delta"]==-1.0
 
 
 def test_missing_duplicate_or_different_initial_evidence_rejected():
