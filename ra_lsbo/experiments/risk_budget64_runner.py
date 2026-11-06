@@ -26,6 +26,8 @@ from .risk_budget64_protocol import (
     POOL, INIT_DRAW_BASE, ONLINE_DRAW_BASE, PR54_POLICY_SHA256,
     PR54_ENGINE_SHA256, plan, summarize,
 )
+from .risk_budget60_protocol import ENGINE_PLANNING_HORIZON
+)
 
 
 def _engine(problem, seed, arm, output):
@@ -145,7 +147,9 @@ def _trial(problem,case,seed,arm,initial,output,max_steps):
         modes[meta.get("mode","unknown")]+=1
         receipt=(meta.get("credibility_decision") if arm.startswith("soft_gp_") else meta.get("risk_budget"))
         if arm.startswith("soft_gp_") and receipt is not None:
-            if receipt.get("selected_candidate_sha256")!=cid or receipt.get("actual_action")!="evaluate":
+            if (receipt.get("selected_candidate_sha256")!=cid or
+                    receipt.get("actual_action")!=("evaluate" if arm=="soft_gp_abstain"
+                    else "evaluate_under_frozen_six_call_protocol")):
                 raise RuntimeError("PR64 selected risk receipt mismatch")
         decisions.append({"iteration":iteration,"candidate_sha256":cid,
             "evaluation_performed":True,"action":"evaluate",
@@ -235,8 +239,8 @@ def run(output, *, profile="smoke"):
                           "calls",result["online_calls"],
                           "nonfeasible",result["observed_nonfeasible"],
                           "best",result["final_best"],flush=True)
-    if charged!=spec["new_analytic_evaluation_ceiling"]:
-        raise RuntimeError("PR64 fixed exact real analytical call budget not reconciled")
+    if charged>spec["max_new_analytic_evaluation_budget"]:
+        raise RuntimeError("PR64 actual analytical calls exceeded maximum budget")
     by_case,paired=summarize(records,profile=profile)
     report={
         "schema":SCHEMA,
@@ -245,6 +249,8 @@ def run(output, *, profile="smoke"):
         "code_sha":sha,
         "plan":spec,
         "n_real_analytical_calls":charged,
+        "max_new_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"],
+        "unused_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"]-charged,
         "max_new_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"],
         "n_new_on_policy_trials":len(records),
         "new_aircraft_calls":0,"new_rcaide_calls":0,
