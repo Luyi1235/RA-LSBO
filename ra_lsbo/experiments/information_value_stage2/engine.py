@@ -7,7 +7,7 @@ soft-GP risk/utility formula, phase schedule, and post-proposal coverage remain.
 import math
 
 from ...budget import digest
-from ..soc_revision.acquisition import quantities
+from ...soc_revision.acquisition import quantities
 from ..risk_budget63_local_value_engine import LocalCredibilityValueBO
 from ..risk_budget63_local_value_policy import (
     _normalized_gains, local_credibility, FAILURE_PRICE_BASE,
