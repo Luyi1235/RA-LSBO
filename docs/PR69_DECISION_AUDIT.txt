@@ -1,0 +1,40 @@
+PR69: PR68 只读决策审计；不是新优化算法或新在线实验。
+父代码 21a1267ee907774e6958a12539da98c0840cc1d9。
+唯一结果提交 2823c6204de7da0ffa537548e0dbbe411e41e22a。
+旧代码及结果均不修改，新增数学/飞机/RCAIDE/GP/VAE 调用全部为0。
+
+动机与已核查事实：
+两步对myopic为1/3/12，最终可行均12/16，在线失败44/96对36/96。
+中止区间消融0/0/16；5476和4216次幻想head拟合均完成，没有数值回退。
+这些结果不支持升级两步为默认，也不能证明所有信息价值方法无效。
+README将任务内均值当成单种子差值的叙述应更正：
+Branin ordinary 998804的两步-minus-myopic实际差为-0.6315824551838229；
+Branin sparse 998802为+5.023865181998667；
+Rosenbrock sparse 998802为+2.3437414228781754，998804为+64.2712372258521。
+不同目标尺度之间不能做抵消。p>=0.8字段必须区分失败概率与可行概率。
+
+审计项目：
+1. 直接复用冻结PR68只读verify，核验405个原始文件、64条trial、576次已付费评价。
+2. 从保存的幻想weight/continuation重建Q2，核对选点与已记录argmax，不重新拟合。
+3. 相对同一历史状态下myopic最优，计算即时收益牺牲及预测两步增量。
+4. 固定四节点贡献，依次删去每个分支同序一个节点，重归一化其余三点；
+   只作为3-of-4节点敏感性，不是高精度收敛、误差界、置信区间或新在线结果。
+5. 核查被选首动作的幻想第二动作是否精确存在于实际下一轮候选池。
+   零精确保留不证明附近没有替代点，也不证明它是性能下降的因果原因。
+6. 只有历史hash、候选池和原始预测全部相同，才比较两个臂的同前缀选择。
+7. 显式区分predicted_failure<=0.2与>=0.8；不同策略的自适应选点不能作为模型校准优劣的受控比较。
+8. 记录真实随后两次评价的交付/改进，仅为描述，不当作未执行行动的反事实价值。
+
+执行：现有Python，无需任何新依赖。两个干净detached worktree分别检出新审计SHA和固定结果SHA。
+输出置于两个worktree之外的全新路径。--evidence-root传结果worktree根目录，不传full子目录。
+python -S -m unittest discover -s tests -p test_pr69_decision_audit.py -v
+python -S -m compileall -q run_pr69_decision_audit.py tests/test_pr69_decision_audit.py
+python -S run_pr69_decision_audit.py --evidence-root <结果worktree根> --expected-sha <固定审计SHA> --output <全新外部目录>
+-S仅屏蔽site加载，不修改环境或依赖；本审计只依赖标准库，不使用假科学模块。
+20项单元测试。CI在Windows/Ubuntu与Python3.9/3.13下读取同一批真实证据，额外模型调用为0。
+错误立即停止、保存日志，不修改原始证据或现有算法。无smoke/full新实验。
+
+交付：report.json、decisions.json、manifest.json及外层完整日志/环境/命令/退出码。
+上传新结果分支 results/pr68-decision-audit-20261106，若已存在加唯一后缀，不覆盖旧结果。
+证据目录* -text；原始PR68证据只引用固定HEAD，不复制后修改成新实验。
+后续只在诊断明确后考虑更高阶求积或与实际候选生成一致的前瞻；本PR不自动授权它们。
