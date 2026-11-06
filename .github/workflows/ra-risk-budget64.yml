@@ -1,0 +1,30 @@
+name: RA-LSBO PR64 selective evaluation and real abstention (pure CI only)
+on:
+  push:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget64_protocol.py'
+      - 'ra_lsbo/experiments/risk_budget64_runner.py'
+      - 'tests/test_risk_budget64_protocol.py'
+      - 'run_ra_lsbo_risk_budget64_selective_evaluation_pycharm.py'
+      - '.github/workflows/ra-risk-budget64.yml'
+  pull_request:
+    paths:
+      - 'ra_lsbo/experiments/risk_budget64_protocol.py'
+      - 'ra_lsbo/experiments/risk_budget64_runner.py'
+      - 'tests/test_risk_budget64_protocol.py'
+      - 'run_ra_lsbo_risk_budget64_selective_evaluation_pycharm.py'
+      - '.github/workflows/ra-risk-budget64.yml'
+jobs:
+  pure-abstention-protocol:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_risk_budget64_protocol.py tests/test_risk_budget63_local_value_policy.py tests/test_risk_budget63_protocol.py tests/test_risk_budget54_policy.py
+      - run: python -m py_compile ra_lsbo/experiments/risk_budget64_protocol.py ra_lsbo/experiments/risk_budget64_runner.py ra_lsbo/experiments/risk_budget63_local_value_policy.py ra_lsbo/experiments/risk_budget63_local_value_engine.py run_ra_lsbo_risk_budget64_selective_evaluation_pycharm.py
