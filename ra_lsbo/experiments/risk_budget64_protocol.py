@@ -248,7 +248,8 @@ def summarize(rows,*,profile):
             scored=[r for r in evaluated if r["forecast_available_for_selected"]]
             coverage=[r for r in evaluated if not r["forecast_available_for_selected"]]
             abstained=[r for r in decisions if not r["evaluated"]]
-            negative=[r for r in scored if r["would_defer_in_unconstrained_utility_model"]]
+            all_scored_decisions=[r for r in decisions if r["forecast_available_for_selected"]]
+            negative=[r for r in all_scored_decisions if r["would_defer_in_unconstrained_utility_model"]]
             finals=[t["final_best"] for t in group if t["final_best"] is not None]
             by_case_arm[f"{case}/{arm}"]={
                 "n_seed_groups":len(group),
@@ -269,7 +270,9 @@ def summarize(rows,*,profile):
                 "scored_evaluations":len(scored),
                 "coverage_evaluations_without_risk_probability":len(coverage),
                 "negative_utility_scored_decisions":len(negative),
+                "negative_utility_decisions":len(negative),
                 "negative_utility_evaluated":sum(r["evaluated"] for r in negative),
+                "negative_utility_abstained":sum(not r["evaluated"] for r in negative),
                 "negative_utility_actual_failures":sum(
                     r["realized_nonfeasible"] for r in negative if r["evaluated"]),
                 "no_safety_guarantee":True,
