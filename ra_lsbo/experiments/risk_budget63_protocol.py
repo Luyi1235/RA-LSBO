@@ -167,8 +167,8 @@ def check_trial(row, *, profile):
             if (row["arm"]!="soft_gp" and
                     abs(predicted-ep["candidate_blended_failure_proxy"])>1e-9):
                 raise ValueError("Local-fusion arm risk doesn't match candidate-specific receipt")
-            if receipt.get("no_hard_risk_gate") is not True or
-                    receipt.get("actual_action")!="evaluate_under_frozen_six_call_protocol":
+            if (receipt.get("no_hard_risk_gate") is not True or
+                    receipt.get("actual_action")!="evaluate_under_frozen_six_call_protocol"):
                 raise ValueError("Soft value arm illegally enabled a hard gate or abstention")
     first=row.get("first_online_feasible_iteration")
     if first is not None and (type(first) is not int or not 0 <= first < cap):
