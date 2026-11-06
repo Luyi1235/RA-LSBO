@@ -1,0 +1,64 @@
+PR71：固定 PR70 历史状态的求积稳定性诊断
+父代码：275aac2c5d5d6a8c8f6278c0d556de3de5867f74。
+输入结果固定 HEAD：f859cca5adc56dd101d2f59665f7829a2b0331c4。
+
+1. 依据与边界
+PR70 full：next_pool 对 current_pool 两步为5胜3负8平，最终可行14/16均相同，在线失败30对31。
+next_pool 对 myopic 为4胜2负10平，可行14对13，失败30对35。
+这是小样本混合结果；原两步在这些新种子上本身也比单步多一次可行发现。
+不能把所有差异归因于支持一致性，更不能用候选一致性100%证明优化优势。
+本PR只诊断另一个未排除因素：四节点求积改变时，是否仍然选择同一动作。
+不新增在线算法，不从这些历史状态调阈值，不运行更多种子，不启动飞机实验。
+
+2. 固定状态，不挑选胜负
+只使用PR70 full中cei_two_step_next_pool臂。
+full：四任务、998901–998904、零起算iteration 0和4，共32个历史状态。
+smoke：四任务、998901、iteration 0，共4状态，是full子集而非独立效果证据。
+ci：rosenbrock_sparse、998901和998904、iteration 0，共2状态，用于真实冷/暖接口验证。
+读取每状态之前的初始+在线观测；之后的标签不进入任何GP/求积。输入全证据另作完整性核验。
+
+3. 先复现，再增加节点
+从iteration_000非pickle checkpoint加载VAE权重，不重新训练VAE。
+用保存的已选核、GP设置、输出归一化和原历史重拟合EP，不重新选择核。
+恢复预测均值/方差必须与保存值在rtol=1e-6、atol=1e-8内一致；原四节点winner必须完全一致。
+原四节点各首动作分数、逐幻想观测和第二动作/continuation均需复现；否则整体停止。
+候选池、四首动作短名单、每首动作的下一轮支持列表及hash保持相同。
+未来支持继续通过原PR70生成器构造，只用坐标，不调用真实evaluator。
+
+4. 只变积分规则
+规则依次为(4,原扰动)、(16,原扰动)、(64,原扰动)、(64,独立扰动)。
+原扰动沿用PR68 seed+730000000+1009*iteration mod 2^32。
+独立扰动只增加104729。同扰动4/16/64为嵌套Sobol前缀，同一规则不同首动作使用共同节点。
+仍用原outcomes中止/完成分支及原资源/目标抽样，不顺便改变分层、噪声或观测模型。
+不使用任何新风险惩罚、可信度门、coverage或停止动作。
+各规则独立执行并计费，不缓存省略拟合而低报计算。每个必需幻想失败则该规则标记numerical_failure，
+winner保持null，保留已发生的拟合和部分分数；不得只平均成功幻想。
+程序错误抛出并停止；原四节点不能复现也停止。其余规则数值失败计入不可比较分母。
+
+5. 费用
+新增数学评价、飞机、RCAIDE均0；新增VAE训练0。
+新增GP重拟合明确非0：恢复当前选中head及每规则幻想head，逐次started/completed/error账本记录。
+full最多32状态*(4恢复head+4根*2分支*(4+16+64+64)节点*3head)=113792次GP head拟合；
+实际因冷启动成功分支无需继续、部分head缺失等而更少。此上限不是承诺耗时。
+smoke和full分别计费，重复的状态不是独立样本。CI计算单独报告。
+
+6. 报告
+记录每状态的恢复误差、四节点复现、原始/新积分分数、winner、全部幻想反馈和continuation，
+报告4vs16、16vs64、两个64扰动之间的改选数及有效/失败分母。
+解释score差时只能称模型内数值变化；不能当作真实目标改进或未执行动作反事实。
+64节点不是精确真值；两扰动一致不证明收敛或给出置信区间；仍受四首动作短名单、EP和固定核近似限制。
+若高低阶基本一致，也不能从本诊断推断新在线优化效果。
+
+7. 执行
+双worktree分别固定代码SHA和上述输入结果HEAD；输出外部全新目录。现有Rcaide_vsp，不升级依赖。
+python -S -m unittest discover -s tests -p test_pr71_protocol.py -v
+python -m unittest discover -s tests -p test_pr71_numeric.py -v
+python -m compileall -q pr71_protocol.py pr71_quadrature.py pr71_restore.py run_pr71_quadrature.py
+python -S run_pr71_quadrature.py --help
+python run_pr71_quadrature.py --profile smoke --evidence-root <结果worktree根> --expected-sha <固定代码SHA> --output <新smoke>
+python -S run_pr71_quadrature.py --task verify --input <smoke>
+技术验收通过才运行同命令profile full并verify。不能按是否有利决定full，也不能更改状态列表。
+完成状态COMPLETE_FIXED_STATE_QUADRATURE_DIAGNOSTIC，不是算法优越性结果。
+保存report/plan/source_receipt/states/gp_refits/manifest和全部日志，旧结果核验前后不变。
+数值诊断新结果分支results/pr71-quadrature-diagnostic-20261106，已有则唯一后缀，不覆盖/force push。
+不合并PR，原始证据只读；结果目录*-text；指令直接聊天，不需要MD附件。
