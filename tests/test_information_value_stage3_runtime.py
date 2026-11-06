@@ -18,11 +18,14 @@ from ra_lsbo.experiments.information_value_stage3.runner import NativeAdapter, _
 
 class Features:
     def transform(self, candidates):
-        return np.array([[c["x"]] for c in candidates], dtype=float)
+        # The real grouped kernel requires continuous, active-mask and discrete
+        # blocks: with one continuous variable dimension must be greater than 2.
+        return np.array([[c["x"], 1., 1.] for c in candidates], dtype=float)
 
 
 def make_factory():
-    x = np.array([[0.], [.25], [.7], [1.]])
+    features = Features()
+    x = features.transform([{"x": value} for value in (0., .25, .7, 1.)])
     def head(values, name, objective=False):
         obs = [OutputObservation("exact", name+str(i), value=v) for i, v in enumerate(values)]
         return StableGroupedHead(x, obs, continuous_count=1, seed=19, name=name,
@@ -31,7 +34,6 @@ def make_factory():
              "resource": head([-.4, -.2, -.3, -.1], "resource")}
     objective = head([8., 6., 3., 5.], "objective", True)
     candidates = [{"x": .4}, {"x": .55}, {"x": .8}, {"x": .95}]
-    features = Features()
     post = SimpleNamespace(constraints=heads, objective=objective,
                            risk_features=features, objective_features=features)
     forecasts = {"constraints": {name: h.predict(features.transform(candidates)) for name, h in heads.items()},
