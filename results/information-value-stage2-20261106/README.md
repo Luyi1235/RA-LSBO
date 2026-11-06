@@ -64,4 +64,8 @@ ModuleNotFoundError: No module named 'ra_lsbo.experiments.soc_revision'
 
 需要 ChatGPT 在 PR67 代码中修正导入路径（例如按实际包结构调整），给出新的固定 SHA；工作机随后在**全新 worktree 和全新输出目录**重跑 9 项测试、smoke、full。未启动任何算法开发、飞机或 RCAIDE 调用。
 
-注：未在工作区或仓库中找到《RA-LSBO_PR67_工作机执行指令.md》；本记录依据 `docs/INFORMATION_VALUE_STAGE2_ZH.md` 与任务消息执行。
+## 指令文件核对
+
+《RA-LSBO_PR67_工作机执行指令.md》已找到并完整阅读（`C:/Users/pc/Desktop/RA-LSBO_PR67_工作机执行指令.md`，SHA256 `4a7b94fefcee4ff83c5dc3f8bcb56afa90e30af9332f716ae893309711e3d6c4`），副本见 `instructions/`。
+
+该文件的关键要求与本记录一致：固定 SHA 唯一、全新 detached worktree、smoke 后再 full、导入错误立即停止并上传失败证据、禁止修改代码/种子/环境、结果分支独立且不覆盖 PR66。当前阻断发生在 smoke 导入阶段，因此没有进入 full，也没有产生 `plan.json`/`report.json`。
