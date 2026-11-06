@@ -44,8 +44,9 @@ def main():
     print("actual on-policy trials:",result["n_new_on_policy_trials"],flush=True)
     print("new aircraft evaluations:",result["new_aircraft_calls"],flush=True)
     print("new RCAIDE calls:",result["new_rcaide_calls"],flush=True)
-    print("Six original/new algorithms have the exact same six charged real online calls.",
-          flush=True)
+    print("maximum analytic evaluation budget:",result["max_new_analytic_evaluation_budget"],flush=True)
+    print("unused analytic evaluation budget:",result["unused_analytic_evaluation_budget"],flush=True)
+    print("same maximum budget; actual calls may be lower only through recorded abstention.",flush=True)
 
 
 if __name__=="__main__":
