@@ -3,6 +3,9 @@
 Load the original numerical VAE checkpoint, refit only prefix GP heads, require
 four-node replay agreement, then change quadrature nodes at the SAME state.
 All true evaluators and VAE training methods are blocked during reconstruction.
+R1 attests the original two source hashes and binds ONLY the temporary replay
+problem to their independently reconstructed historical contract. No source
+or record bytes are rewritten, and all original reconstruction tests remain.
 """
 import argparse
 from contextlib import ExitStack, contextmanager
@@ -16,6 +19,8 @@ import traceback
 from unittest.mock import patch
 
 from quadrature_audit_protocol import BASE, EVIDENCE, RESULT, ARM, RULES, plan, key, require, close, summarize, fingerprint
+from quadrature_source_identity import (SCHEMA as IDENTITY_SCHEMA, attest_sources,
+    bind_historical_math_contract, validate_attestation, verify_binding)
 
 
 def git(root, *args):
@@ -142,6 +147,9 @@ def run(output, evidence_root, profile, expected_sha):
         from ra_lsbo.experiments.risk_budget63_runner import _case
         from pr70_future_pool import NextPoolFactory
         from quadrature_audit_numeric import compute_rule,verify_rule
+        bill['phase']='source_identity_attestation'
+        identity=attest_sources(code,read(source/'source_receipt.json'))
+        write_new(out/'identity_source_receipt.json',identity)
         with model_only_guard(bill,spec['gp_construction_ceiling']):
             for state in spec['states']:
                 case,seed,i=state['case'],state['seed'],state['iteration']
@@ -155,7 +163,9 @@ def run(output, evidence_root, profile, expected_sha):
                 require(p['history_hash']==fingerprint([x.to_dict() for x in history]), 'Wrong prefix')
                 require(r['depth']==2 and r['fallback'] is None and r['arm']==ARM,'Not a supported original two-step state')
                 require(meta['corpus_training']['latest']['iteration']==0,'Unregistered checkpoint schedule')
+                bill['phase']='historical_contract_binding'
                 problem=_case(case)
+                binding=bind_historical_math_contract(problem,history,identity,code)
                 bill['phase']='prefix_gp_reconstruction'
                 posterior,diag=restore(problem,model_base,seed,initial,history,folder/'representation'/'iteration_000',meta)
                 candidates=meta['pool']
@@ -168,6 +178,7 @@ def run(output, evidence_root, profile, expected_sha):
                 require(supports==r['future_supports'],'Original future supports did not replay')
                 write_new(target/'snapshot.json',{'case':case,'seed':seed,'iteration':i,
                     'history_hash':p['history_hash'],'history':[x.to_dict() for x in history],
+                    'contract_identity':binding,
                     'best':posterior.best,'pool':candidates,'forecasts':serial(forecast),'heads':diag['heads'],
                     'first_indices':r['first_action_indices'],'future_supports':supports,
                     'original_selected_index':r['selected_index'],'original_scores':r['scores'],
@@ -198,6 +209,8 @@ def run(output, evidence_root, profile, expected_sha):
         report={'status':'COMPLETE_SAME_STATE_QUADRATURE_DIAGNOSTIC','diagnostic_code_sha':expected_sha,
                 'profile':profile,'input_result_sha':EVIDENCE,'original_code_sha':BASE,
                 'input_verify_before':verified_before,'input_verify_after':verified_after,
+                'source_identity_schema':IDENTITY_SCHEMA,
+                'identity_source_receipt_sha256':file_sha(out/'identity_source_receipt.json'),
                 'state_count':len(states),'states':states,'summary':summarize(states),'bill':bill,
                 'elapsed_seconds':time.perf_counter()-start,
                 'limits':['Fixed existing-policy prefixes, no new online outcomes.',
@@ -216,10 +229,15 @@ def run(output, evidence_root, profile, expected_sha):
 
 
 def verify(output):
-    from ra_lsbo.experiments.information_value_stage1.io import verify as verify_manifest
+    from ra_lsbo.experiments.information_value_stage1.io import verify as verify_manifest, file_sha
     from quadrature_audit_numeric import verify_rule
     out=Path(output);hashes=verify_manifest(out)
     spec=read(out/'plan.json');report=read(out/'report.json');source=read(out/'source_receipt.json')
+    identity=read(out/'identity_source_receipt.json')
+    validate_attestation(identity)
+    require(report['source_identity_schema']==IDENTITY_SCHEMA and
+            report['identity_source_receipt_sha256']==file_sha(out/'identity_source_receipt.json'),
+            'Source identity receipt does not reconcile')
     require(spec==plan(spec['profile']),'Unregistered plan')
     require(report['status']=='COMPLETE_SAME_STATE_QUADRATURE_DIAGNOSTIC','Not complete')
     require(report['diagnostic_code_sha']==source['diagnostic_code_sha'],'Code identity mismatch')
@@ -230,6 +248,8 @@ def verify(output):
         folder=out/'states'/('%s_%s_%02d'%(row['case'],row['seed'],row['iteration']))
         snap=read(folder/'snapshot.json')
         require(snap['history_hash']==fingerprint(snap['history']),'Snapshot prefix hash mismatch')
+        family,difficulty=row['case'].split('_')
+        verify_binding(snap['contract_identity'],family,difficulty,snap['history'],identity)
         close(row['best'],snap['best'],'snapshot best')
         for n,replicate in RULES:
             name=key(n,replicate);r=read(folder/(name+'.json'))

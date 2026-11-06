@@ -1,0 +1,71 @@
+PR72 R1 — pinned LF/CRLF source identity for historical replay
+
+Reviewed failure: PR72 code f46e268706aab1c9cefe19cdbd887408c424058b;
+PR70 result f859cca5adc56dd101d2f59665f7829a2b0331c4;
+failure archive f9fa0b875cdb5f5e0419792240ff2b7193a9278b.
+The original Ubuntu CI failed before any prefix GP fit. Windows passed.
+Workstation smoke/full were NOT executed. Do not replace this history.
+
+Cause and scope
+DevelopmentProblem hashes the raw bytes of ra_lsbo/partial_bo/problems.py.
+MathematicalCase additionally hashes experiments/core/problems.py in settings.
+Identical text checked out with LF or CRLF therefore has a different native
+contract ID. Normalizing all hashes NOW would not preserve historical IDs.
+
+R1 attests, rather than bypasses, the original contract:
+1. Read both exact pinned PR70 Git blobs; verify their object IDs.
+2. Require each loaded file to be EXACTLY the uniform LF or CRLF variant of
+   its pinned blob. No whitespace stripping, comments removal, AST-equivalence
+   shortcut, BOM conversion, mixed-newline allowance, or arbitrary source drift.
+3. Require the already verified input source receipt to identify the original
+   raw hashes. These must themselves be one of the two pinned byte variants.
+4. Extract the actual HierarchicalBranin constructor literals with ast.literal_eval
+   (never execute data). Recompute the parent ID and MathematicalCase child ID.
+5. Independently check the native current instance's settings and contract, AND
+   every raw historical prefix record's original contract, before binding.
+6. Configure ONLY that temporary replay problem to the authenticated historical
+   source identity. This is not copying an unchecked ID from a record.
+
+No source files under ra_lsbo/, old record, checkpoint, input manifest, or PR70
+file is changed. The old Training contract differs check remains unchanged.
+The entire restore() function, exact feature identity checks, kernel checks,
+forecast/Q1/Q2 tolerances, four-node action replay, seeds, state roster, quadrature
+rules and GP ceilings remain unchanged. Never modify global git EOL settings on
+the workstation as a workaround. CI explicitly tests four checkout/platform pairs.
+
+New output: identity_source_receipt.json with raw/normalized source hashes and
+newline representations. Each snapshot has contract_identity, independently
+reconciled by verify. Full and smoke retain the original scientific plan.
+This compatibility adapter is ONLY for the four pinned offline mathematical
+replay cases. It is not an evaluator migration, general identity alias, or new
+optimization algorithm. No evaluator or VAE training is permitted.
+
+Validation
+24 new stdlib-only identity tests; 4 new native constructor/module tests.
+Together with the existing 26 numeric + 6 real EP tests, total = 60 tests.
+Local test results must be distinguished from CI. CI tests Windows/Ubuntu x
+LF/CRLF, all 60 tests plus the SAME four-case real checkpoint smoke and verifier.
+Each matrix entry must succeed for the SAME final commit before workstation
+smoke/full. The 4 states are CI technical replay, not independent experiments.
+All true evaluator and VAE training calls remain zero; GP work is billed.
+
+Workstation: fetch final fixed SHA into a NEW clean detached worktree; keep the
+old input result worktree pinned and clean. Do not reinstall the old package.
+python -S -m unittest discover -s tests -p test_quadrature_identity.py -v
+python -m unittest discover -s tests -p "test_quadrature_*.py" -v
+python -m compileall -q quadrature_source_identity.py run_pr70_quadrature_diagnostic.py
+python -S run_pr70_quadrature_diagnostic.py --help
+python run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha <SHA> --evidence-root <pinned result root> --output <new smoke>
+python run_pr70_quadrature_diagnostic.py --task verify --input <smoke>
+Only after technical validation, not effect-based selection:
+python run_pr70_quadrature_diagnostic.py --profile full --expected-sha <SHA> --evidence-root <pinned result root> --output <new full>
+python run_pr70_quadrature_diagnostic.py --task verify --input <full>
+
+Smoke: four states; full: 32 states, unchanged (full includes smoke).
+New evaluations/VAE training/aircraft/RCAIDE = 0. GP refits are NOT zero.
+Uncaught errors or four-node replay disagreement stop the run. Preserve partial
+output, traceback and bill; no on-machine edits, tolerance changes or in-place retry.
+Use results/pr72-source-identity-r1-20261106 (unique suffix if needed), preserve
+all old evidence, no force-push or merge. Outside sealed output, save commands,
+exit codes, CI matrix, environment and original/new code identities. Use * -text
+for evidence and verify remote bytes. Instructions are provided directly in chat.
