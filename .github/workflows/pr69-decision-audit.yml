@@ -1,0 +1,46 @@
+name: pr69-decision-audit
+on:
+  pull_request:
+    paths:
+      - 'run_pr69_decision_audit.py'
+      - 'pr69_evidence_verify.py'
+      - 'tests/test_pr69*.py'
+      - 'docs/PR69_DECISION_AUDIT.txt'
+      - '.github/workflows/pr69-decision-audit.yml'
+permissions:
+  contents: read
+jobs:
+  read-only-evidence:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 2823c6204de7da0ffa537548e0dbbe411e41e22a
+          fetch-depth: 1
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Stdlib-only tests and syntax
+        working-directory: code
+        run: |
+          python -S -m unittest discover -s tests -p 'test_pr69*.py' -v
+          python -S -m compileall -q run_pr69_decision_audit.py pr69_evidence_verify.py tests/test_pr69_decision_audit.py tests/test_pr69_evidence_contract.py
+      - name: Audit pinned real PR68 evidence (ZERO new evaluations and fits)
+        working-directory: code
+        run: python -S run_pr69_decision_audit.py --evidence-root "${{ github.workspace }}/evidence" --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr69-audit"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr69-${{ matrix.os }}-${{ matrix.python }}
+          path: ${{ runner.temp }}/pr69-audit
+          if-no-files-found: error
