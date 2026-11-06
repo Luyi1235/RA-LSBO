@@ -8,7 +8,7 @@ from ra_lsbo.experiments import risk_budget64_protocol as p
 
 def trial(case,seed,arm,*,cap=2,abstain=False):
     initial=10.
-    n=1 if abstain else cap
+    n=cap
     decisions=[]
     for i in range(n):
         if abstain and i==n-1:
@@ -26,7 +26,7 @@ def trial(case,seed,arm,*,cap=2,abstain=False):
             })
     actual=sum(x["evaluation_performed"] for x in decisions)
     failures=sum(x.get("realized_nonfeasible")==1 for x in decisions)
-    curve=[initial]+([initial] if actual else [])
+    curve=[initial]*(actual+1)
     return {
         "case":case,"seed":seed,"arm":arm,"max_online_calls":cap,
         "online_calls":actual,"observed_nonfeasible":failures,
