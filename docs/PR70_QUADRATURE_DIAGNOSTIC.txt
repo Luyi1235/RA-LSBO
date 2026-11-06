@@ -1,0 +1,62 @@
+PR70 后续：同状态求积稳定性诊断。此包尚未提交 GitHub，不宣称已有 PR 编号或 CI 通过。
+父代码：275aac2c5d5d6a8c8f6278c0d556de3de5867f74。
+固定输入结果：f859cca5adc56dd101d2f59665f7829a2b0331c4。
+
+研究问题
+PR70 主比较 next_pool vs current_pool 为5/3/8，双方最终14/16可行，失败30/31。
+候选一致性已通过，不表示求积精度或优化优势已建立。
+本轮固定原来的历史、VAE参数、GP核、候选与首动作短名单，仅比较积分节点和扰动。
+不运行新的在线轨迹，不调风险惩罚，不增加候选，不引入可靠性门，不修改原文件。
+
+固定状态
+仅用 PR70 full 的 cei_two_step_next_pool 轨迹。
+smoke：四任务，998901，零起算迭代0，共4个状态。
+full：四任务，998901–998904，零起算迭代0和3，共32个状态。
+选择不依赖原胜负或目标改善。smoke是full子集，不是独立统计验证。
+
+数值比较
+每状态严格复现原4节点r0；然后16节点r0、64节点r0、64节点r1。
+r0完全使用PR68/70原Sobol种子公式；4/16/64嵌套，使用同一前缀。
+r1只改变扰动种子，加104729；候选间继续共同随机数。
+64节点不是正确真值；两次扰动只能诊断敏感度，不给置信区间或安全界。
+
+重构与隔离
+读原iteration_000数值VAE checkpoint，不重新训练VAE。
+GP只使用12个初始记录加原决策前真实记录，按原算法重新构建。
+要求VAE参数状态、特征identity、核网格赢家、归一化、预测数组匹配原记录。
+要求所有首动作的未来候选池和原记录完全一致。
+要求原4节点Q1、Q2和最终选择匹配；失败则停止，不放宽容差不重训。
+比较容差 rtol=1e-7, atol=1e-9，在协议中冻结；小分差另报near-tie，不作为门控阈值。
+全部真实数学/飞机/RCAIDE evaluator 与VAE fit在诊断时被显式阻断。
+原始 full 账本和manifest在开始、结束均只读核验。
+
+费用
+新增真值评价=0；新增VAE训练=0；允许恢复checkpoint、前向计算、前缀GP和幻想GP重拟合。
+EvidenceGP每次构造开始、完成、错误和阶段耗时均记录；这不是零GP计算。
+每状态上限32 + 4*2*3*(4+16+64+64)=3584次GP构造。
+smoke上限14336；full上限114688。实际cold成功分支跳过更新，因此通常低于上限。
+幻想数值失败使整个该规则无效：保留部分证据，但不输出可用分数或winner；不只平均成功节点。
+原4节点重现失败、特征不匹配或程序错误立即中止。更高节点数值失败保留为无效规则，不伪造单步结果。
+
+测试与执行
+本地已执行26项数值/协议测试；6项真实RA-LSBO运行测试需工作机/CI验证，本地未执行。
+完整源码Python3.9语法解析、编译和--help独立检查；没有声称真实checkpoint重构已运行。
+先按payload SHA256逐字节安装到新worktree，再新分支提交，取得真实新SHA并推送；不得捏造SHA。
+python -m unittest discover -s tests -p test_quadrature_audit.py -v
+python -m unittest discover -s tests -p test_quadrature_runtime.py -v
+python -m compileall -q quadrature_audit_protocol.py quadrature_audit_numeric.py run_pr70_quadrature_diagnostic.py
+python -S run_pr70_quadrature_diagnostic.py --help
+python run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha <新提交SHA> --evidence-root <证据worktree根> --output <外部新smoke>
+python run_pr70_quadrature_diagnostic.py --task verify --input <smoke>
+技术成功后再full，同样先run再verify，不按效果挑状态。
+不能对正式run或verify使用-S；它们需要已有科学库，但verify不拟合。
+状态 COMPLETE_SAME_STATE_QUADRATURE_DIAGNOSTIC；verify状态 VERIFIED_SAME_STATE_QUADRATURE。
+输出全部plan/source_receipt/states(含原前缀快照与4套求积原始行)/report/manifest，外层保存日志。
+任何执行异常停止、不原地修代码或重跑；全部结果独立分支归档，原PR70结果不得改动。
+
+判读
+报告4→16、16→64、4→64、64r0→64r1的winner变化和分数漂移。
+报告原4节点动作在64节点下的估计排名、近似价值损失、原myopic的估计差值及near-tie。
+这些都是同模型内数值指标，不是更高节点算法的真实优化收益，也不识别模型误差。
+候选筛选4点和固定核假设仍未验证。只在原next_pool策略访问的状态成立，不外推所有状态。
+出现稳定性问题后才考虑单独注册自适应求积或数值可信度门；不能在本轮回看结果调阈值。
