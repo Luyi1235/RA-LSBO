@@ -107,7 +107,7 @@ def test_real_abstention_has_no_outcome_and_does_not_charge_an_evaluation():
         p.check_trial(broken,profile="smoke")
     broken=copy.deepcopy(row)
     broken["online_calls"]=2
-    with pytest.raises(ValueError,match="actual call count"):
+    with pytest.raises(ValueError,match="invalid abstention"):
         p.check_trial(broken,profile="smoke")
 
 
