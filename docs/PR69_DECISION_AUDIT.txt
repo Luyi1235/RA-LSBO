@@ -14,7 +14,10 @@ Rosenbrock sparse 998802为+2.3437414228781754，998804为+64.2712372258521。
 不同目标尺度之间不能做抵消。p>=0.8字段必须区分失败概率与可行概率。
 
 审计项目：
-1. 直接复用冻结PR68只读verify，核验405个原始文件、64条trial、576次已付费评价。
+1. 原PR68 verify在导入DesignRecord时会触发科学库；为维持-S零科学依赖，新增原始字典验证器。
+   复用冻结manifest、计划、_decision及汇总函数；直接按数学观测合同验证region/resource/objective、
+   原生设计hash、全部started/settled、初始/在线前缀、incumbent曲线、result、report汇总。
+   不替换sys.modules、不导入假科学模块、不修改PR68验证器；CI对完整真实证据执行。
 2. 从保存的幻想weight/continuation重建Q2，核对选点与已记录argmax，不重新拟合。
 3. 相对同一历史状态下myopic最优，计算即时收益牺牲及预测两步增量。
 4. 固定四节点贡献，依次删去每个分支同序一个节点，重归一化其余三点；
@@ -27,11 +30,11 @@ Rosenbrock sparse 998802为+2.3437414228781754，998804为+64.2712372258521。
 
 执行：现有Python，无需任何新依赖。两个干净detached worktree分别检出新审计SHA和固定结果SHA。
 输出置于两个worktree之外的全新路径。--evidence-root传结果worktree根目录，不传full子目录。
-python -S -m unittest discover -s tests -p test_pr69_decision_audit.py -v
-python -S -m compileall -q run_pr69_decision_audit.py tests/test_pr69_decision_audit.py
+python -S -m unittest discover -s tests -p "test_pr69*.py" -v
+python -S -m compileall -q run_pr69_decision_audit.py pr69_evidence_verify.py
 python -S run_pr69_decision_audit.py --evidence-root <结果worktree根> --expected-sha <固定审计SHA> --output <全新外部目录>
 -S仅屏蔽site加载，不修改环境或依赖；本审计只依赖标准库，不使用假科学模块。
-20项单元测试。CI在Windows/Ubuntu与Python3.9/3.13下读取同一批真实证据，额外模型调用为0。
+24项单元测试。CI在Windows/Ubuntu与Python3.9/3.13下读取同一批真实证据，额外模型调用为0。
 错误立即停止、保存日志，不修改原始证据或现有算法。无smoke/full新实验。
 
 交付：report.json、decisions.json、manifest.json及外层完整日志/环境/命令/退出码。

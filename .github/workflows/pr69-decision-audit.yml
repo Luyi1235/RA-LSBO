@@ -3,7 +3,8 @@ on:
   pull_request:
     paths:
       - 'run_pr69_decision_audit.py'
-      - 'tests/test_pr69_decision_audit.py'
+      - 'pr69_evidence_verify.py'
+      - 'tests/test_pr69*.py'
       - 'docs/PR69_DECISION_AUDIT.txt'
       - '.github/workflows/pr69-decision-audit.yml'
 permissions:
@@ -33,12 +34,12 @@ jobs:
       - name: Stdlib-only tests and syntax
         working-directory: code
         run: |
-          python -S -m unittest discover -s tests -p test_pr69_decision_audit.py -v
-          python -S -m compileall -q run_pr69_decision_audit.py tests/test_pr69_decision_audit.py
+          python -S -m unittest discover -s tests -p 'test_pr69*.py' -v
+          python -S -m compileall -q run_pr69_decision_audit.py pr69_evidence_verify.py tests/test_pr69_decision_audit.py tests/test_pr69_evidence_contract.py
       - name: Audit pinned real PR68 evidence (ZERO new evaluations and fits)
         working-directory: code
         run: python -S run_pr69_decision_audit.py --evidence-root "${{ github.workspace }}/evidence" --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr69-audit"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: pr69-${{ matrix.os }}-${{ matrix.python }}
           path: ${{ runner.temp }}/pr69-audit

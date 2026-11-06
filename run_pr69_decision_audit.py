@@ -221,8 +221,7 @@ def audit(evidence_root, output, expected_sha):
     git(code, 'merge-base', '--is-ancestor', PARENT, expected_sha)
     changes = git(code, 'diff', '--name-status', PARENT, expected_sha).splitlines()
     require(all(row.startswith('A\t') for row in changes), 'PR68 parent files must remain unchanged')
-    # These modules and verifier use stdlib only; no GP/optimizer imports.
-    from ra_lsbo.experiments.information_value_stage3.runner import verify
+    from pr69_evidence_verify import verify
     source = evidence_root/RESULT_PATH/'full'
     verified = verify(source)
     report = read(source/'report.json')
