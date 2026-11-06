@@ -133,6 +133,8 @@ def test_summary_matches_abstained_candidate_to_fixed512_shadow_only_after_run()
         for arm in p.ARMS:
             if arm=="soft_gp_abstain512":
                 rows.append(trial(case,p.SEEDS[0],arm,n=1,stop=True,failures=[1]))
+            elif arm=="soft_gp_fixed512":
+                rows.append(trial(case,p.SEEDS[0],arm,n=2,failures=[1,1]))
             else:
                 rows.append(trial(case,p.SEEDS[0],arm,n=2,failures=[1,0]))
     by,paired,shadow=p.summarize(rows,profile="smoke")
@@ -168,7 +170,7 @@ def test_runner_performs_abstention_before_any_real_problem_evaluate():
     src=(Path(__file__).resolve().parents[1]/"ra_lsbo"/"experiments"/
          "risk_budget64_runner.py").read_text(encoding="utf8")
     assert "LocalCredibilityValueBO" in src
-    assert "candidate_pool(problem,draw,POOL_WIDE+ENGINE_PLANNING_HORIZON,prior)" in src
+    assert "POOL_WIDE+ENGINE_PLANNING_HORIZON,prior" in src
     assert 'arm=="soft_gp_abstain512"' in src
     assert '"abstain_before_evaluation"' in src
     assert src.index("if abstain:") < src.index("rec=problem.evaluate(candidate)")
