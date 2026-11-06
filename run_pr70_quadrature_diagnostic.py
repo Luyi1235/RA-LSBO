@@ -91,8 +91,7 @@ def model_only_guard(bill, ceiling):
 def restore(problem, base, seed, initial, history, checkpoint, metadata):
     from ra_lsbo.features import load_base
     from ra_lsbo.structured_encoder import hierarchy_space
-    from ra_lsbo.structure_corpus import CorpusRepresentation, native_observations, feature_snapshot
-    from ra_lsbo.partial_bo.models import PrefixFeatures
+    from ra_lsbo.structure_corpus import CorpusRepresentation, native_observations
     from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import HeterogeneousRiskPosterior
     from ra_lsbo.experiments.risk_budget54_engine import settings_for_math54
     modules,_=load_base(base)
@@ -100,13 +99,14 @@ def restore(problem, base, seed, initial, history, checkpoint, metadata):
     session=CorpusRepresentation.load_checkpoint(checkpoint,space,native_observations(initial,modules,space))
     require(session.seed==seed and len(session.events)==1, 'Wrong original VAE checkpoint')
     require(session._sealed_state==metadata['corpus_training']['latest']['parameter_state'], 'VAE state differs')
-    obj=feature_snapshot(problem,base,history,session)
-    risk=PrefixFeatures(problem,base,history,seed,False,30)
+    from quadrature_checkpoint_features import restore_features
+    obj,risk,feature_proof=restore_features(problem,base,seed,history,session,checkpoint,metadata)
     require(obj.identity==metadata['objective_feature_identity'] and risk.identity==metadata['risk_feature_identity'],
             'Feature identity differs; do not silently retrain or relax replay')
     posterior=HeterogeneousRiskPosterior(problem,history,seed,replace(settings_for_math54(),horizon=6,local=False),
                                        obj,risk,view_policy='onehot_risk')
     diag=posterior.diagnostics()
+    diag['checkpoint_feature_replay']=feature_proof
     require(set(diag['heads'])==set(metadata['heads']), 'Head roster differs')
     for name, head in diag['heads'].items():
         for field in ('continuous_length','discrete_length'):
@@ -179,6 +179,7 @@ def run(output, evidence_root, profile, expected_sha):
                 write_new(target/'snapshot.json',{'case':case,'seed':seed,'iteration':i,
                     'history_hash':p['history_hash'],'history':[x.to_dict() for x in history],
                     'contract_identity':binding,
+                    'checkpoint_feature_replay':diag['checkpoint_feature_replay'],
                     'best':posterior.best,'pool':candidates,'forecasts':serial(forecast),'heads':diag['heads'],
                     'first_indices':r['first_action_indices'],'future_supports':supports,
                     'original_selected_index':r['selected_index'],'original_scores':r['scores'],
@@ -223,7 +224,8 @@ def run(output, evidence_root, profile, expected_sha):
     except BaseException as error:
         write_new(out/'failure.json',{'diagnostic_code_sha':expected_sha,'input_result_sha':EVIDENCE,
             'type':type(error).__name__,'message':str(error),'traceback':traceback.format_exc(),
-            'completed_states':len(states),'bill':bill})
+            'completed_states':len(states),'bill':bill,
+            'feature_identity_proof':getattr(error,'feature_identity_proof',None)})
         manifest(out)
         raise
 
@@ -250,6 +252,13 @@ def verify(output):
         require(snap['history_hash']==fingerprint(snap['history']),'Snapshot prefix hash mismatch')
         family,difficulty=row['case'].split('_')
         verify_binding(snap['contract_identity'],family,difficulty,snap['history'],identity)
+        fp=snap['checkpoint_feature_replay']
+        require(fp['restored_objective_identity']==fp['recorded_objective_identity']
+                and fp['recorded_identity_assigned_without_reconstruction'] is False
+                and fp['vae_training'] is False, 'Checkpoint feature replay proof invalid')
+        from quadrature_audit_protocol import RTOL, ATOL
+        require(fp['original_rtol']==RTOL and fp['original_atol']==ATOL,
+                'Feature replay tolerance changed')
         close(row['best'],snap['best'],'snapshot best')
         for n,replicate in RULES:
             name=key(n,replicate);r=read(folder/(name+'.json'))

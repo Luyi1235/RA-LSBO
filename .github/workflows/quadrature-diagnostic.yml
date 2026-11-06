@@ -4,6 +4,7 @@ on:
     paths:
       - 'quadrature_audit_*.py'
       - 'quadrature_source_identity.py'
+      - 'quadrature_checkpoint_features.py'
       - 'docs/PR72_SOURCE_IDENTITY_R1.txt'
       - 'run_pr70_quadrature_diagnostic.py'
       - 'tests/test_quadrature_*.py'
@@ -59,7 +60,7 @@ jobs:
       - name: Numerical and REAL EP runtime tests
         run: python -m unittest discover -s tests -p 'test_quadrature_*.py' -v
       - name: Syntax
-        run: python -m compileall -q quadrature_audit_protocol.py quadrature_audit_numeric.py run_pr70_quadrature_diagnostic.py quadrature_source_identity.py
+        run: python -m compileall -q quadrature_audit_protocol.py quadrature_audit_numeric.py run_pr70_quadrature_diagnostic.py quadrature_source_identity.py quadrature_checkpoint_features.py
       - name: Same-state four-case checkpoint reconstruction (ZERO true calls)
         run: python run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/quadrature-smoke"
       - name: Read-only reconciliation
