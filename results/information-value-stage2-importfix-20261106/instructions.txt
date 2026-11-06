@@ -1,0 +1,77 @@
+RA-LSBO PR67 R1 工作机执行指令（转录）
+
+本文件是本次任务消息的文本副本，供结果证据审计。权威协议仍为仓库中的
+docs/PR67_IMPORT_FIX_R1_ZH.md 与 docs/INFORMATION_VALUE_STAGE2_ZH.md。
+
+一、唯一固定版本
+- 仓库：https://github.com/Luyi1235/RA-LSBO
+- PR：https://github.com/Luyi1235/RA-LSBO/pull/67
+- 分支：research/ra-lsbo-information-value-stage2-20261106
+- 唯一固定代码 SHA：0cefd1f2507c355067f3c4f56d2dd43d919f65ef
+- 旧失败代码 SHA：488a6da414572e09709533ac7a96e17115e632c9
+- 旧失败结果 HEAD：ee8949687f404b4df24ced1699810e337c3b5771
+- 入口：run_ra_lsbo_information_stage2_pycharm.py
+
+二、修复内容
+仅修正相对导入：
+-from ..soc_revision.acquisition import quantities
++from ...soc_revision.acquisition import quantities
+不创建假包、不修改 sys.path、不在工作机绕过导入。
+
+三、实验不变项
+两个臂：soft_gp_eligible 与 soft_gp_all_support。仅消融 optimistic-violation
+eligible 支持筛选，不是风险概率硬门，也不是两步 GP 前瞻。保持 GP/VAE、风险效用、
+阶段安排、128 候选池、初始数据、种子不变；全支持臂 EI 归一化仍以原 eligible 集合
+为参考，不得改成全部候选集合。
+
+四、环境与 worktree
+保留旧失败目录，创建全新 detached worktree，固定 SHA 精确相等且 git status 为空。
+使用已有 Rcaide_vsp Python，不安装/升级依赖；smoke/full 输出目录不同且事先不存在；
+日志写入源 worktree 之外的结果父目录。
+
+五、执行顺序
+python -m unittest discover -s tests -p test_information_value_stage2.py -v
+python -m unittest discover -s tests -p test_information_value_stage2_import_paths.py -v
+python -m unittest discover -s tests -p test_information_value_stage2_runtime_imports.py -v
+python -m compileall -q ra_lsbo/experiments/information_value_stage2 run_ra_lsbo_information_stage2_pycharm.py
+python run_ra_lsbo_information_stage2_pycharm.py --help
+python run_ra_lsbo_information_stage2_pycharm.py --profile smoke --output <全新smoke目录>
+python run_ra_lsbo_information_stage2_pycharm.py --profile full --output <全新full目录>
+
+预期：9 项协议测试、3 项导入路径测试、4 项真实依赖导入测试；跳过 0；compileall
+exit 0；--help exit 0。任一预检非零立即停止。零评价预检不得报告为 smoke 完成。
+
+六、冻结预算
+smoke：4 个 case-seed 组、8 个 trial、48 次共享初始评价、16 次在线评价、64 次数学评价。
+full：48 个 case-seed 组、96 个 trial、576 次共享初始评价、576 次在线评价、1,152 次数学评价。
+飞机/RCAIDE 均为 0。种子：smoke 998701；full 998701–998712。两臂每组各在线 6 次。
+
+七、必须核验
+code_sha 必须为新固定 SHA；每 case/seed 两臂 initial_prefix_sha256 相同；共享初始只计费
+一次；proposal/observation 候选与 hash 绑定；每臂只使用自身已结算历史；全支持臂记录
+原 eligible mask、原 eligible 数、全候选数、EI_normalization_reference_unchanged=true；
+无模型/覆盖动作不得补造风险概率；unknown/基础设施/数值错误不得当作物理不可行；保留全部
+shared_initial、逐 trial proposal/observation/result、progress、representation checkpoint 和
+程序实际生成的账本。
+
+八、错误处理
+任何导入、固定 SHA、模型、候选关联、评价、报告或哈希错误立即停止；保留完整 traceback
+和已产生文件；不修改代码、不换种子、不在原目录重跑；不在评价中断时把调用次数未经核对
+写成 0。
+
+九、上传
+独立分支：results/information-value-stage2-importfix-20261106（已存在则加时间后缀）。
+禁止覆盖、force push 或写入旧失败分支；禁止合并 PR67、修改 main/PR66/旧资料。
+上传测试、compile、help、smoke/full 日志及退出码；Python 路径/版本/pip freeze/系统/Git；
+plan、source_receipt、report、progress；全部 shared_initial 与 trials；representation
+checkpoint；实际账本、失败/unknown 证据；本指令副本；固定代码 SHA 与 SHA256 清单；中文
+README。证据目录使用 .gitattributes：* -text。
+
+十、最终回报
+返回结果分支 URL、结果 HEAD、固定代码 SHA；9/3/4 测试、compileall、--help；smoke 状态
+与实际 初始/在线/总 次数；full 状态与实际次数；飞机/RCAIDE；源 worktree 是否干净；远程
+哈希核验；四个任务逐任务 W/L/T、可行率、失败数、目标差；all-support 是否改变路径；是否
+消除 PR66 eligible 支持坍塌、是否增加高风险失败；失败/unknown/中断证据位置。
+
+边界：本轮仍是支持域筛选的短视策略消融；导入通过、CI 通过或实验完成不等于算法优于对照；
+不得报告“两步 GP 前瞻已获胜”或“飞机安全已验证”。
