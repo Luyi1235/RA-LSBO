@@ -1,0 +1,23 @@
+PR71 跨平台历史源码字节身份补充
+
+首轮CI的27项测试通过，但真实Windows来源记录在Linux上恢复时触发Training contract differs。
+原MathematicalCase及DevelopmentProblem契约包含两个源码文件的原始字节SHA256；
+因此LF/CRLF差异也会产生不同契约。这不是允许跳过契约检查的理由。
+
+修订采用严格受限的只读历史源码表示：
+1. 使用已封存PR70 source_receipt中的python_sources_sha256，不从观测字段盲目复制contract_id。
+2. 对父版本未变的两个源码，仅尝试现有字节、LF等价字节、CRLF等价字节。
+3. 必须找到与历史原始SHA256完全相等的字节，否则停止。真正的代码改动不能通过。
+4. 仅在原构造器执行期间，为这两个源码的Path.read_bytes提供上述已验证字节；
+   其他文件的读取不变，磁盘源码与全部证据不变，离开构造上下文恢复正常读取。
+5. 原构造器自行计算原契约，后续仍严格检查历史契约、checkpoint、预测和四节点动作。
+6. 每个状态记录live_raw_sha256、historic_raw_sha256和是否需要换行表示适配。
+
+新增4项标准库测试（精确字节、双向换行、拒绝代码变更、作用域/不写盘、外来receipt检查合并为4项）。
+测试合计：12协议+4源码身份+15数值/真实head=31项。
+工作机预检增加：
+python -S -m unittest discover -s tests -p test_pr71_source_identity.py -v
+compileall同时包含pr71_source_identity.py。
+
+本补充不改变任何数学公式、模型参数、观察值、节点数或诊断状态列表。
+不修改PR70或历史结果。首次CI失败证据保留；新增数学评价和VAE训练始终0。

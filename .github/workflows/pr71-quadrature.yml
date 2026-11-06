@@ -1,0 +1,61 @@
+name: pr71-quadrature
+on:
+  pull_request:
+    paths:
+      - 'pr71_*.py'
+      - 'run_pr71_quadrature.py'
+      - 'tests/test_pr71*.py'
+      - 'docs/PR71*.txt'
+      - '.github/workflows/pr71-quadrature.yml'
+permissions:
+  contents: read
+jobs:
+  real-frozen-replay:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: f859cca5adc56dd101d2f59665f7829a2b0331c4
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Temporary CI dependencies only
+        working-directory: code
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Protocol and real numerical tests
+        working-directory: code
+        run: |
+          python -S -m unittest discover -s tests -p test_pr71_protocol.py -v
+          python -S -m unittest discover -s tests -p test_pr71_source_identity.py -v
+          python -m unittest discover -s tests -p test_pr71_numeric.py -v
+          python -m compileall -q pr71_protocol.py pr71_source_identity.py pr71_quadrature.py pr71_restore.py run_pr71_quadrature.py
+          python -S run_pr71_quadrature.py --help
+      - name: Actual saved cold and warm states; no evaluator calls or VAE training
+        working-directory: code
+        run: python run_pr71_quadrature.py --profile ci --evidence-root "${{ github.workspace }}/evidence" --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr71-ci"
+      - name: Read-only diagnostic verification
+        working-directory: code
+        run: python -S run_pr71_quadrature.py --task verify --input "${{ runner.temp }}/pr71-ci"
+      - name: Preserve complete diagnostic evidence and failed runs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr71-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr71-ci
+          if-no-files-found: warn
