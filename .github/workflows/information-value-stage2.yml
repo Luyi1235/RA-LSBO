@@ -1,0 +1,25 @@
+name: information-value-stage2
+on:
+  pull_request:
+    paths:
+      - 'ra_lsbo/experiments/information_value_stage2/**'
+      - 'tests/test_information_value_stage2.py'
+      - 'run_ra_lsbo_information_stage2_pycharm.py'
+      - '.github/workflows/information-value-stage2.yml'
+jobs:
+  pure-protocol:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Pure protocol tests
+        run: python -m unittest discover -s tests -p test_information_value_stage2.py -v
+      - name: Compile stage 2 source
+        run: python -m compileall -q ra_lsbo/experiments/information_value_stage2 run_ra_lsbo_information_stage2_pycharm.py
