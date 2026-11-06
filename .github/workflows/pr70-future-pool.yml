@@ -1,0 +1,51 @@
+name: pr70-future-pool
+on:
+  pull_request:
+    paths:
+      - 'pr70_*.py'
+      - 'run_pr70_future_pool.py'
+      - 'tests/test_pr70*.py'
+      - '.github/workflows/pr70-future-pool.yml'
+jobs:
+  actual-model:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Temporary CI dependencies only
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Protocol without scientific libraries
+        run: python -S -m unittest discover -s tests -p test_pr70_protocol.py -v
+      - name: Real EP adapter, planner parity and future-pool tests
+        run: python -m unittest discover -s tests -p test_pr70_future_pool.py -v
+      - name: Syntax and help
+        run: |
+          python -m compileall -q pr70_protocol.py pr70_future_pool.py run_pr70_future_pool.py
+          python -S run_pr70_future_pool.py --help
+      - name: Actual mathematical CI, three arms, 18 true calls
+        run: python run_pr70_future_pool.py --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr70-ci"
+      - name: Independent raw reconciliation without model imports
+        run: python -S run_pr70_future_pool.py --task verify --input "${{ runner.temp }}/pr70-ci"
+      - name: Save complete integration evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr70-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr70-ci
+          if-no-files-found: ignore

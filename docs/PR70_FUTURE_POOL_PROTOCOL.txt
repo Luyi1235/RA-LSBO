@@ -1,0 +1,66 @@
+PR70：真实下一轮候选支持一致性，三臂探索性试点
+父代码 fd56186bb75b29b0df96bb2c27d67791c5f0d73b；PR69 结果 ff8da0895e302ccf24c0ed5c2d5de72d8f9b5b2f。
+
+研究问题
+PR69 对 PR68 的诊断是：完整两步80次深度2决策中24次改选，33次至少一种3-of-4删点重算改变首动作。
+选中首动作的幻想第二候选在实际下一轮池中精确保留质量为0。这不是损失的因果证明；附近可能有替代点。
+下一轮先隔离候选支持一致性，不同时提高求积节点、加惩罚、增加覆盖或改变表示。
+
+三个臂
+cei_myopic：直接使用未修改的 PR68 FantasyValueBO 单步规则。
+cei_two_step：直接使用未修改的 PR68 FantasyValueBO 四节点两步规则，第二步用当前池去掉首动作。
+cei_two_step_next_pool：首动作、Q1、短名单、Sobol流、四节点和EP推断不变，第二步改用真正下一轮的候选池。
+主比较 next_pool vs two_step；次比较 next_pool vs myopic；two_step vs myopic 是新种子的参照。
+不含 old soft_gp 或 no_abort 臂；本轮不能单独主张中止信息的优化价值，也不能替代与旧强基线的最终比较。
+所有真实历史完整训练；剩一次调用时严格退化为单步，零幻想拟合。固定调用预算，不提前停止。
+
+候选一致性如何保证
+原 _candidates 仅按 case/seed/iteration 生成候选并剔除历史坐标；filter_near 仅使用坐标和激活变量距离。
+为每个首动作建立只有 candidate 字段、没有 observation/usable_feasible 的临时历史，生成 t+1 原始128候选，
+再做相同近重复过滤。这个已注册随机流是预先可知的计算资源，不是未来评价标签。
+不调用 evaluate、不读目标公式、不读旧结果、不根据未来反馈挑候选；不插入或保留当前池的特殊点。
+幻想GP在 [首动作]+未来模型池上查询，仍使用原 FrozenFantasyFactory 固定当前核/归一化/VAE快照重拟合。
+首动作在未来池中不能重复。每条幻想的second_index是该首动作未来池中的索引，另存候选hash。
+下一真实调用前，原始池hash和过滤后池hash/候选列表必须与上一首动作预测支持完全相同，否则停止。
+保存每次raw_pool/protected_pool及四个首动作的未来支持，供只读核验。
+这只保证候选可获得，不保证下一轮实际执行同一第二动作：后验重选核、滚动重规划仍可能改变动作。
+冻结参数幻想仍不是未来重新拟合的精确后验；新规则不能称为精确动态规划或安全保证。
+
+冻结预算
+ci：rosenbrock_sparse，998890，12共享初始+3*2在线=18次数学评价。
+smoke：四任务，998891，48共享初始+24在线=72。
+full：四任务，998901–998904，192共享初始+288在线=480；48条trial，每臂96在线调用。
+工作机 smoke+full 合计552数学评价；CI每OS18次另计。飞机/RCAIDE均为0。
+三块种子不重叠；不使用 PR68/69 种子选择参数。每任务4种子，仅探索性，不宣称统计显著或可复现优势。
+候选128，首动作4，每region分支4节点均不变。当前有限求积敏感性没有在本轮被解决。
+
+验证
+13项纯协议测试（python -S）和13项真实EP/同支持与PR68等价/候选标签独立测试。
+CI在Windows/Ubuntu Python3.9执行测试、真实18调用和标准库只读账本核验。实际CI状态以工作流为准。
+只读verify不做模型拟合或新评价；检查原始账本、前缀、曲线、逐trial、汇总、Q2权重/分数以及候选支持对应。
+支持一致性是程序正确性门槛，不是优化收益指标，不能拿100%一致性冒充方法胜出。
+
+工作机
+现有Rcaide_vsp，不安装升级依赖；全新detached代码worktree，外部新输出目录，代码必须精确expected-sha且干净。
+python -S -m unittest discover -s tests -p test_pr70_protocol.py -v
+python -m unittest discover -s tests -p test_pr70_future_pool.py -v
+python -m compileall -q pr70_protocol.py pr70_future_pool.py run_pr70_future_pool.py
+python -S run_pr70_future_pool.py --help
+python run_pr70_future_pool.py --profile smoke --expected-sha <固定SHA> --output <新smoke>
+python -S run_pr70_future_pool.py --task verify --input <smoke>
+仅技术验收成功后运行full，不按正负效果选择是否继续。
+python run_pr70_future_pool.py --profile full --expected-sha <固定SHA> --output <新full>
+python -S run_pr70_future_pool.py --task verify --input <full>
+full状态 COMPLETE_NEXT_POOL_PILOT；正常无模型故障时未来池核对 smoke4/full80。
+任何异常保留现场停止，不修代码不原地重跑；注册的幻想数值失败则整次回退单步并记账，不能挑成功幻想。
+原PR69及之前所有文件不修改；不合并PR70或旧PR。
+结果使用 results/pr70-next-pool-20261106 独立分支，已存在则唯一后缀。
+保留全部日志/退出码、manifest、ledger、proposals、observations、checkpoint和失败记录；结果目录 * -text。
+上传后逐字节SHA256核对；源worktree应保持干净。
+
+判读
+逐任务报告三组paired胜负平、双方可行目标差和逐种子差、无解轨迹、首次可行、实际失败及墙钟耗时。
+记录幻想head拟合开始/完成和数值回退，模型无预测动作不伪造概率。
+候选一致也没有改善时，不能继续把性能差归因于候选完全缺失；仍需单独检验数值积分精度和模型误差。
+若相对原两步改善而仍差于myopic，只能说修复一种近似带来局部收益，不能宣称前瞻优越。
+不依据这4种子调阈值或节点数；更高精度/可信度门需要独立注册及新种子。
