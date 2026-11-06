@@ -27,7 +27,6 @@ from .risk_budget64_protocol import (
     PR54_ENGINE_SHA256, plan, summarize,
 )
 from .risk_budget60_protocol import ENGINE_PLANNING_HORIZON
-)
 
 
 def _engine(problem, seed, arm, output):
@@ -137,7 +136,7 @@ def _trial(problem,case,seed,arm,initial,output,max_steps):
         packet=rec.to_dict()
         _append(output/"observations.jsonl",{
             "iteration":iteration,
-            "proposal_candidate_sha256":candidate_id,
+            "proposal_candidate_sha256":cid,
             "actual_record":packet,"actual_record_sha256":digest(packet),
         })
         engine.accept(rec)
