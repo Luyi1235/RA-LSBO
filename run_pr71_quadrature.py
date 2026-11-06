@@ -6,7 +6,8 @@ import subprocess
 import time
 from pr69_evidence_verify import fingerprint, require, native_digest as digest
 from pr71_protocol import PARENT, EVIDENCE, RESULT, ARM, RULES, plan, rule_id, summarize, verify_output
-from ra_lsbo.experiments.information_value_stage1.io import write_new, manifest, verify as verify_manifest
+from pr71_source_identity import historical_source_bytes
+from ra_lsbo.experiments.information_value_stage1.io import write_new, manifest
 
 
 def git(root, *args):
@@ -37,6 +38,7 @@ def run(evidence_root, output, expected_sha, profile):
     from pr70_protocol import verify as verify_pr70
     source = evidence/RESULT
     verified = verify_pr70(source)
+    original_source = read(source/'source_receipt.json')
     saved_report = read(source/'report.json')
     require(saved_report['code_sha'] == PARENT and saved_report['profile'] == 'full', 'Wrong input campaign')
     spec = plan(profile)
@@ -61,7 +63,7 @@ def run(evidence_root, output, expected_sha, profile):
                 case, seed, i = state['case'], state['seed'], state['iteration']
                 folder = source/'trials'/case/str(seed)/ARM
                 initial = [DesignRecord.from_dict(r) for r in read(source/'shared_initial'/case/(str(seed)+'.json'))['records']]
-                # The numerical problem receives ONLY observations available before this proposal.
+                # Only the prefix before this proposal is supplied to inference.
                 observed = lines(folder/'observations.jsonl')
                 history = initial + [DesignRecord.from_dict(o['record']) for o in observed[:i]]
                 p = lines(folder/'proposals.jsonl')[i]
@@ -69,7 +71,9 @@ def run(evidence_root, output, expected_sha, profile):
                 meta, forecast = p['metadata'], p['metadata']['forecasts']
                 saved = meta['information_value_decision']
                 require(saved['depth'] == 2 and saved['fallback'] is None, 'Selected prefix has no complete source lookahead')
-                problem = _case(case)
+                # Exact original raw-byte hashes, NOT a blind contract-id override.
+                with historical_source_bytes(root, original_source) as source_bytes:
+                    problem = _case(case)
                 ledger.context = {**state, 'rule': 'restore'}
                 posterior, restoration = restore(problem, BASE, seed, initial, history, folder, meta, ledger)
                 candidates = meta['pool']
@@ -80,6 +84,7 @@ def run(evidence_root, output, expected_sha, profile):
                 before = model_hash(posterior)
                 row = {'state': state, 'history_hash': p['history_hash'], 'candidate_pool_hash': digest(candidates),
                     'best': posterior.best, 'restoration': restoration, 'forecast_abs_errors': forecast_errors,
+                    'historical_source_bytes': source_bytes,
                     'first_action_indices': firsts, 'myopic_scores': base.tolist(),
                     'future_supports': saved['future_supports'], 'baseline_reproduced': False, 'rules': {}}
                 for n, replicate in RULES:
@@ -93,8 +98,7 @@ def run(evidence_root, output, expected_sha, profile):
                         row['baseline_reproduced'] = parity(r, saved)
                     require(model_hash(posterior) == before, 'Fantasy mutated current posterior')
                     row['rules'][rid] = r
-                target = out/'states'/('%s_%s_%s.json' % (case, seed, i))
-                write_new(target, row)
+                write_new(out/'states'/('%s_%s_%s.json' % (case, seed, i)), row)
                 completed.append(row)
                 print('PR71', case, seed, i, {k: (v['status'], v['selected_index']) for k,v in row['rules'].items()}, flush=True)
         require(verify_pr70(source) == verified, 'Source evidence changed during numerical replay')
