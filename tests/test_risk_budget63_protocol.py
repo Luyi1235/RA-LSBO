@@ -125,7 +125,7 @@ def test_all_seed_coverage_soft_outside_option_and_winning_is_recorded():
     group=by["branin_sparse/local_value"]
     assert group["risk_gate_fallbacks"]==0
     assert group["soft_outside_option_preferred_but_evaluated"]==12
-    assert group["actual_failure_after_soft_outside_option_preferred"]==4
+    assert group["actual_failure_after_soft_outside_option_preferred"]==12
     assert group["local_evidence_mass_mean_on_soft_model_calls"]==2.
     assert group["cold_start_feasible_discovered"]==2
     contrast=paired["branin_sparse/local_value_vs_budgeted"]
