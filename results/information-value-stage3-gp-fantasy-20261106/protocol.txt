@@ -1,0 +1,86 @@
+PR68 — 真实 GP 两步前瞻与中止区间信息消融（探索性 pilot）
+日期：2026-11-06。父代码 0cefd1f2507c355067f3c4f56d2dd43d919f65ef。
+PR67 结果依据：86b58bf721445385f17284b6044e710c4206cfdb。
+
+一、PR67 结果与解释
+原结果报告：eligible 45/48 最终可行、84/288 在线失败；all-support 44/48、88/288。
+逐任务 W/L/T 为 0/0/12、0/0/12、0/0/12、1/2/9；43 个双方可行配对目标差全部为0。
+只5/48路径改变。本轮不支持将 all-support 升为默认方法，旧结果不修改。
+说明：README 的“all-support 导致/进入更多支持坍塌”不是已识别的因果结论。
+原 DiscoveryBO 在 eligible<=1 时改走覆盖，导致这类状态不再计入“有模型收据”样本；
+不能只用 eligible 的0个和 all-support 的7个有模型收据状态推导风险增加机制。
+本记录是基于已上传报告和原控制流的复核，不声称独立重算全部原始文件哈希。
+
+二、四臂和归因
+soft_gp_eligible：原 PR63/67 原封不动的软风险选择器（内部12步日历不改），次要参照。
+cei_myopic：同一双视图 GP 的全候选单步规则。冷启动最大可行概率；已有可行解时最大独立头 CEI。
+cei_two_step：同一单步目标，追加一次真实可观测反馈后的最优第二步期望改进。
+cei_two_step_no_abort_update：与两步臂一致，仅在“幻想的 region 中止”时不向 region GP 加入 g>0 区间。
+它仍保留这次没有可交付结果的事实、排除已试候选、利用可观测 resource 数值。
+所有实际评价历史始终完整训练。消融不删除真实失败数据；它是规划中使用中止区间的机制消融，
+不是另一个完全一致的贝叶斯观测模型，也不是宣称物理失败不包含已知事件。
+主比较：two_step vs myopic；机制比较：two_step vs no_abort_update。
+myopic vs 原soft_gp只用于衡量终端准则和阶段日历共同变化，不能归因于前瞻。
+
+三、两步定义
+冷启动：Q1(x)=P(可行(x))，最大化未来最多两次评价中首次可行交付概率。
+暖启动：Q1(x)=E[(b-f(x))+ * I(可行(x))]。
+Q2(x)=Q1(x)+E_o[max_y Q1(y | D+o,b_o)]；冷启动成功分支的后续增量为0。
+剩余真实调用为1时严格使用 Q1，不创建任何幻想拟合；其他情况下两步臂深度最多2。
+这是滚动两步近似，不是解完整六步动态规划。
+所有实际臂按固定预算评价，不停止。不把下降的调用数当成优化优势；恒定每调用成本不改变该排序。
+真实评价耗时、完整提议耗时、幻想 head 拟合开始/完成数和耗时分别记录，不能声称等墙钟成本。
+不再使用候选池 EI 中位数归一化和手工失败价格，新三臂采用同一终端改进准则。
+
+四、真实模型与可观测幻想
+沿用实际前缀训练的latent目标/one-hot约束 GP、原4x2内核选择和2000构型/30轮VAE。
+每次幻想在当前已选内核、输出归一化和特征快照下追加一条可观测响应，用 EvidenceGP 真正重拟合 EP。
+不重新筛内核、不在幻想上训练 VAE，独立输出头假设不变；这是近似后验，不是校准联合概率。
+调用幻想时不访问 problem.evaluate、目标函数公式、旧结果或 PR66 审计真值。
+region>0：只传 g_region>0 的 interval；resource 数值仍可见；目标与精确region值均不传。
+region<=0：region、resource和目标按原评价契约可见，即使resource>0也不能错误隐藏已有目标。
+冷启动规划只需约束，不凭空创建目标GP或目标值；实际成功后下次规划进入暖启动。
+首次 region 中止/完成分支权重由原边际概率计算；分支内固定4个扰动Sobol节点，所有候选使用共同随机数。
+仅后续价值用低阶求积，Q1解析计算。该pilot的求积精度有限，不作无偏性或精确最优性声明。
+
+五、候选与控制流
+原128个合法新候选池不扩容。两步首动作预筛4个：单步前2、可行歧义最大、region方差最大，重复补齐。
+保证包含全池单步最优。两步第二动作在当前整个128池（去除首动作）中选择。
+真实下一步重新按原随机流生成候选池；当前池第二动作是有限集合近似，不是已承诺执行的设计。
+新三臂不使用旧日历边界探索或eligible门。原对照完全保留这些行为；二者差异由myopic桥接。
+模型数值失败沿用有记录的覆盖动作；无模型概率时不伪造收据。
+任何必需幻想的数值拟合失败，整次两步决策回到原始全池myopic，记录部分弃用分数和失败。
+不能删除失败幻想只平均成功幻想；非数值程序错误继续抛出并停止。
+
+六、冻结计划
+ci：rosenbrock_sparse，种子998790，12共享初始+4臂*2在线=20解析调用。
+smoke：四任务，种子998791，48共享初始+32在线=80解析调用。
+full：四任务，种子998801–998804，192共享初始+384在线=576解析调用，64条trial。
+三个种子块互不重叠。工作机 smoke+full 共656；CI调用单独报告，不能混入工作机费用。
+这是每任务4种子的机制pilot，不是确认性全规模优越性试验。没有新增飞机/RCAIDE调用。
+源代码必须固定SHA且干净；PR67父版本所有Git文件对象保持不变。
+
+七、执行与验收
+现有Rcaide_vsp；全新detached worktree，输出位于源码外。
+python -m unittest discover -s tests -p test_information_value_stage3.py -v
+python -m unittest discover -s tests -p test_information_value_stage3_runtime.py -v
+python -m compileall -q ra_lsbo/experiments/information_value_stage3 run_ra_lsbo_information_stage3_pycharm.py
+python run_ra_lsbo_information_stage3_pycharm.py --help
+python run_ra_lsbo_information_stage3_pycharm.py --profile smoke --expected-sha <固定SHA> --output <新smoke目录>
+python run_ra_lsbo_information_stage3_pycharm.py --task verify --input <smoke目录>
+python run_ra_lsbo_information_stage3_pycharm.py --profile full --expected-sha <固定SHA> --output <新full目录>
+python run_ra_lsbo_information_stage3_pycharm.py --task verify --input <full目录>
+每命令保存完整日志和退出码，按顺序技术验收。full成功状态COMPLETE_GP_FANTASY_PILOT。
+不根据正负效果挑种子或改阈值；失败停止，不修代码、不在原目录重跑。
+无独立 stop 机制。本轮 no_abort_update 与 full 的差异只解释幻想规划的信息利用，不解释真实训练标签价值。
+结果单独上传 results/information-value-stage3-gp-fantasy-20261106，已存在则新后缀；不得覆盖旧分支或合并PR。
+保留plan/source/ledger/progress/report/manifest/shared_initial/trials、全部checkpoint与日志。
+证据目录 * -text，上传后按字节SHA256核对。指令直接从聊天复制为instructions.txt，无需外部MD附件。
+报告逐任务paired W/L/T、全部无解运行、条件目标差、失败数、冷启动首次发现、最终一步退化检查、
+幻想拟合完成率/回退率/墙钟费用、两步与单步实际选点差异。中止幻想不得出现数值目标或精确region值。
+
+八、可证伪门槛
+若两步与myopic路径基本一致或大量幻想回退，先判机制未有效作用，不能靠改名字宣称创新。
+若收益只来自新myopic、而非two_step增量，则不归因于信息价值。
+若two_step与no_abort_update无差异，不主张“利用中止区间信息带来收益”。
+即使少量种子改善，也必须随后在独立种子、更高求积精度和更广任务验证，不能直接进入飞机安全结论。

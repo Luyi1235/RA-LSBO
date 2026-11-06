@@ -1,0 +1,142 @@
+请执行 RA-LSBO PR68 的真实 GP 两步前瞻与中止区间信息消融实验，并上传全部原始证据。
+
+你的职责是读取固定 GitHub 代码、执行、核验和上传原始结果，不修改算法代码、模型参数、种子、积分节点、候选池或实验协议。代码修正由 ChatGPT 负责。
+
+【固定身份】
+
+仓库：
+https://github.com/Luyi1235/RA-LSBO
+
+PR：
+https://github.com/Luyi1235/RA-LSBO/pull/68
+
+代码分支：
+research/ra-lsbo-information-value-stage3-20261106
+
+唯一允许执行的固定代码 SHA：
+21a1267ee907774e6958a12539da98c0840cc1d9
+
+入口：
+run_ra_lsbo_information_stage3_pycharm.py
+
+首先完整阅读：
+docs/PR68_GP_FANTASY_PROTOCOL.txt
+
+【准备】
+
+1. 定位本机已有 RA-LSBO 仓库，保留原工作区所有改动。
+   获取上述分支，在全新 worktree 中以 detached HEAD 检出固定 SHA。
+   不要直接执行不断变化的分支 HEAD，不要在旧工作区覆盖文件。
+
+2. 核对 git rev-parse HEAD 等于固定 SHA，
+   git status --porcelain 为空。
+
+3. 使用现有 Rcaide_vsp Python 环境（Python 3.9.25）。
+   保存 Python 路径、版本和已有依赖版本。
+   不安装或升级依赖，不修改物理模型。
+
+4. 源 worktree 外建立结果父目录。
+   smoke、full 和日志分别使用全新路径。
+   控制台日志不写入源 worktree 或已封存结果目录。
+
+【执行顺序】
+
+在固定代码 worktree 根目录，用 Rcaide_vsp 的 Python 执行：
+
+python -m unittest discover -s tests -p test_information_value_stage3.py -v
+python -m unittest discover -s tests -p test_information_value_stage3_runtime.py -v
+python -m compileall -q ra_lsbo/experiments/information_value_stage3 run_ra_lsbo_information_stage3_pycharm.py tests/test_information_value_stage3.py tests/test_information_value_stage3_runtime.py
+python run_ra_lsbo_information_stage3_pycharm.py --help
+
+全部通过后，先用全新输出目录执行 smoke：
+
+python run_ra_lsbo_information_stage3_pycharm.py --profile smoke --expected-sha 21a1267ee907774e6958a12539da98c0840cc1d9 --output <新smoke目录>
+python run_ra_lsbo_information_stage3_pycharm.py --task verify --input <新smoke目录>
+
+成功后再用全新输出目录执行 full：
+
+python run_ra_lsbo_information_stage3_pycharm.py --profile full --expected-sha 21a1267ee907774e6958a12539da98c0840cc1d9 --output <新full目录>
+python run_ra_lsbo_information_stage3_pycharm.py --task verify --input <新full目录>
+
+每条命令保存完整 stdout/stderr 并明确检查退出码。
+预期 22 项数值测试通过，8 项真实运行测试通过，均不得 skip。
+
+【必须核对】
+
+smoke：
+4 条轨迹（四任务 × 种子 998791），48 次共享初始评价、32 次在线评价，
+合计 80 次数学评价，4 条 trial。
+
+full：
+64 条轨迹（四任务 × 种子 998801–998804 × 四臂），
+192 次共享初始评价、384 次在线评价，合计 576 次数学评价，
+64 条 trial。
+
+full 每臂每 case/seed 恰好 6 次真实在线评价；
+四个 arm 的共享初始前缀必须逐 case/seed 一致。
+最后一条在线决策必须退化为 depth=1。
+
+成功状态：
+COMPLETE_GP_FANTASY_PILOT
+
+四个 arm 固定为：
+soft_gp_eligible、cei_myopic、cei_two_step、cei_two_step_no_abort_update。
+
+两步深度最多为 2；
+中止幻想只能暴露 region>0 的区间、精确 resource、objective missing；
+完成但不可行的幻想可以暴露精确 region/resource/objective；
+no_abort_update 只省略中止分支的 region GP 区间更新，真实历史仍完整；
+任何数值幻想失败必须回退为 full-pool myopic，并计数。
+
+飞机和 RCAIDE 调用必须都是 0。
+不得报告“新两步 GP 算法已经胜出”或“飞机安全已验证”。
+
+【出错处理】
+
+任何导入、固定 SHA、模型、断言或完整性检查异常：
+立即停止，保留输出和完整 traceback，上传失败证据。
+
+不得现场修代码、补写标签、删除失败目录，
+不得在原输出目录重跑。
+不要因此转去执行 PR64/#65 或其他旧实验。
+
+【GitHub 上传】
+
+使用独立新结果分支：
+results/information-value-stage3-gp-fantasy-20261106
+
+如已存在，添加唯一时间后缀；禁止覆盖或 force push。
+不要合并 PR68，不修改 main、其他代码分支或旧结果分支。
+
+上传内容必须包括：
+- smoke/full 的 report、plan、source_receipt、progress、evaluations、manifest；
+- 完整 shared_initial/、trials/、representation checkpoints；
+- 全部原始证据和 bundle_manifest；
+- 完整 stdout/stderr、测试日志、环境信息；
+- 固定代码 SHA 与上传文件 SHA256 清单；
+- 逐任务诊断 README。
+
+不要只上传汇总表。
+原始 proposal、observation、initial、模型表示 checkpoint、
+审计真值和评价账本都必须保留。
+
+结果目录使用专用 .gitattributes，内容为 * -text，
+避免 Git 换行转换破坏证据字节。
+说明文档和日志放在外层上传目录，不插入已封存原始目录。
+
+【最终返回】
+
+返回：
+结果分支链接、结果 HEAD、固定代码 SHA、
+smoke/full/verify/manifest 核验状态、实际费用核对、
+fail/skip/unknown/中断记录及完整证据位置。
+
+按四个任务分别总结：
+候选池是否有机会；
+eligible 支持是否排除了好点；
+原效用前八名是否包含有价值的点；
+风险预测与同点真值有何偏差；
+实际选点错过了哪些池内机会。
+
+另报告中止信息消融结果。
+不得自行启动下一阶段算法开发或昂贵飞机仿真。
