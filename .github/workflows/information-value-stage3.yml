@@ -1,0 +1,45 @@
+name: information-value-stage3
+on:
+  pull_request:
+    paths:
+      - 'ra_lsbo/experiments/information_value_stage3/**'
+      - 'tests/test_information_value_stage3*.py'
+      - 'run_ra_lsbo_information_stage3_pycharm.py'
+      - '.github/workflows/information-value-stage3.yml'
+      - 'docs/PR68_GP_FANTASY_PROTOCOL.txt'
+permissions:
+  contents: read
+jobs:
+  real-model-contract:
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Temporary CI dependencies only
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Numeric and real EP adapter tests
+        run: python -m unittest discover -s tests -p 'test_information_value_stage3*.py' -v
+      - name: Compile new source
+        run: python -m compileall -q ra_lsbo/experiments/information_value_stage3 run_ra_lsbo_information_stage3_pycharm.py
+      - name: CLI help
+        run: python run_ra_lsbo_information_stage3_pycharm.py --help
+      - name: Actual GP-VAE mathematical CI (20 calls, no aircraft)
+        run: python run_ra_lsbo_information_stage3_pycharm.py --profile ci --expected-sha ${{ github.event.pull_request.head.sha }} --output "${{ runner.temp }}/pr68-ci-evidence"
+      - name: Read-only full raw-evidence reconciliation
+        run: python run_ra_lsbo_information_stage3_pycharm.py --task verify --input "${{ runner.temp }}/pr68-ci-evidence"
