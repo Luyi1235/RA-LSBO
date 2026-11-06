@@ -1,0 +1,17 @@
+PR70：下一轮候选池一致性隔离实验（工作机执行指令副本）
+
+固定代码 SHA：275aac2c5d5d6a8c8f6278c0d556de3de5867f74
+PR：https://github.com/Luyi1235/RA-LSBO/pull/70
+分支：research/pr70-next-pool-consistency-20261106
+入口：run_pr70_future_pool.py
+上一阶段审计结果 HEAD：ff8da0895e302ccf24c0ed5c2d5de72d8f9b5b2f
+
+要求：
+- 全新 detached worktree，固定 SHA，git status 干净；Rcaide_vsp Python 3.9.25，不安装/升级依赖。
+- 先运行 13 项协议测试、13 项真实 EP/候选测试、compileall、--help；全部通过后 smoke、verify；再 full、verify。
+- 预算：smoke 4 任务×998891，48 初始+24 在线=72；full 4 任务×998901–998904，192 初始+288 在线=480；三臂 cei_myopic、cei_two_step、cei_two_step_next_pool；每臂每组 6 在线；飞机/RCAIDE 0。
+- 新臂只改变第二步候选支持；候选池 128、首动作 4、每区 4 节点、求积/阈值/覆盖/停止规则不变；未来信息不得泄漏目标/约束/旧结果。
+- 主比较 next_pool vs two_step；次比较 next_pool vs myopic；新种子参照 two_step vs myopic。
+- 记录 future_pool_checks（正常 full 80、smoke 4）、候选池不一致、最后一步 depth=1、幻想拟合开始/完成/回退、模型无覆盖、实际失败、墙钟成本。
+- 不修改旧证据，不合并 PR70，不执行其他 PR；异常停止并保留 traceback。
+- 上传 results/pr70-next-pool-20261106，保留原始 smoke/full、plan、source_receipt、report、progress、evaluations、manifest、shared_initial、trials、raw_pool/protected_pool/future_supports、representation checkpoints；证据目录 .gitattributes 使用 * -text。

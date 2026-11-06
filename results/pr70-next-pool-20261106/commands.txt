@@ -1,0 +1,8 @@
+python -S -m unittest discover -s tests -p test_pr70_protocol.py -v
+python -m unittest discover -s tests -p test_pr70_future_pool.py -v
+python -m compileall -q pr70_protocol.py pr70_future_pool.py run_pr70_future_pool.py
+python -S run_pr70_future_pool.py --help
+python run_pr70_future_pool.py --profile smoke --expected-sha 275aac2c5d5d6a8c8f6278c0d556de3de5867f74 --output <smoke>
+python -S run_pr70_future_pool.py --task verify --input <smoke>
+python run_pr70_future_pool.py --profile full --expected-sha 275aac2c5d5d6a8c8f6278c0d556de3de5867f74 --output <full>
+python -S run_pr70_future_pool.py --task verify --input <full>
