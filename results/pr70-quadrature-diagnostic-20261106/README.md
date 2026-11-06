@@ -17,7 +17,7 @@
 - `compileall` 与 `--help`：exit 0。
 - PR 代码提交只新增七文件，无父版本修改/删除；分支已推送。
 - CI（ubuntu-latest）：**失败**，job `127953372683`，run `42235921834`。
-- CI（windows-latest）：上传时仍为 `in_progress`，状态以 `ci-checkruns.json` 为准。
+- CI（windows-latest）：**成功**，job `127953373108`，完成于 `2026-11-06T14:51:28Z`；但 Ubuntu 的失败使整个 CI run 仍为失败，按指令继续停止诊断。
 
 ## 失败点与 traceback
 
@@ -62,7 +62,7 @@ CI 的 `failure.json` 记录：
 - `logs/02-*`、`logs/03-*`：26 项数值/协议测试、6 项真实运行测试的完整 stdout/stderr/exit。
 - `logs/04-*`、`logs/05-*`：compileall、`--help`。
 - `logs/06-staged-files.txt`、`logs/06-code-sha.txt`：代码提交只含七个 A 文件。
-- `pr-response.json`、`ci-checkruns.json`、`ci-ubuntu-annotations.json`、`ci-ubuntu-failure.json`、`ci-ubuntu.log`、`ci-ubuntu-artifact/`：PR 与 CI 原始记录。
+- `pr-response.json`、`ci-checkruns.json`、`ci-jobs.json`、`ci-ubuntu-annotations.json`、`ci-ubuntu-failure.json`、`ci-ubuntu.log`、`ci-ubuntu-artifact/`：PR 与 CI 原始记录。
 - `environment.txt`、`fixed_sha.txt`、`commands.txt`、`instructions.txt`：环境与执行身份。
 
 ## 下一步
