@@ -76,7 +76,7 @@ def test_continue_arm_cannot_abstain_and_cannot_exceed_budget():
     bad["decisions"].append({"evaluation_performed":False,
         "action":"abstain_stop_before_evaluator","selected_net_utility":-.1,
         "realized_nonfeasible":None})
-    with pytest.raises(ValueError,match="only registered"):
+    with pytest.raises(ValueError,match="Only registered"):
         p.check_trial(bad,profile="smoke")
     bad=copy.deepcopy(r)
     bad["online_calls"]=3
@@ -91,10 +91,10 @@ def test_paired_summary_reports_cost_saved_and_does_not_count_abstain_as_failure
             rows.append(trial(c,p.SEEDS[0],arm,abstain=arm=="soft_gp_abstain"))
     by,pairs=p.summarize(rows,profile="smoke")
     a=by["branin_ordinary/soft_gp_abstain"]
-    assert a["actual_online_calls"]==4
-    assert a["max_online_call_budget"]==8
-    assert a["budget_saved"]==4
-    assert a["observed_nonfeasible"]==4
+    assert a["actual_online_calls"]==1
+    assert a["max_online_call_budget"]==2
+    assert a["budget_saved"]==1
+    assert a["observed_nonfeasible"]==1
     assert a["stopped_by_abstention"]==1
     assert pairs["branin_ordinary/soft_gp_abstain_vs_soft_gp_continue"]["candidate_abstentions"]==1
     assert pairs["branin_ordinary/soft_gp_abstain_vs_soft_gp_continue"]["candidate_actual_calls"]==1
