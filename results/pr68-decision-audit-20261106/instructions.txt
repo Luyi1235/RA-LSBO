@@ -1,0 +1,187 @@
+任务：执行 PR69，只读复核并归档 PR68 决策审计
+你的职责是读取固定审计代码与固定结果提交，执行测试及只读审计，核验并上传审计结果。
+
+本轮新增数学评价、GP 拟合、VAE 拟合、飞机和 RCAIDE 调用必须全部为 0。不得重新运行 PR68 实验，不得修改任何旧证据或算法代码。
+
+1. 固定身份
+仓库：
+https://github.com/Luyi1235/RA-LSBO
+
+PR：
+https://github.com/Luyi1235/RA-LSBO/pull/69
+
+审计代码分支：
+analysis/pr68-decision-postmortem-20261106
+
+唯一固定审计代码 SHA：
+fd56186bb75b29b0df96bb2c27d67791c5f0d73b
+
+输入结果分支：
+results/information-value-stage3-gp-fantasy-20261106
+
+唯一固定输入结果 HEAD：
+2823c6204de7da0ffa537548e0dbbe411e41e22a
+
+输入结果对应的原实验代码 SHA：
+21a1267ee907774e6958a12539da98c0840cc1d9
+
+审计入口：
+run_pr69_decision_audit.py
+
+执行前阅读：
+docs/PR69_DECISION_AUDIT.txt
+
+不要执行浮动分支 HEAD 或 PR 自动合并 SHA。保留现有实验 worktree、日志与结果。
+
+2. 建立两个独立、干净的 worktree
+在现有 RA-LSBO 仓库根目录，使用全新路径：
+
+$CodeSHA = 'fd56186bb75b29b0df96bb2c27d67791c5f0d73b'
+$EvidenceSHA = '2823c6204de7da0ffa537548e0dbbe411e41e22a'
+$Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+
+$CodeWT = "D:\LSBO\RA-LSBO-pr69-code-$Stamp"
+$EvidenceWT = "D:\LSBO\RA-LSBO-pr69-evidence-$Stamp"
+$ResultRoot = "D:\LSBO\RA-LSBO-pr69-results-$Stamp"
+$LogDir = Join-Path $ResultRoot 'logs'
+$AuditOut = Join-Path $ResultRoot 'audit'
+
+git fetch origin analysis/pr68-decision-postmortem-20261106
+if ($LASTEXITCODE -ne 0) { throw 'Audit code fetch failed' }
+
+git fetch origin results/information-value-stage3-gp-fantasy-20261106
+if ($LASTEXITCODE -ne 0) { throw 'Evidence fetch failed' }
+
+git worktree add --detach $CodeWT $CodeSHA
+if ($LASTEXITCODE -ne 0) { throw 'Audit worktree creation failed' }
+
+git worktree add --detach $EvidenceWT $EvidenceSHA
+if ($LASTEXITCODE -ne 0) { throw 'Evidence worktree creation failed' }
+
+New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+
+$PY = 'C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe'
+Set-Location $CodeWT
+
+分别检查两个 worktree 的 HEAD 与固定 SHA 完全一致，`git status --porcelain` 为空。
+
+继续使用现有解释器；不安装、升级或卸载任何依赖。不要提前创建 $AuditOut，由程序创建。
+
+3. 运行测试与只读审计
+每条命令分别保存完整 stdout、stderr 和退出码。任何非零退出码立即停止。
+
+& $PY -S -m unittest discover -s tests -p "test_pr69*.py" -v
+
+预期 24 项测试通过，0 项跳过。随后执行：
+
+& $PY -S -m compileall -q run_pr69_decision_audit.py pr69_evidence_verify.py
+
+& $PY -S run_pr69_decision_audit.py --help
+
+全部通过后执行唯一的正式审计命令：
+
+& $PY -S run_pr69_decision_audit.py --evidence-root $EvidenceWT --expected-sha $CodeSHA --output $AuditOut
+
+注意：
+--evidence-root 传输入结果 worktree 的根目录。
+不要传 results/.../full 子目录。
+
+-S 仅用于禁用 site 初始化，验证程序只依赖标准库；它不会修改工作机环境。不得因为导入错误而删除 -S、安装依赖或添加假模块。
+
+本轮没有 --profile smoke、--profile full，不要自行添加，也不要执行旧实验入口。
+
+4. 验收要求
+审计完成状态必须为：
+COMPLETE_READ_ONLY_PR68_DECISION_AUDIT
+
+输出应包含：
+report.json
+decisions.json
+manifest.json
+
+核对身份与原始证据：
+audit_code_sha：
+fd56186bb75b29b0df96bb2c27d67791c5f0d73b
+
+input_result_sha：
+2823c6204de7da0ffa537548e0dbbe411e41e22a
+
+input_code_sha：
+21a1267ee907774e6958a12539da98c0840cc1d9
+
+原 full 证据：
+405 个文件
+64 条 trial
+192 次原初始评价
+384 次原在线评价
+576 started / 576 settled
+
+上述 576 次是读取、复核的历史评价，不是本轮新调用。
+
+以下字段必须全部为 0：
+new_mathematical_evaluations
+new_GP_fits
+new_VAE_fits
+aircraft_calls
+rcaide_calls
+
+核对输出 manifest 中每个文件的 SHA256。日志和环境说明写入外层交付目录，不能插入已经封存的 audit 输出目录。
+
+5. 汇总内容与解释边界
+逐任务、逐臂汇总以下内容：
+- 相对同一历史状态下单步最优，发生了多少次两步改选，以及牺牲的即时收益比例。
+- 保存的四节点中删去一个后，有多少次首动作改变。
+- 幻想第二步候选在实际下一轮候选池中的精确保留情况。
+- 历史、候选池和原始预测全部相同的前缀中，完整两步与消融是否选择不同。
+- 明确区分“预测失败概率 ≤0.2”和“预测失败概率 ≥0.8”的样本及实际失败数。
+- 逐种子的最终目标差，不把任务平均差写成个别种子的差。
+
+这是只读诊断，不是新在线算法结果。删点敏感性不能称为求积收敛检验；第二步候选没有精确保留，不能推导为附近没有替代点；真实随后两次评价的收益，不能当作未执行行动的反事实收益。
+
+不要根据预期数字修改输出。若工作机结果与 CI 不一致，保留差异并报告。
+
+6. 出错处理
+出现版本、导入、原始 manifest、账本、候选关联、两步分数重建或输出哈希异常时，立即停止。
+
+保留完整命令、解释器信息、退出码、traceback 和已生成文件。不得修改原始证据、放宽检查、现场修代码或原地重跑。
+
+不要转去执行其他 PR、GP/VAE 重拟合或飞机实验。
+
+7. 上传独立审计结果分支
+使用新分支：
+results/pr68-decision-audit-20261106
+
+若已存在，添加唯一时间后缀，不覆盖、不 force push。
+
+从本次审计代码 SHA 建立结果分支，上传审计输出、完整日志、环境与版本信息、指令副本、文件 SHA256 清单及中文说明。证据目录配置：
+* -text
+
+原始 PR68 结果只引用固定 HEAD，不要修改其 README、汇总表或原始数据来替代本次纠正说明。不合并 PR68、PR69，不修改 main。
+
+上传后核对远程文件与本地字节和 SHA256 一致。
+
+8. 最终回报
+新审计结果分支 URL：
+审计结果 HEAD：
+固定审计代码 SHA：
+固定输入结果 HEAD：
+
+24 项测试：
+compileall：
+--help：
+审计完成状态：
+原始 405 文件／64 trial／576 历史调用核验：
+
+新增数学评价／GP／VAE／飞机／RCAIDE 调用：
+两步相对自身单步规则的改选次数：
+删节点敏感的决策次数：
+幻想第二动作的下一轮精确保留情况：
+同前缀中止信息消融差异：
+风险概率方向纠正：
+与 CI 结果是否一致：
+
+两个 worktree 是否干净：
+输出 manifest 与远程字节核验：
+异常或未知记录：
+
+当前推进重点是检验“被估计的信息价值是否稳定、是否能在真实后续搜索中利用”，而不是继续增加风险惩罚或仅扩大种子数量。PR69 先把这两个问题形成可复核证据，当前不启动新的在线优化实验。
