@@ -250,15 +250,14 @@ def run(output, *, profile="smoke"):
         "n_real_analytical_calls":charged,
         "max_new_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"],
         "unused_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"]-charged,
-        "max_new_analytic_evaluation_budget":spec["max_new_analytic_evaluation_budget"],
         "n_new_on_policy_trials":len(records),
         "new_aircraft_calls":0,"new_rcaide_calls":0,
         "new_gp_vae_fits": "real actual fits, NOT zero",
         "same_maximum_online_call_budget":True,
         "actual_online_calls_may_be_lower_for_abstention_arm":True,
-        "no_early_stop_or_treatment_dependent_censoring":True,
-        "original_pr54_three_control_arms_byte_identical":True,
-        "new_credibility_value_arms_are_opt_in":True,
+        "abstention_is_a_registered_policy_action_not_failure_censoring":True,
+        "frozen_pr54_semantic_and_budgeted_controls_byte_identical":True,
+        "soft_gp_abstain_is_opt_in":True,
         "new_arms_use_no_hard_risk_gate":True,
         "real_abstention_performed_only_before_evaluator":True,
         "internal_planning_horizon_12_unmodified":True,
@@ -270,7 +269,7 @@ def run(output, *, profile="smoke"):
             "This is same MAXIMUM budget, not same actual evaluation count; report cost and quality together.",
             "Abstention is not a success or failure label and has no objective value.",
             "These are custom hierarchical Branin/Rosenbrock analytical tasks, not real aircraft or RCAIDE, and not official benchmark replicas.",
-            "All arms have identical six actual online calls but adaptively choose different designs and retrain their own GP/VAE from settled observations.",
+            "All arms share the same maximum online call cap; abstention arm can make fewer actual calls. Each arm refits from its own settled prefix.",
             "PR64 tests only PR63 soft-GP utility and real abstention; local blend and information bonus were not carried forward after negative ablations.",
             "GP feasibility and net utility remain uncalibrated heuristics, not safety bounds.",
             "Abstentions have no evaluator outcome; do not impute objective or feasible labels.",
@@ -280,5 +279,5 @@ def run(output, *, profile="smoke"):
             "Flight propulsion/control collaboration requires separately qualified 100/140km physical constraints, scenarios and independent on-policy airplane experiments.",
         ],
     }
-    _write(output/"fixed_six_onpolicy_report.json",report)
+    _write(output/"max_budget_abstention_report.json",report)
     return report
