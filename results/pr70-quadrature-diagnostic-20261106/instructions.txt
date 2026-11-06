@@ -1,0 +1,24 @@
+PR70 同状态求积稳定性诊断：工作机执行指令（关键条款副本）
+
+固定代码包：RA-LSBO_PR70_Quadrature_Diagnostic_Code.zip
+代码包 SHA256：ce691ee487f46569fad85e15b08c7a22f43c30f067413386d80aae7676fe4af5
+父代码 SHA：275aac2c5d5d6a8c8f6278c0d556de3de5867f74
+父分支：research/pr70-next-pool-consistency-20261106
+输入结果 HEAD：f859cca5adc56dd101d2f59665f7829a2b0331c4
+输入结果分支：results/pr70-next-pool-20261106
+
+要求：
+1. 先定位代码包、校验 SHA256，完全相等才解压；不使用其他来源或虚构 PR/SHA。
+2. 在现有仓库建立两个全新 detached worktree（代码、证据），核对 HEAD，保持干净；结果目录在 worktree 外。
+3. 用 Rcaide_vsp/Python 3.9.25，不安装或升级依赖。
+4. 在代码 worktree 外解压；运行 install_quadrature_payload.py --repo <CodeWT>；状态必须为 INSTALLED_REVIEWED_ADDITIONS_ONLY。
+5. 阅读 docs/PR70_QUADRATURE_DIAGNOSTIC.txt。
+6. 运行 26 项数值/协议测试、6 项真实运行测试、compileall、--help；0 skip。任何预检失败立即停止。
+7. 只暂存安装器列出的七个 A 文件，提交到新分支并推送；取得真实新 SHA；创建 draft PR，base 为 research/pr70-next-pool-consistency-20261106。CI 失败则停止诊断。
+8. 只有预检、CI 和原四节点复现全部通过，才执行 smoke（4 状态）和 full（32 状态）；先 run 再 verify。正式 run/verify 不使用 -S。
+9. 诊断只读 PR70 full 的 cei_two_step_next_pool 已有状态；不新增真值评价、VAE 训练、飞机/RCAIDE 调用；允许并必须记录 GP 重建。
+10. 输出 plan、source_receipt、状态快照、四套求积原始结果、report、manifest；外层保存日志、环境、安装校验、代码提交与 CI 记录、SHA256 清单；证据目录 * -text。
+11. 不能修改旧证据、不能现场修代码/放宽容差/重训 VAE/替换 checkpoint；异常停止并保留现场。
+12. 最终报告固定身份、CI、复现与核验、动作变化、扰动敏感性、near-tie、无效规则、GP 费用及新增评价/训练/飞机调用。
+
+本次实测：包校验和安装通过；26+6 测试通过；PR #72 创建；Ubuntu CI 在 structure_corpus.py 的 Training contract differs 失败；按指令停止，未执行 smoke/full。
