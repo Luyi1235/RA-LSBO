@@ -1,0 +1,26 @@
+# PR77 归档任务指令副本
+
+仅归档 PR77 已完成的 CI 结果；不重新运行实验、不回放、不触发 CI、不拟合模型、不调用真值评价器。
+
+## 固定身份
+
+- 仓库：`Luyi1235/RA-LSBO`
+- PR：77
+- 固定代码 SHA：`634ff13c07d11e4df4748199806726a3eb14fd70`
+- CI run：`42370899496`
+- 输入 PR75 结果 HEAD：`fba37629d003e2b528b7c3e3c5f50d3f245eb21d`
+
+## 下载与核验
+
+使用 GitHub API 下载：
+
+- Windows：`phase-b0-windows-latest`，artifact `13574020196`，ZIP 8,827,127 B，SHA256 `dadc5327...504f`
+- Ubuntu：`phase-b0-ubuntu-latest`，artifact `13573651527`，ZIP 8,827,127 B，SHA256 `98255cd4...766f`
+
+核验 run 绑定固定代码 SHA、结论 success；核对 ZIP 哈希、解压完整性、manifest 中四个文件 SHA256；两份解压文件逐字节相同。
+
+`report.json` 必须满足：status `COMPLETE_FROZEN_RISK_DECISION_REPLAY`、source_model_rows 360、replay_decision_rows 1800、input_result_sha 指定 HEAD、new_bill 全 0。402 文件/12,672 评价/540 GP/4,320 核均为 PR75 历史记录，不是新增计算。
+
+## 归档
+
+先检查是否已有同 run/artifact 归档；没有则使用独立分支 `results/phase-b0-frozen-decisions-20261107`。保留两个原始 ZIP、解压文件、完整 CI 日志、run/job 元数据、固定身份、核验说明及外层 SHA256 清单。证据目录 `* -text`，上传后核对远端字节。不得修改 PR75、不推送代码分支、不合并 PR、不 force push。
