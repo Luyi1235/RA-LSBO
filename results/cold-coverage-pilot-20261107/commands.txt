@@ -1,0 +1,17 @@
+code_sha=491dbf6f1fd340864f5b5332bc2b75d75e9a6a9e
+worktree=D:\LSBO\RA-LSBO-pr74-20261107-164658
+result_root=D:\LSBO\RA-LSBO-pr74-results-20261107-164658
+
+prechecks:
+python -S -m unittest discover -s tests -p test_cold_coverage_core.py -v
+python -m unittest discover -s tests -p test_cold_coverage_runtime.py -v
+python -m compileall -q cold_coverage_core.py cold_coverage_engine.py cold_coverage_verify.py run_cold_coverage_pilot.py
+python -S run_cold_coverage_pilot.py --help
+
+smoke:
+python run_cold_coverage_pilot.py --profile smoke --expected-sha 491dbf6f1fd340864f5b5332bc2b75d75e9a6a9e --output D:\LSBO\RA-LSBO-pr74-results-20261107-164658\smoke
+python -S run_cold_coverage_pilot.py --task verify --input D:\LSBO\RA-LSBO-pr74-results-20261107-164658\smoke
+
+full:
+python run_cold_coverage_pilot.py --profile full --expected-sha 491dbf6f1fd340864f5b5332bc2b75d75e9a6a9e --output D:\LSBO\RA-LSBO-pr74-results-20261107-164658\full
+python -S run_cold_coverage_pilot.py --task verify --input D:\LSBO\RA-LSBO-pr74-results-20261107-164658\full

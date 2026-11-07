@@ -1,0 +1,51 @@
+# PR74 任务指令副本
+
+执行 PR74 冷启动覆盖探索匹配对照，只读固定代码，完成预检、smoke、full、原始核验和上传。
+
+## 固定身份
+
+- 仓库：https://github.com/Luyi1235/RA-LSBO
+- PR：https://github.com/Luyi1235/RA-LSBO/pull/74
+- 代码分支：`research/cold-coverage-isolation-20261107`
+- 固定代码 SHA：`491dbf6f1fd340864f5b5332bc2b75d75e9a6a9e`
+- 入口：`run_cold_coverage_pilot.py`
+- 成功 CI run：`42355557445`
+- 上一阶段结果 HEAD，仅解释引用：`f02c936732e24aec656af7cb7ff0f8efb425ce94`
+
+## 边界
+
+不安装 ZIP、不下载特征参考、不修改代码/依赖、不使用历史结果标签训练模型；不推送代码分支、不 force push、不合并 PR。保留所有旧 worktree 和结果。
+
+三个臂固定为 `cei_myopic`、`cei_myopic_cold_coverage`、`soft_gp_eligible`。唯一主改动是 coverage_scope 从 `none` 改为 `cold`，周期仍为 5，只在没有可用可行解时启用；不得增加风险惩罚、阈值、信息奖励、停止规则或候选生成规则。
+
+## 预算
+
+- smoke：4 任务，种子 999191，48 initial + 24 online = 72 calls，12 trials。
+- full：仅 Branin sparse、Rosenbrock sparse，种子 999201–999216，32 case/seed 组，384 initial + 576 online = 960 calls，96 trials。
+- 每臂每组 6 次在线；三臂共享同样的 12 个初始评价。
+- 工作机 smoke+full 共 1,032 次数学评价；CI 的 72 次另记。
+- 飞机/RCAIDE=0；幻想拟合=0；真实历史 GP/VAE 更新正常执行。
+
+## 分层与主指标
+
+必须按共同初始数据分层：
+
+- `initial_cold`：初始数据没有可行解；
+- `initial_warm`：初始数据已有可行解。
+
+不重新生成初始点、不剔除已有解组、不追加种子凑冷启动数量。主比较是 `cei_myopic_cold_coverage` vs `cei_myopic`；首要报告每个 sparse 任务的 cold 组数、两臂发现数、仅覆盖臂/仅对照臂发现数，保留所有未发现运行。warm 匹配轨迹必须完全一致，verifier 会检查。
+
+## 执行
+
+1. 28 项 `test_cold_coverage_core.py`、12 项 `test_cold_coverage_runtime.py`，0 skip；compileall 与 `--help` exit 0。
+2. smoke `--profile smoke`，verify；只有技术、原始核验与费用全部通过才执行 full。
+3. full `--profile full`，verify。
+4. 任何未处理异常、版本/候选关联/账本/哈希错误立即停止，保留 traceback 和 started/settled/unknown；不原地重跑、不修代码、不换种子。
+
+## 上传
+
+新结果分支 `results/cold-coverage-pilot-20261107`。上传 plan、source_receipt、report、progress、evaluations、manifest、shared_initial、trials 全部 proposal/observation/result、representation checkpoint、全部日志、环境、固定 SHA、逐任务/分层汇总、失败或未知证据、SHA256 清单。证据目录使用 `* -text`。上传后核对远端字节与 SHA256。
+
+## 判读边界
+
+cold 分母只有 8+5=13，不能扩种或事后筛选；一次最后调用的救回不等于稳定机制；覆盖臂没有超过 soft_gp 时不能升级为默认方法；不能把计划覆盖、退化覆盖和模型失败混为同一机制；不能写飞机/安全结论。
