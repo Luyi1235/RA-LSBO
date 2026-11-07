@@ -1,0 +1,97 @@
+Cold-only coverage isolation after PR73 (2026-11-07)
+
+Parent code: 1949c3139d2256b35e1734af184248f551912ba0.
+Reviewed result: f02c936732e24aec656af7cb7ff0f8efb425ce94.
+Do not modify parent source, prior results or physical evaluator.
+
+DECISION
+Do not promote either two-step recourse score. PR73 adaptive vs fixed-second
+was 5/3/24, with identical final feasibility, no cold discovery in either CEI
+arm, and greater compute than myopic. This fails to establish a robust gain;
+it does not prove all feedback-based planning useless.
+The only new feasible delivery was soft_gp on Branin sparse /999102 /call 6,
+logged scheduled_coverage without a selected-model forecast. ONE case does not
+prove coverage helps. It motivates the following smaller matched experiment.
+
+REPORTING CORRECTIONS (do not overwrite archived README)
+Each PR73 arm has 192 online calls, not 768. The latter is all four arms.
+Do not pool raw objectives or premiums across tasks of different scale.
+Initially feasible runs have first-feasible call 0, not 1.
+The one discovery is Branin sparse, not Rosenbrock sparse.
+Only the SELECTED root's future pool can be matched to actual next execution;
+other roots have counterfactual candidate-only supports, not executed paths.
+Counts of shared states must distinguish depth=2 from terminal depth=1.
+Run review_pr73_readonly.py for full raw reconciliation, without models/evals.
+
+SCIENTIFIC QUESTION
+On exactly the same myopic CEI engine and feedback, does allowing the EXISTING
+coverage_scope='cold' improve first feasible discovery over coverage_scope='none'?
+This is a diagnostic baseline, NOT a proposed new algorithm or calibrated risk
+policy. No extra risk head, penalty, threshold, fantasy, stopping or horizon.
+
+ARMS
+cei_myopic: frozen FantasyValueBO(arm='cei_myopic').
+cei_myopic_cold_coverage: same class/model/settings with only coverage_scope
+changed to cold. Original coverage rule balances least-visited available
+canonical branches, then samples uniformly within the chosen pool branch.
+The inherited period remains FIVE: iterations 0 and 5 in a six-call trial,
+only while no usable feasible observation exists. The inherited singleton
+support guard and model-numerical-failure behavior remain explicit.
+soft_gp_eligible: unchanged old secondary reference, internal horizon12.
+ColdCoverageBO does not override the acquisition method or posterior builder.
+Both matched arms keep actual horizon2/6; no frozen policy files changed.
+
+PROFILES
+ci: branin_ordinary, rosenbrock_sparse; seed999190; 12 initial shared per group,
+3 arms x2 online. 24 initial+12 online=36 true calls PER OS.
+smoke: all four original tasks; seed999191; 48 initial+24 online=72 calls.
+full: ONLY branin_sparse and rosenbrock_sparse; seeds999201..999216;
+32 groups; 384 initial+576 online=960 calls, 96 trials, 192 calls per arm.
+All inputs use fresh registered streams. No prior labels or artifacts needed.
+No conditional initial rejection, re-sampling or unseen feasible anchors.
+Retain ALL initialized groups, including those already feasible.
+Primary stratum: initially no feasible design, defined BEFORE any arm acts.
+Primary endpoint: first feasible discovery by the fixed budget. Report exact
+cold denominator for EACH task; it may be small. Do not enlarge posthoc.
+Initially-warm matched trajectories must be identical; verifier enforces this.
+First-feasible-call=0 means initial evidence, null means no discovery.
+
+VALIDATION / FEES
+28 stdlib protocol tests; 12 native runtime tests with synthetic observations
+and blocked true evaluators. Native tests may fit VAE/GP: not zero compute.
+Actual CI runs all three arms and verifies raw ledgers, phase, selected point,
+coverage metadata and warm matched paths. CI and workstation counts separate.
+Workstation smoke+full =1032 true mathematical calls; CI total=72.
+New aircraft/RCAIDE=0. Fantasy fits=0; real-history GP/VAE updates allowed.
+No separate model-fit counter is invented where the original engine lacks it.
+Scheduled coverage skips GP fitting but retains existing representation schedule.
+Verify is model/evaluator-free; it checks least-visited branch membership and
+recorded scope/phase, while runtime tests check exact original RNG-selected point.
+
+EXECUTION
+Fetch the provided fixed SHA into a new clean detached worktree. NO ZIP.
+Use existing Rcaide_vsp environment; no dependency changes.
+python -S -m unittest discover -s tests -p test_cold_coverage_core.py -v
+python -m unittest discover -s tests -p test_cold_coverage_runtime.py -v
+python -m compileall -q cold_coverage_core.py cold_coverage_engine.py cold_coverage_verify.py run_cold_coverage_pilot.py
+python -S run_cold_coverage_pilot.py --help
+python run_cold_coverage_pilot.py --profile smoke --expected-sha <SHA> --output <NEW>
+python -S run_cold_coverage_pilot.py --task verify --input <smoke>
+Only after technical success, irrespective of optimization effect:
+python run_cold_coverage_pilot.py --profile full --expected-sha <SHA> --output <NEW>
+python -S run_cold_coverage_pilot.py --task verify --input <full>
+
+Full status COMPLETE_COLD_COVERAGE_PILOT; verify VERIFIED_COLD_COVERAGE.
+Any unhandled error or raw reconciliation failure: stop, preserve traceback,
+started/settled counts and unknowns; never fix/retry in place.
+Upload complete ledgers, proposals, observations, checkpoints, manifests and
+external logs on a NEW results/cold-coverage-pilot-20261107 branch. Unique suffix
+if occupied, * -text for evidence, verify remote bytes. No force push or merge.
+No code push or package installation by workstation.
+
+INTERPRETATION GATES
+Do not treat one rescue, few cold episodes or any warm outcome as confirmation.
+Coverage gains would motivate studying when model-directed search deserves trust,
+not prove the surrogate is miscalibrated. Negative or sparse results are retained;
+do not immediately change cadence, add a bonus, extend horizon or tune seeds.
+No default promotion or paper innovation claim from this baseline alone.

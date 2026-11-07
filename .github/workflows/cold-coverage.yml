@@ -1,0 +1,66 @@
+name: cold-coverage-isolation
+on:
+  pull_request:
+    paths:
+      - 'cold_coverage_*.py'
+      - 'run_cold_coverage_pilot.py'
+      - 'review_pr73_readonly.py'
+      - 'tests/test_cold_coverage_*.py'
+      - 'docs/COLD_COVERAGE_PILOT.txt'
+      - '.github/workflows/cold-coverage.yml'
+permissions:
+  contents: read
+jobs:
+  actual-model:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    defaults:
+      run:
+        working-directory: code
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: f02c936732e24aec656af7cb7ff0f8efb425ce94
+          fetch-depth: 1
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Pure tests and pinned PR73 read-only reconciliation (zero fits/evaluations)
+        run: |
+          python -S -m unittest discover -s tests -p test_cold_coverage_core.py -v
+          python -S review_pr73_readonly.py --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/pr74-evidence/pr73-review"
+      - name: Temporary CI dependencies only
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Native warm parity and cold coverage tests (synthetic observations)
+        run: python -m unittest discover -s tests -p test_cold_coverage_runtime.py -v
+      - name: Syntax and dependency-free help
+        run: |
+          python -m compileall -q cold_coverage_core.py cold_coverage_engine.py cold_coverage_verify.py run_cold_coverage_pilot.py review_pr73_readonly.py
+          python -S run_cold_coverage_pilot.py --help
+      - name: Three-arm actual integration (36 mathematical calls)
+        run: python run_cold_coverage_pilot.py --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr74-evidence/ci"
+      - name: Raw ledger and warm-path reconciliation (zero fits/evaluations)
+        run: python -S run_cold_coverage_pilot.py --task verify --input "${{ runner.temp }}/pr74-evidence/ci"
+      - name: Save all raw evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cold-coverage-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr74-evidence
+          if-no-files-found: ignore
