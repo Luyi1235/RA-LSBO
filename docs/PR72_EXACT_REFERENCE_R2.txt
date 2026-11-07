@@ -30,7 +30,7 @@ remain unchanged. The old archived-codebook module remains in history but is
 not the R2 production replay path.
 
 CI: one Windows/CRLF reference producer for 32 prefixes (0 GP), followed by
-Windows/Ubuntu x LF/CRLF consuming the SAME artifact, 84 total tests each and
+Windows/Ubuntu x LF/CRLF consuming the SAME artifact, 86 total tests each and
 4-state historical replay plus raw verification. All FIVE jobs must pass for
 the same final SHA. These are technical checks, not independent BO experiments.
 
@@ -54,3 +54,8 @@ Preserve failure archives and all existing result branches. New evidence branch:
 results/pr72-exact-reference-r2-20261107 (unique suffix when needed).
 Do not repeat old ZIP installation, force push, change environments or merge PR.
 Do not call 64-node results ground truth, confidence intervals or online gains.
+
+R2 integration follow-up: native tuple-valued record fields are compared at the
+original JSON serialization boundary (tuples serialize as arrays). This is not
+a numeric tolerance change. Two new regressions preserve exact JSON hashes and
+reject floating-value changes/nonfinite numbers. Total 86 tests.

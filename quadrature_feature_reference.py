@@ -25,16 +25,21 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
 
+def json_value(value):
+    """Use the SAME tuple/list equivalence as the frozen JSON hash contract."""
+    return json.loads(json.dumps(value, sort_keys=True, allow_nan=False))
+
+
 def state_key(state):
     return '%s_%s_%02d' % (state['case'], state['seed'], state['iteration'])
 
 
 def identity_payload(features, history, session):
     from ra_lsbo.structure_corpus import CORPUS_SCHEMA
-    return {'schema': CORPUS_SCHEMA, 'prefix': [r.to_dict() for r in history],
+    return json_value({'schema': CORPUS_SCHEMA, 'prefix': [r.to_dict() for r in history],
             'corpus': session.corpus['identity'], 'settings': asdict(session.settings),
             'encoder': features.state_hash, 'encoder_prefix': digest(session.history),
-            'offset': features.offset.tolist(), 'scale': features.scale.tolist()}
+            'offset': features.offset.tolist(), 'scale': features.scale.tolist()})
 
 
 def validate_row(row):
@@ -101,7 +106,7 @@ def restore_reference_features(problem, base, seed, history, session, checkpoint
     risk = PrefixFeatures(problem, base, history, seed, False, 30)
     require(risk.identity == metadata['risk_feature_identity'] == reference['risk_identity'],
             'Explicit-risk feature identity changed')
-    require(reference['payload']['prefix'] == [r.to_dict() for r in history]
+    require(reference['payload']['prefix'] == json_value([r.to_dict() for r in history])
             and reference['recorded_objective_identity'] == metadata['objective_feature_identity'],
             'Reference belongs to another prefix/objective feature')
     require(reference['checkpoint_state'] == native.state_hash == metadata['corpus_training']['latest']['parameter_state'],

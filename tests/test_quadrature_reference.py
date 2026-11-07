@@ -7,7 +7,7 @@ import sys
 import unittest
 
 from quadrature_feature_reference import (SCHEMA, digest, validate_row, validate_reference,
-    verify_replay_proof, state_key)
+    verify_replay_proof, state_key, json_value)
 from quadrature_audit_protocol import BASE, EVIDENCE, RTOL, ATOL, fingerprint, plan
 
 
@@ -44,6 +44,18 @@ def proof(row):
 
 
 class ExactReferenceTests(unittest.TestCase):
+    def test_native_tuple_and_archived_list_share_exact_json_contract(self):
+        native=[{'observation':{'constraints':(('region',{'value':-.2}),('resource',{'value':-.1}))}}]
+        archived=json_value(native)
+        self.assertNotEqual(native,archived)
+        self.assertEqual(digest(native),digest(archived))
+        self.assertEqual(archived,json_value(native))
+
+    def test_json_boundary_does_not_round_floats_or_accept_nan(self):
+        a=1.;b=math.nextafter(a,math.inf)
+        self.assertNotEqual(digest(json_value({'x':a})),digest(json_value({'x':b})))
+        with self.assertRaises(ValueError):json_value({'x':float('nan')})
+
     def test_original_payload_rehashes(self):
         r=row_for();self.assertIs(validate_row(r),r)
 
