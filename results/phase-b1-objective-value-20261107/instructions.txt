@@ -1,0 +1,32 @@
+# PR78 Phase B1 任务指令副本
+
+执行 PR78 Phase B1：共享模型下的目标决策价值检验。读取固定代码，完成预检、smoke、full、只读核验和原始结果上传；不安装 ZIP、不使用旧结果训练、不改代码/依赖/种子/参数。
+
+## 固定身份
+
+- 仓库：`Luyi1235/RA-LSBO`
+- PR：78
+- 分支：`research/phase-b1-objective-value-20261107`
+- 固定代码 SHA：`ab12650769e685966661648940301f330a84993e`
+- CI run：`42383138131`
+- 输入说明：PR75 `fba37629...`，PR77 `74b984a5...`（仅身份引用）
+
+## 检查与预检
+
+先检查同 SHA/profile/plan 是否已有完整结果；本机与远程均无。新建 detached worktree，确认 HEAD 与 clean。使用 `Rcaide_vsp` Python 3.9.25。
+
+34 项 core、12 项 native 测试通过 0 skip；compileall、`--help`、`--task plan --profile full` exit 0。
+
+## smoke 与 full
+
+smoke：6 tasks ×1 repeat，672 calls = 288 train + 384 pool audit；12 states；状态 `COMPLETE_FIXED_OBJECTIVE_DECISIONS`，failed_states=0；verify 48 files；六类重封篡改全部拒绝后放行 full。
+
+full：6 tasks ×8 repeats，21,504 calls = 9,216 train + 12,288 pool audit；144 states；状态 `COMPLETE_FIXED_OBJECTIVE_DECISIONS`，failed_states=0；verify 438 files；六类篡改全部拒绝。
+
+四策略固定：`uniform_hash`、`risk_only`、`objective_ei`、`risk_ei`；同一状态共享训练前缀、目标/风险预测、候选池和归一化。预算 1/2/4/6/12 是同一排名前缀，不是独立实验。
+
+主分析：四个 tradeoff 任务，n=48，k=6，initial_warm；主比较 `risk_ei` vs `objective_ei`；报告逐任务 W/L/T、逐重复目标差、初始/最终目标、选中可行/不可行、排名变化、池内改进机会。Cold 单独报告，两个 EI 使用相同 uniform 回退。不同任务不混合均值；零机会组保留。
+
+## 上传
+
+使用 `results/phase-b1-objective-value-20261107`；上传 plan、source_receipt、environment、report/failure、evaluations、timeline、manifest、datasets、states、scores、全部日志、固定 SHA、SHA256 清单、逐任务 README。证据目录 `* -text`，上传后核对远端字节。不推送代码分支、不 force push、不合并 PR、不改旧证据。
