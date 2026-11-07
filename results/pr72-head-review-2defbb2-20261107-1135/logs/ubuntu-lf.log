@@ -1,0 +1,853 @@
+﻿2026-11-06T15:21:21.3424291Z Current runner version: '2.338.2'
+2026-11-06T15:21:21.3447130Z ##[group]Runner Image Provisioner
+2026-11-06T15:21:21.3447816Z Hosted Compute Agent
+2026-11-06T15:21:21.3448189Z Version: 20261028.624
+2026-11-06T15:21:21.3448604Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-06T15:21:21.3449098Z Build Date: 2026-10-28T21:51:42Z
+2026-11-06T15:21:21.3449521Z Worker ID: {2054d83b-3d96-4099-bf9a-4153527e58fc}
+2026-11-06T15:21:21.3449974Z Region: southcentralus
+2026-11-06T15:21:21.3450354Z Cloud: Azure
+2026-11-06T15:21:21.3450728Z ##[endgroup]
+2026-11-06T15:21:21.3451697Z ##[group]Operating System
+2026-11-06T15:21:21.3452076Z Ubuntu
+2026-11-06T15:21:21.3452484Z 24.04.5
+2026-11-06T15:21:21.3452822Z LTS
+2026-11-06T15:21:21.3453180Z ##[endgroup]
+2026-11-06T15:21:21.3453558Z ##[group]Runner Image
+2026-11-06T15:21:21.3453926Z Image: ubuntu-24.04
+2026-11-06T15:21:21.3454269Z Version: 20261101.360.1
+2026-11-06T15:21:21.3455145Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-06T15:21:21.3456097Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-06T15:21:21.3456842Z ##[endgroup]
+2026-11-06T15:21:21.3457585Z ##[group]GITHUB_TOKEN Permissions
+2026-11-06T15:21:21.3458856Z Contents: read
+2026-11-06T15:21:21.3459203Z Metadata: read
+2026-11-06T15:21:21.3459617Z ##[endgroup]
+2026-11-06T15:21:21.3461029Z Secret source: Actions
+2026-11-06T15:21:21.3461664Z Cache mode: write
+2026-11-06T15:21:21.3462137Z Prepare workflow directory
+2026-11-06T15:21:21.3728245Z Prepare all required actions
+2026-11-06T15:21:21.3760181Z Getting action download info
+2026-11-06T15:21:21.6541956Z Download action repository 'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+2026-11-06T15:21:21.7642773Z Download action repository 'actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1' (SHA:ece7cb06caefa5fff74198d8649806c4678c61a1)
+2026-11-06T15:21:21.8596777Z Download action repository 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-11-06T15:21:22.0543179Z Complete job name: actual-reconstruction (ubuntu-latest, lf)
+2026-11-06T15:21:22.1043068Z ##[group]Run if [ "lf" = "crlf" ]; then
+2026-11-06T15:21:22.1043487Z [36;1mif [ "lf" = "crlf" ]; then[0m
+2026-11-06T15:21:22.1043846Z [36;1m  git config --global core.autocrlf true[0m
+2026-11-06T15:21:22.1044190Z [36;1melse[0m
+2026-11-06T15:21:22.1044475Z [36;1m  git config --global core.autocrlf false[0m
+2026-11-06T15:21:22.1044809Z [36;1mfi[0m
+2026-11-06T15:21:22.1045066Z [36;1mgit config --global core.eol "lf"[0m
+2026-11-06T15:21:22.1064305Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-06T15:21:22.1064804Z env:
+2026-11-06T15:21:22.1065038Z   OMP_NUM_THREADS: 1
+2026-11-06T15:21:22.1065302Z   MKL_NUM_THREADS: 1
+2026-11-06T15:21:22.1065563Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:21:22.1065832Z ##[endgroup]
+2026-11-06T15:21:22.1363294Z ##[group]Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+2026-11-06T15:21:22.1363727Z with:
+2026-11-06T15:21:22.1364022Z   ref: 2defbb275bac93c41cbcfbed9ca0b5f39f168e26
+2026-11-06T15:21:22.1364354Z   fetch-depth: 0
+2026-11-06T15:21:22.1364596Z   path: code
+2026-11-06T15:21:22.1364840Z   repository: Luyi1235/RA-LSBO
+2026-11-06T15:21:22.1367125Z   token: ***
+2026-11-06T15:21:22.1367360Z   ssh-strict: true
+2026-11-06T15:21:22.1367605Z   ssh-user: git
+2026-11-06T15:21:22.1367852Z   persist-credentials: true
+2026-11-06T15:21:22.1368123Z   clean: true
+2026-11-06T15:21:22.1368374Z   sparse-checkout-cone-mode: true
+2026-11-06T15:21:22.1368664Z   fetch-tags: false
+2026-11-06T15:21:22.1368912Z   show-progress: true
+2026-11-06T15:21:22.1369162Z   lfs: false
+2026-11-06T15:21:22.1369394Z   submodules: false
+2026-11-06T15:21:22.1369643Z   set-safe-directory: true
+2026-11-06T15:21:22.1369923Z   allow-unsafe-pr-checkout: false
+2026-11-06T15:21:22.1370206Z env:
+2026-11-06T15:21:22.1370463Z   OMP_NUM_THREADS: 1
+2026-11-06T15:21:22.1371017Z   MKL_NUM_THREADS: 1
+2026-11-06T15:21:22.1371270Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:21:22.1371529Z ##[endgroup]
+2026-11-06T15:21:22.3190526Z Syncing repository: Luyi1235/RA-LSBO
+2026-11-06T15:21:22.3192099Z ##[group]Getting Git version info
+2026-11-06T15:21:22.3192731Z Working directory is '/home/runner/work/RA-LSBO/RA-LSBO/code'
+2026-11-06T15:21:22.3193641Z [command]/usr/bin/git version
+2026-11-06T15:21:22.3226132Z git version 2.56.0
+2026-11-06T15:21:22.3244880Z ##[endgroup]
+2026-11-06T15:21:22.3253763Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/95b969cc-7702-45bf-be02-c2fec4a74436/.gitconfig'
+2026-11-06T15:21:22.3262058Z Temporarily overriding HOME='/home/runner/work/_temp/95b969cc-7702-45bf-be02-c2fec4a74436' before making global git config changes
+2026-11-06T15:21:22.3263322Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-06T15:21:22.3266936Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RA-LSBO/RA-LSBO/code
+2026-11-06T15:21:22.3301690Z ##[group]Determining repository object format
+2026-11-06T15:21:22.3303616Z ##[endgroup]
+2026-11-06T15:21:22.3304018Z ##[group]Initializing the repository
+2026-11-06T15:21:22.3307553Z [command]/usr/bin/git init /home/runner/work/RA-LSBO/RA-LSBO/code
+2026-11-06T15:21:22.3391950Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-06T15:21:22.3392655Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-06T15:21:22.3393467Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-06T15:21:22.3394106Z hint: call:
+2026-11-06T15:21:22.3394457Z hint:
+2026-11-06T15:21:22.3394921Z hint: 	git config --global init.defaultBranch <name>
+2026-11-06T15:21:22.3395452Z hint:
+2026-11-06T15:21:22.3396071Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-06T15:21:22.3397324Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-06T15:21:22.3398187Z hint:
+2026-11-06T15:21:22.3398735Z hint: 	git branch -m <name>
+2026-11-06T15:21:22.3399284Z hint:
+2026-11-06T15:21:22.3399978Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-06T15:21:22.3401142Z Initialized empty Git repository in /home/runner/work/RA-LSBO/RA-LSBO/code/.git/
+2026-11-06T15:21:22.3407869Z [command]/usr/bin/git remote add origin https://github.com/Luyi1235/RA-LSBO
+2026-11-06T15:21:22.3448214Z ##[endgroup]
+2026-11-06T15:21:22.3449025Z ##[group]Disabling automatic garbage collection
+2026-11-06T15:21:22.3451458Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-06T15:21:22.3485699Z ##[endgroup]
+2026-11-06T15:21:22.3486327Z ##[group]Setting up auth
+2026-11-06T15:21:22.3487058Z Removing SSH command configuration
+2026-11-06T15:21:22.3491430Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-06T15:21:22.3523179Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-06T15:21:22.3861845Z Removing HTTP extra header
+2026-11-06T15:21:22.3862577Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-06T15:21:22.3912274Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-06T15:21:22.4132279Z Removing includeIf entries pointing to credentials config files
+2026-11-06T15:21:22.4137455Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-06T15:21:22.4181426Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-06T15:21:22.4390458Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-06T15:21:22.4438096Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git.path /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:21:22.4482045Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:21:22.4523935Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/code/.git.path /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:21:22.4562610Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/code/.git/worktrees/*.path /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:21:22.4599441Z ##[endgroup]
+2026-11-06T15:21:22.4600145Z ##[group]Fetching the repository
+2026-11-06T15:21:22.4606750Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-11-06T15:21:32.9163829Z From https://github.com/Luyi1235/RA-LSBO
+2026-11-06T15:21:32.9164631Z  * [new branch]      analysis/aircraft-nominal-review-20261031 -> origin/analysis/aircraft-nominal-review-20261031
+2026-11-06T15:21:32.9165466Z  * [new branch]      analysis/corpus-interruption-diagnosis-20261031 -> origin/analysis/corpus-interruption-diagnosis-20261031
+2026-11-06T15:21:32.9166237Z  * [new branch]      analysis/ep-predictive-validation-20261101 -> origin/analysis/ep-predictive-validation-20261101
+2026-11-06T15:21:32.9167147Z  * [new branch]      analysis/h2-p1-independent-sealed-audit-20261102 -> origin/analysis/h2-p1-independent-sealed-audit-20261102
+2026-11-06T15:21:32.9168012Z  * [new branch]      analysis/h2-p2-independent-sealed-audit-20261102 -> origin/analysis/h2-p2-independent-sealed-audit-20261102
+2026-11-06T15:21:32.9168822Z  * [new branch]      analysis/h2-p3-pilot-independent-audit-20261103 -> origin/analysis/h2-p3-pilot-independent-audit-20261103
+2026-11-06T15:21:32.9169593Z  * [new branch]      analysis/h2-p3-smoke-independent-audit-20261102 -> origin/analysis/h2-p3-smoke-independent-audit-20261102
+2026-11-06T15:21:32.9170333Z  * [new branch]      analysis/h2-p4-decision-sensitivity-20261103 -> origin/analysis/h2-p4-decision-sensitivity-20261103
+2026-11-06T15:21:32.9171057Z  * [new branch]      analysis/iid-qualification-preflight-20261103 -> origin/analysis/iid-qualification-preflight-20261103
+2026-11-06T15:21:32.9171793Z  * [new branch]      analysis/math-pilot-diagnosis-20261029 -> origin/analysis/math-pilot-diagnosis-20261029
+2026-11-06T15:21:32.9172562Z  * [new branch]      analysis/pr68-decision-postmortem-20261106 -> origin/analysis/pr68-decision-postmortem-20261106
+2026-11-06T15:21:32.9173742Z  * [new branch]      analysis/pr70-quadrature-resolution-20261106-223912 -> origin/analysis/pr70-quadrature-resolution-20261106-223912
+2026-11-06T15:21:32.9174559Z  * [new branch]      analysis/pr71-quadrature-diagnostic-20261106 -> origin/analysis/pr71-quadrature-diagnostic-20261106
+2026-11-06T15:21:32.9175394Z  * [new branch]      analysis/pycharm-parallel-preflight-20261103 -> origin/analysis/pycharm-parallel-preflight-20261103
+2026-11-06T15:21:32.9176236Z  * [new branch]      analysis/ra-h-soc-crosspolicy-panel-20261102 -> origin/analysis/ra-h-soc-crosspolicy-panel-20261102
+2026-11-06T15:21:32.9177182Z  * [new branch]      analysis/ra-h-soc-crosspolicy-result-audit-20261102 -> origin/analysis/ra-h-soc-crosspolicy-result-audit-20261102
+2026-11-06T15:21:32.9177970Z  * [new branch]      analysis/ra-lsbo-h-pilot-readonly-20261102 -> origin/analysis/ra-lsbo-h-pilot-readonly-20261102
+2026-11-06T15:21:32.9178677Z  * [new branch]      analysis/structure-corpus-review-20261031 -> origin/analysis/structure-corpus-review-20261031
+2026-11-06T15:21:32.9179369Z  * [new branch]      docs/p0-p6-paper-evidence-20261103 -> origin/docs/p0-p6-paper-evidence-20261103
+2026-11-06T15:21:32.9179961Z  * [new branch]      docs/ra-lsbo-paper-positioning-20261104 -> origin/docs/ra-lsbo-paper-positioning-20261104
+2026-11-06T15:21:32.9180404Z  * [new branch]      fix/comparison-integrity-20261028 -> origin/fix/comparison-integrity-20261028
+2026-11-06T15:21:32.9180802Z  * [new branch]      fix/comparison-reliability-20261028 -> origin/fix/comparison-reliability-20261028
+2026-11-06T15:21:32.9181155Z  * [new branch]      main                      -> origin/main
+2026-11-06T15:21:32.9181503Z  * [new branch]      qa/h2-p0-causal-numerics-20261102 -> origin/qa/h2-p0-causal-numerics-20261102
+2026-11-06T15:21:32.9181932Z  * [new branch]      research/aircraft-corpus-loop-20261031 -> origin/research/aircraft-corpus-loop-20261031
+2026-11-06T15:21:32.9182391Z  * [new branch]      research/aircraft-corpus-pilot-20261031-local -> origin/research/aircraft-corpus-pilot-20261031-local
+2026-11-06T15:21:32.9182863Z  * [new branch]      research/aircraft-nominal-pilot-20261030 -> origin/research/aircraft-nominal-pilot-20261030
+2026-11-06T15:21:32.9183355Z  * [new branch]      research/aircraft-qualification-review-20261030 -> origin/research/aircraft-qualification-review-20261030
+2026-11-06T15:21:32.9183945Z  * [new branch]      research/aircraft-transition-20261030 -> origin/research/aircraft-transition-20261030
+2026-11-06T15:21:32.9184452Z  * [new branch]      research/confirm-12worker-foundation-20261103 -> origin/research/confirm-12worker-foundation-20261103
+2026-11-06T15:21:32.9184948Z  * [new branch]      research/confirm12-production-hardening-20261103 -> origin/research/confirm12-production-hardening-20261103
+2026-11-06T15:21:32.9185450Z  * [new branch]      research/confirm12-real-adapter-bridge-20261103 -> origin/research/confirm12-real-adapter-bridge-20261103
+2026-11-06T15:21:32.9185946Z  * [new branch]      research/confirm12-real-offline-bridge-20261103 -> origin/research/confirm12-real-offline-bridge-20261103
+2026-11-06T15:21:32.9186790Z  * [new branch]      research/confirm12-real-six-arm-adapters-20261103 -> origin/research/confirm12-real-six-arm-adapters-20261103
+2026-11-06T15:21:32.9187304Z  * [new branch]      research/confirm12-structured-evaluator-20261103 -> origin/research/confirm12-structured-evaluator-20261103
+2026-11-06T15:21:32.9187837Z  * [new branch]      research/confirm12-structured-evidence-ledger-20261103 -> origin/research/confirm12-structured-evidence-ledger-20261103
+2026-11-06T15:21:32.9188368Z  * [new branch]      research/confirm12-true-aircraft-runner-20261104 -> origin/research/confirm12-true-aircraft-runner-20261104
+2026-11-06T15:21:32.9188807Z  * [new branch]      research/discovery-review-20261029 -> origin/research/discovery-review-20261029
+2026-11-06T15:21:32.9189190Z  * [new branch]      research/discovery-stages-20261029 -> origin/research/discovery-stages-20261029
+2026-11-06T15:21:32.9189745Z  * [new branch]      research/ep-stability-candidate-20261101 -> origin/research/ep-stability-candidate-20261101
+2026-11-06T15:21:32.9190180Z  * [new branch]      research/grammar-pretraining-20261031 -> origin/research/grammar-pretraining-20261031
+2026-11-06T15:21:32.9190680Z  * [new branch]      research/h2-p3-fixed-mixture-ablation-20261102 -> origin/research/h2-p3-fixed-mixture-ablation-20261102
+2026-11-06T15:21:32.9191332Z  * [new branch]      research/h2-p5-single-step-intervention-replay-20261103 -> origin/research/h2-p5-single-step-intervention-replay-20261103
+2026-11-06T15:21:32.9191857Z  * [new branch]      research/h2-p6-two-stage-attribution-20261103 -> origin/research/h2-p6-two-stage-attribution-20261103
+2026-11-06T15:21:32.9192278Z  * [new branch]      research/phase-evidence-20261030 -> origin/research/phase-evidence-20261030
+2026-11-06T15:21:32.9192673Z  * [new branch]      research/pr45-postrun-analysis-20261104 -> origin/research/pr45-postrun-analysis-20261104
+2026-11-06T15:21:32.9193129Z  * [new branch]      research/pr70-next-pool-consistency-20261106 -> origin/research/pr70-next-pool-consistency-20261106
+2026-11-06T15:21:32.9193676Z  * [new branch]      research/ra-lsbo-h2-causal-risk-20261102 -> origin/research/ra-lsbo-h2-causal-risk-20261102
+2026-11-06T15:21:32.9194154Z  * [new branch]      research/ra-lsbo-information-value-stage1-20261106 -> origin/research/ra-lsbo-information-value-stage1-20261106
+2026-11-06T15:21:32.9194674Z  * [new branch]      research/ra-lsbo-information-value-stage2-20261106 -> origin/research/ra-lsbo-information-value-stage2-20261106
+2026-11-06T15:21:32.9195190Z  * [new branch]      research/ra-lsbo-information-value-stage3-20261106 -> origin/research/ra-lsbo-information-value-stage3-20261106
+2026-11-06T15:21:32.9195693Z  * [new branch]      research/ra-lsbo-matched-gp-mechanism-20261104 -> origin/research/ra-lsbo-matched-gp-mechanism-20261104
+2026-11-06T15:21:32.9196176Z  * [new branch]      research/ra-lsbo-pr50-risk-semantics-20261104 -> origin/research/ra-lsbo-pr50-risk-semantics-20261104
+2026-11-06T15:21:32.9197021Z  * [new branch]      research/ra-lsbo-pr51-feasibility-risk-calibration-20261104 -> origin/research/ra-lsbo-pr51-feasibility-risk-calibration-20261104
+2026-11-06T15:21:32.9197612Z  * [new branch]      research/ra-lsbo-pr52-online-risk-prequential-20261104 -> origin/research/ra-lsbo-pr52-online-risk-prequential-20261104
+2026-11-06T15:21:32.9198141Z  * [new branch]      research/ra-lsbo-pr53-phase-prefix-risk-20261104 -> origin/research/ra-lsbo-pr53-phase-prefix-risk-20261104
+2026-11-06T15:21:32.9198664Z  * [new branch]      research/ra-lsbo-pr54-budgeted-dualview-math-20261104 -> origin/research/ra-lsbo-pr54-budgeted-dualview-math-20261104
+2026-11-06T15:21:32.9199273Z  * [new branch]      research/ra-lsbo-pr55-independent-math-budget-validation-20261104 -> origin/research/ra-lsbo-pr55-independent-math-budget-validation-20261104
+2026-11-06T15:21:32.9199909Z  * [new branch]      research/ra-lsbo-pr56-pr55-report-integrity-audit-20261104 -> origin/research/ra-lsbo-pr56-pr55-report-integrity-audit-20261104
+2026-11-06T15:21:32.9200481Z  * [new branch]      research/ra-lsbo-pr57-fixed-effort-anytime-20261104 -> origin/research/ra-lsbo-pr57-fixed-effort-anytime-20261104
+2026-11-06T15:21:32.9201043Z  * [new branch]      research/ra-lsbo-pr58-new-seed-fixed-six-onpolicy-20261105 -> origin/research/ra-lsbo-pr58-new-seed-fixed-six-onpolicy-20261105
+2026-11-06T15:21:32.9201663Z  * [new branch]      research/ra-lsbo-pr59-risk-overconfidence-diagnostics-20261105 -> origin/research/ra-lsbo-pr59-risk-overconfidence-diagnostics-20261105
+2026-11-06T15:21:32.9202236Z  * [new branch]      research/ra-lsbo-pr60-branch-evidence-uq-20261105 -> origin/research/ra-lsbo-pr60-branch-evidence-uq-20261105
+2026-11-06T15:21:32.9202803Z  * [new branch]      research/ra-lsbo-pr61-branch-risk-gate-failure-audit-20261106 -> origin/research/ra-lsbo-pr61-branch-risk-gate-failure-audit-20261106
+2026-11-06T15:21:32.9203598Z  * [new branch]      research/ra-lsbo-pr62-evidence-synthesis-and-next-method-gates-20261106 -> origin/research/ra-lsbo-pr62-evidence-synthesis-and-next-method-gates-20261106
+2026-11-06T15:21:32.9204248Z  * [new branch]      research/ra-lsbo-pr63-local-credibility-value-20261106 -> origin/research/ra-lsbo-pr63-local-credibility-value-20261106
+2026-11-06T15:21:32.9204845Z  * [new branch]      research/ra-lsbo-pr64-selective-evaluation-abstention-20261106 -> origin/research/ra-lsbo-pr64-selective-evaluation-abstention-20261106
+2026-11-06T15:21:32.9205432Z  * [new branch]      research/ra-lsbo-pr64-soft-value-abstention-20261106 -> origin/research/ra-lsbo-pr64-soft-value-abstention-20261106
+2026-11-06T15:21:32.9205915Z  * [new branch]      research/ra-lsbo-risk-dualview-20261101 -> origin/research/ra-lsbo-risk-dualview-20261101
+2026-11-06T15:21:32.9206401Z  * [new branch]      research/ra-lsbo-sample-size-learning-curves-20261104 -> origin/research/ra-lsbo-sample-size-learning-curves-20261104
+2026-11-06T15:21:32.9207025Z  * [new branch]      research/structure-corpus-2000-20261031 -> origin/research/structure-corpus-2000-20261031
+2026-11-06T15:21:32.9207431Z  * [new branch]      research/transfer-review-20261030 -> origin/research/transfer-review-20261030
+2026-11-06T15:21:32.9208122Z  * [new branch]      results/aircraft-nominal-pilot-20261030-233225 -> origin/results/aircraft-nominal-pilot-20261030-233225
+2026-11-06T15:21:32.9208584Z  * [new branch]      results/aircraft-representation-20261031 -> origin/results/aircraft-representation-20261031
+2026-11-06T15:21:32.9209109Z  * [new branch]      results/aircraft-soc-diagnostic-20261031 -> origin/results/aircraft-soc-diagnostic-20261031
+2026-11-06T15:21:32.9209547Z  * [new branch]      results/aircraft-transition-20261030-1955 -> origin/results/aircraft-transition-20261030-1955
+2026-11-06T15:21:32.9209976Z  * [new branch]      results/discovery-pilot-20261029-134131 -> origin/results/discovery-pilot-20261029-134131
+2026-11-06T15:21:32.9210403Z  * [new branch]      results/ep-stability-candidate-20261101 -> origin/results/ep-stability-candidate-20261101
+2026-11-06T15:21:32.9210783Z  * [new branch]      results/h2-p1-smoke-20261102 -> origin/results/h2-p1-smoke-20261102
+2026-11-06T15:21:32.9211120Z  * [new branch]      results/h2-p2-pilot-20261102 -> origin/results/h2-p2-pilot-20261102
+2026-11-06T15:21:32.9211489Z  * [new branch]      results/h2-p3-windows-pilot-20261103 -> origin/results/h2-p3-windows-pilot-20261103
+2026-11-06T15:21:32.9211889Z  * [new branch]      results/h2-p3-windows-smoke-20261102 -> origin/results/h2-p3-windows-smoke-20261102
+2026-11-06T15:21:32.9212312Z  * [new branch]      results/information-value-stage1-20261106 -> origin/results/information-value-stage1-20261106
+2026-11-06T15:21:32.9212754Z  * [new branch]      results/information-value-stage2-20261106 -> origin/results/information-value-stage2-20261106
+2026-11-06T15:21:32.9213240Z  * [new branch]      results/information-value-stage2-importfix-20261106 -> origin/results/information-value-stage2-importfix-20261106
+2026-11-06T15:21:32.9213778Z  * [new branch]      results/information-value-stage3-gp-fantasy-20261106 -> origin/results/information-value-stage3-gp-fantasy-20261106
+2026-11-06T15:21:32.9214246Z  * [new branch]      results/phase-pilot-20261029-205231 -> origin/results/phase-pilot-20261029-205231
+2026-11-06T15:21:32.9214659Z  * [new branch]      results/pr44-windows-validation-20261104 -> origin/results/pr44-windows-validation-20261104
+2026-11-06T15:21:32.9215095Z  * [new branch]      results/pr45-independent-postrun-20261104 -> origin/results/pr45-independent-postrun-20261104
+2026-11-06T15:21:32.9215509Z  * [new branch]      results/pr45-real-aircraft-20261104 -> origin/results/pr45-real-aircraft-20261104
+2026-11-06T15:21:32.9216013Z  * [new branch]      results/pr46-independent-postrun-20261104 -> origin/results/pr46-independent-postrun-20261104
+2026-11-06T15:21:32.9216709Z  * [new branch]      results/pr48-matched-gp-20261104 -> origin/results/pr48-matched-gp-20261104
+2026-11-06T15:21:32.9217242Z  * [new branch]      results/pr50-risk-semantics-20261104 -> origin/results/pr50-risk-semantics-20261104
+2026-11-06T15:21:32.9217837Z  * [new branch]      results/pr51-feasibility-risk-20261104 -> origin/results/pr51-feasibility-risk-20261104
+2026-11-06T15:21:32.9218512Z  * [new branch]      results/pr52-online-risk-prequential-20261104 -> origin/results/pr52-online-risk-prequential-20261104
+2026-11-06T15:21:32.9219209Z  * [new branch]      results/pr53-phase-prefix-risk-20261104 -> origin/results/pr53-phase-prefix-risk-20261104
+2026-11-06T15:21:32.9219877Z  * [new branch]      results/pr54-risk-budget-math-20261104 -> origin/results/pr54-risk-budget-math-20261104
+2026-11-06T15:21:32.9220592Z  * [new branch]      results/pr55-independent-risk-budget-20261104 -> origin/results/pr55-independent-risk-budget-20261104
+2026-11-06T15:21:32.9221340Z  * [new branch]      results/pr56-pr55-report-aggregation-20261104 -> origin/results/pr56-pr55-report-aggregation-20261104
+2026-11-06T15:21:32.9222067Z  * [new branch]      results/pr57-fixed-effort-anytime-20261105 -> origin/results/pr57-fixed-effort-anytime-20261105
+2026-11-06T15:21:32.9222696Z  * [new branch]      results/pr58-fixed-six-20261105 -> origin/results/pr58-fixed-six-20261105
+2026-11-06T15:21:32.9223423Z  * [new branch]      results/pr59-risk-overconfidence-20261105 -> origin/results/pr59-risk-overconfidence-20261105
+2026-11-06T15:21:32.9224031Z  * [new branch]      results/pr60-branch-uq-20261105 -> origin/results/pr60-branch-uq-20261105
+2026-11-06T15:21:32.9224488Z  * [new branch]      results/pr61-gate-postmortem-20261106 -> origin/results/pr61-gate-postmortem-20261106
+2026-11-06T15:21:32.9225073Z  * [new branch]      results/pr63-local-value-20261106 -> origin/results/pr63-local-value-20261106
+2026-11-06T15:21:32.9225481Z  * [new branch]      results/pr68-decision-audit-20261106 -> origin/results/pr68-decision-audit-20261106
+2026-11-06T15:21:32.9225928Z  * [new branch]      results/pr70-next-pool-20261106 -> origin/results/pr70-next-pool-20261106
+2026-11-06T15:21:32.9226344Z  * [new branch]      results/pr70-quadrature-diagnostic-20261106 -> origin/results/pr70-quadrature-diagnostic-20261106
+2026-11-06T15:21:32.9226959Z  * [new branch]      results/structure-corpus-2000-20261031 -> origin/results/structure-corpus-2000-20261031
+2026-11-06T15:21:32.9227445Z  * [new branch]      results/transfer-pilot-20261030-141720 -> origin/results/transfer-pilot-20261030-141720
+2026-11-06T15:21:32.9227885Z  * [new tag]         aircraft-corpus-pilot-interrupted-20261031 -> aircraft-corpus-pilot-interrupted-20261031
+2026-11-06T15:21:32.9228347Z  * [new tag]         aircraft-corpus-smoke-20261031 -> aircraft-corpus-smoke-20261031
+2026-11-06T15:21:32.9228718Z  * [new tag]         aircraft-nominal-pilot-20261030-233225 -> aircraft-nominal-pilot-20261030-233225
+2026-11-06T15:21:32.9229238Z  * [new tag]         aircraft-representation-20261031 -> aircraft-representation-20261031
+2026-11-06T15:21:32.9229753Z  * [new tag]         aircraft-soc-diagnostic-20261031 -> aircraft-soc-diagnostic-20261031
+2026-11-06T15:21:32.9230315Z  * [new tag]         aircraft-transition-20261030-1955 -> aircraft-transition-20261030-1955
+2026-11-06T15:21:32.9230910Z  * [new tag]         discovery-pilot-20261029-134131-9366a4b6 -> discovery-pilot-20261029-134131-9366a4b6
+2026-11-06T15:21:32.9231446Z  * [new tag]         ep-stability-d29-20261101 -> ep-stability-d29-20261101
+2026-11-06T15:21:32.9231895Z  * [new tag]         h2-p1-windows-smoke-20261102 -> h2-p1-windows-smoke-20261102
+2026-11-06T15:21:32.9232364Z  * [new tag]         h2-p2-windows-pilot-20261102 -> h2-p2-windows-pilot-20261102
+2026-11-06T15:21:32.9232873Z  * [new tag]         h2-p3-windows-pilot-20261103 -> h2-p3-windows-pilot-20261103
+2026-11-06T15:21:32.9233334Z  * [new tag]         h2-p3-windows-smoke-20261102 -> h2-p3-windows-smoke-20261102
+2026-11-06T15:21:32.9233843Z  * [new tag]         phase-pilot-20261029-205231-7f4f459f -> phase-pilot-20261029-205231-7f4f459f
+2026-11-06T15:21:32.9234490Z  * [new tag]         pr45-aircraft-campaign-provisional-20261104 -> pr45-aircraft-campaign-provisional-20261104
+2026-11-06T15:21:32.9235355Z  * [new tag]         ra-lsbo-h-pilot-9961-9964-20261102 -> ra-lsbo-h-pilot-9961-9964-20261102
+2026-11-06T15:21:32.9235955Z  * [new tag]         ra-lsbo-h-soc-crosspolicy-panel-20261102 -> ra-lsbo-h-soc-crosspolicy-panel-20261102
+2026-11-06T15:21:32.9236695Z  * [new tag]         ra-lsbo-h-windows-smoke-20261101 -> ra-lsbo-h-windows-smoke-20261101
+2026-11-06T15:21:32.9237203Z  * [new tag]         structure-corpus-2000-20261031 -> structure-corpus-2000-20261031
+2026-11-06T15:21:32.9237754Z  * [new tag]         transfer-pilot-20261030-141720-80f5ce0d -> transfer-pilot-20261030-141720-80f5ce0d
+2026-11-06T15:21:32.9239136Z [command]/usr/bin/git rev-parse --verify --quiet 2defbb275bac93c41cbcfbed9ca0b5f39f168e26^{object}
+2026-11-06T15:21:32.9239699Z 2defbb275bac93c41cbcfbed9ca0b5f39f168e26
+2026-11-06T15:21:32.9240488Z ##[endgroup]
+2026-11-06T15:21:32.9240892Z ##[group]Determining the checkout info
+2026-11-06T15:21:32.9241319Z ##[endgroup]
+2026-11-06T15:21:32.9241570Z [command]/usr/bin/git sparse-checkout disable
+2026-11-06T15:21:32.9287641Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-06T15:21:32.9323973Z ##[group]Checking out the ref
+2026-11-06T15:21:32.9327122Z [command]/usr/bin/git checkout --progress --force 2defbb275bac93c41cbcfbed9ca0b5f39f168e26
+2026-11-06T15:21:33.1573174Z Note: switching to '2defbb275bac93c41cbcfbed9ca0b5f39f168e26'.
+2026-11-06T15:21:33.1574438Z 
+2026-11-06T15:21:33.1575166Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-06T15:21:33.1575681Z changes and commit them, and you can discard any commits you make in this
+2026-11-06T15:21:33.1576077Z state without impacting any branches by switching back to a branch.
+2026-11-06T15:21:33.1576258Z 
+2026-11-06T15:21:33.1576401Z If you want to create a new branch to retain commits you create, you may
+2026-11-06T15:21:33.1576928Z do so (now or later) by using -c with the switch command. Example:
+2026-11-06T15:21:33.1577093Z 
+2026-11-06T15:21:33.1577184Z   git switch -c <new-branch-name>
+2026-11-06T15:21:33.1577307Z 
+2026-11-06T15:21:33.1577465Z Or undo this operation with:
+2026-11-06T15:21:33.1577578Z 
+2026-11-06T15:21:33.1577655Z   git switch -
+2026-11-06T15:21:33.1577756Z 
+2026-11-06T15:21:33.1577955Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-06T15:21:33.1578143Z 
+2026-11-06T15:21:33.1578369Z HEAD is now at 2defbb2 PR72: reconstruct exact feature identity from sealed codebook when native forward differs
+2026-11-06T15:21:33.1602349Z ##[endgroup]
+2026-11-06T15:21:33.1652266Z [command]/usr/bin/git log -1 --format=%H
+2026-11-06T15:21:33.1686255Z 2defbb275bac93c41cbcfbed9ca0b5f39f168e26
+2026-11-06T15:21:33.1852963Z ##[group]Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+2026-11-06T15:21:33.1853225Z with:
+2026-11-06T15:21:33.1853397Z   ref: f859cca5adc56dd101d2f59665f7829a2b0331c4
+2026-11-06T15:21:33.1853602Z   fetch-depth: 1
+2026-11-06T15:21:33.1853754Z   path: evidence
+2026-11-06T15:21:33.1853914Z   repository: Luyi1235/RA-LSBO
+2026-11-06T15:21:33.1855479Z   token: ***
+2026-11-06T15:21:33.1855639Z   ssh-strict: true
+2026-11-06T15:21:33.1855811Z   ssh-user: git
+2026-11-06T15:21:33.1855975Z   persist-credentials: true
+2026-11-06T15:21:33.1856143Z   clean: true
+2026-11-06T15:21:33.1856305Z   sparse-checkout-cone-mode: true
+2026-11-06T15:21:33.1856658Z   fetch-tags: false
+2026-11-06T15:21:33.1856851Z   show-progress: true
+2026-11-06T15:21:33.1857008Z   lfs: false
+2026-11-06T15:21:33.1857151Z   submodules: false
+2026-11-06T15:21:33.1857328Z   set-safe-directory: true
+2026-11-06T15:21:33.1857508Z   allow-unsafe-pr-checkout: false
+2026-11-06T15:21:33.1857688Z env:
+2026-11-06T15:21:33.1857862Z   OMP_NUM_THREADS: 1
+2026-11-06T15:21:33.1858017Z   MKL_NUM_THREADS: 1
+2026-11-06T15:21:33.1858173Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:21:33.1858337Z ##[endgroup]
+2026-11-06T15:21:33.2450123Z Syncing repository: Luyi1235/RA-LSBO
+2026-11-06T15:21:33.2463267Z ##[group]Getting Git version info
+2026-11-06T15:21:33.2468621Z Working directory is '/home/runner/work/RA-LSBO/RA-LSBO/evidence'
+2026-11-06T15:21:33.2485764Z [command]/usr/bin/git version
+2026-11-06T15:21:33.2520682Z git version 2.56.0
+2026-11-06T15:21:33.2534446Z ##[endgroup]
+2026-11-06T15:21:33.2541228Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/630c21fb-5bf5-46a4-bfd3-230ba93fae83/.gitconfig'
+2026-11-06T15:21:33.2548041Z Temporarily overriding HOME='/home/runner/work/_temp/630c21fb-5bf5-46a4-bfd3-230ba93fae83' before making global git config changes
+2026-11-06T15:21:33.2548822Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-06T15:21:33.2551856Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RA-LSBO/RA-LSBO/evidence
+2026-11-06T15:21:33.2584404Z ##[group]Determining repository object format
+2026-11-06T15:21:33.2586012Z ##[endgroup]
+2026-11-06T15:21:33.2586413Z ##[group]Initializing the repository
+2026-11-06T15:21:33.2589404Z [command]/usr/bin/git init /home/runner/work/RA-LSBO/RA-LSBO/evidence
+2026-11-06T15:21:33.2628385Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-06T15:21:33.2629397Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-06T15:21:33.2630109Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-06T15:21:33.2630714Z hint: call:
+2026-11-06T15:21:33.2631080Z hint:
+2026-11-06T15:21:33.2631520Z hint: 	git config --global init.defaultBranch <name>
+2026-11-06T15:21:33.2633236Z hint:
+2026-11-06T15:21:33.2633732Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-06T15:21:33.2634421Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-06T15:21:33.2634952Z hint:
+2026-11-06T15:21:33.2635333Z hint: 	git branch -m <name>
+2026-11-06T15:21:33.2636192Z hint:
+2026-11-06T15:21:33.2636811Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-06T15:21:33.2637584Z Initialized empty Git repository in /home/runner/work/RA-LSBO/RA-LSBO/evidence/.git/
+2026-11-06T15:21:33.2639170Z [command]/usr/bin/git remote add origin https://github.com/Luyi1235/RA-LSBO
+2026-11-06T15:21:33.2700189Z ##[endgroup]
+2026-11-06T15:21:33.2700640Z ##[group]Disabling automatic garbage collection
+2026-11-06T15:21:33.2703910Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-06T15:21:33.2733626Z ##[endgroup]
+2026-11-06T15:21:33.2734096Z ##[group]Setting up auth
+2026-11-06T15:21:33.2734422Z Removing SSH command configuration
+2026-11-06T15:21:33.2739207Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-06T15:21:33.2769842Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-06T15:21:33.2991453Z Removing HTTP extra header
+2026-11-06T15:21:33.3005850Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-06T15:21:33.3078208Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-06T15:21:33.3339673Z Removing includeIf entries pointing to credentials config files
+2026-11-06T15:21:33.3347008Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-06T15:21:33.3428975Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-06T15:21:33.3908224Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-06T15:21:33.4038576Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git.path /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:21:33.4109444Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:21:33.4154556Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/evidence/.git.path /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:21:33.4195063Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/evidence/.git/worktrees/*.path /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:21:33.4232903Z ##[endgroup]
+2026-11-06T15:21:33.4233275Z ##[group]Fetching the repository
+2026-11-06T15:21:33.4240249Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin f859cca5adc56dd101d2f59665f7829a2b0331c4
+2026-11-06T15:21:35.2916365Z From https://github.com/Luyi1235/RA-LSBO
+2026-11-06T15:21:35.2916954Z  * branch            f859cca5adc56dd101d2f59665f7829a2b0331c4 -> FETCH_HEAD
+2026-11-06T15:21:35.2930335Z [command]/usr/bin/git rev-parse --verify --quiet f859cca5adc56dd101d2f59665f7829a2b0331c4^{object}
+2026-11-06T15:21:35.2959919Z f859cca5adc56dd101d2f59665f7829a2b0331c4
+2026-11-06T15:21:35.2964088Z ##[endgroup]
+2026-11-06T15:21:35.2964435Z ##[group]Determining the checkout info
+2026-11-06T15:21:35.2965121Z ##[endgroup]
+2026-11-06T15:21:35.2969252Z [command]/usr/bin/git sparse-checkout disable
+2026-11-06T15:21:35.3016414Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-06T15:21:35.3051417Z ##[group]Checking out the ref
+2026-11-06T15:21:35.3054108Z [command]/usr/bin/git checkout --progress --force f859cca5adc56dd101d2f59665f7829a2b0331c4
+2026-11-06T15:21:35.6247087Z Note: switching to 'f859cca5adc56dd101d2f59665f7829a2b0331c4'.
+2026-11-06T15:21:35.6247562Z 
+2026-11-06T15:21:35.6247741Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-06T15:21:35.6248151Z changes and commit them, and you can discard any commits you make in this
+2026-11-06T15:21:35.6248597Z state without impacting any branches by switching back to a branch.
+2026-11-06T15:21:35.6248839Z 
+2026-11-06T15:21:35.6248999Z If you want to create a new branch to retain commits you create, you may
+2026-11-06T15:21:35.6249380Z do so (now or later) by using -c with the switch command. Example:
+2026-11-06T15:21:35.6249600Z 
+2026-11-06T15:21:35.6249696Z   git switch -c <new-branch-name>
+2026-11-06T15:21:35.6249849Z 
+2026-11-06T15:21:35.6249942Z Or undo this operation with:
+2026-11-06T15:21:35.6250077Z 
+2026-11-06T15:21:35.6250445Z   git switch -
+2026-11-06T15:21:35.6250549Z 
+2026-11-06T15:21:35.6250732Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-06T15:21:35.6250995Z 
+2026-11-06T15:21:35.6251199Z HEAD is now at f859cca Publish PR70 next-pool consistency pilot and full raw evidence
+2026-11-06T15:21:35.6278516Z ##[endgroup]
+2026-11-06T15:21:35.6326122Z [command]/usr/bin/git log -1 --format=%H
+2026-11-06T15:21:35.6361600Z f859cca5adc56dd101d2f59665f7829a2b0331c4
+2026-11-06T15:21:35.6558265Z ##[group]Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+2026-11-06T15:21:35.6558502Z with:
+2026-11-06T15:21:35.6558626Z   python-version: 3.9
+2026-11-06T15:21:35.6558755Z   check-latest: false
+2026-11-06T15:21:35.6560214Z   token: ***
+2026-11-06T15:21:35.6560335Z   update-environment: true
+2026-11-06T15:21:35.6560483Z   allow-prereleases: false
+2026-11-06T15:21:35.6560615Z   freethreaded: false
+2026-11-06T15:21:35.6560741Z env:
+2026-11-06T15:21:35.6560850Z   OMP_NUM_THREADS: 1
+2026-11-06T15:21:35.6560973Z   MKL_NUM_THREADS: 1
+2026-11-06T15:21:35.6561095Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:21:35.6561228Z ##[endgroup]
+2026-11-06T15:21:35.7535374Z ##[group]Installed versions
+2026-11-06T15:21:35.7592765Z Version 3.9 was not found in the local cache
+2026-11-06T15:21:36.7791297Z Version 3.9 is available for downloading
+2026-11-06T15:21:36.7792022Z Download from "https://github.com/actions/python-versions/releases/download/3.9.25-19039189640/python-3.9.25-linux-24.04-x64.tar.gz"
+2026-11-06T15:21:37.3986955Z Extract downloaded archive
+2026-11-06T15:21:37.4093733Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/b74a39da-981f-4d74-8881-0a6a0d67372b -f /home/runner/work/_temp/65f1e6d3-ce3f-4f6c-a7df-6b8a6b7f6fec
+2026-11-06T15:21:38.4793702Z Execute installation script
+2026-11-06T15:21:38.4890991Z Check if Python hostedtoolcache folder exist...
+2026-11-06T15:21:38.4891419Z Create Python 3.9.25 folder
+2026-11-06T15:21:38.4902419Z Copy Python binaries to hostedtoolcache folder
+2026-11-06T15:21:38.8340254Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-06T15:21:38.8376015Z Upgrading pip...
+2026-11-06T15:21:40.2220574Z Looking in links: /tmp/tmp3vg_g_1j
+2026-11-06T15:21:40.2223037Z Requirement already satisfied: setuptools in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (79.0.1)
+2026-11-06T15:21:40.2226790Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (23.0.1)
+2026-11-06T15:21:41.1047004Z Collecting pip
+2026-11-06T15:21:41.1887530Z Downloading pip-26.0.1-py3-none-any.whl (1.8 MB)
+2026-11-06T15:21:41.2636603Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 24.6 MB/s eta 0:00:00
+2026-11-06T15:21:41.2636984Z 
+2026-11-06T15:21:41.2992093Z Installing collected packages: pip
+2026-11-06T15:21:41.2992453Z Attempting uninstall: pip
+2026-11-06T15:21:41.2996700Z Found existing installation: pip 23.0.1
+2026-11-06T15:21:41.4126581Z Uninstalling pip-23.0.1:
+2026-11-06T15:21:41.4175623Z Successfully uninstalled pip-23.0.1
+2026-11-06T15:21:41.9928086Z Successfully installed pip-26.0.1
+2026-11-06T15:21:42.0576028Z Create complete file
+2026-11-06T15:21:42.0610580Z Successfully set up CPython (3.9.25)
+2026-11-06T15:21:42.0611720Z ##[endgroup]
+2026-11-06T15:21:42.0754720Z ##[group]Run python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+2026-11-06T15:21:42.0755152Z [36;1mpython -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu[0m
+2026-11-06T15:21:42.0755441Z [36;1mpython -m pip install -r requirements-models.txt[0m
+2026-11-06T15:21:42.0776351Z shell: /usr/bin/bash -e {0}
+2026-11-06T15:21:42.0776652Z env:
+2026-11-06T15:21:42.0776782Z   OMP_NUM_THREADS: 1
+2026-11-06T15:21:42.0776908Z   MKL_NUM_THREADS: 1
+2026-11-06T15:21:42.0777034Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:21:42.0777209Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:21:42.0777457Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:21:42.0777694Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:21:42.0777907Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:21:42.0778141Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:21:42.0778358Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:21:42.0778551Z ##[endgroup]
+2026-11-06T15:21:42.2862567Z Looking in indexes: https://download.pytorch.org/whl/cpu
+2026-11-06T15:21:42.6077481Z Collecting torch==2.8.0
+2026-11-06T15:21:42.8245543Z   Downloading https://download-r2.pytorch.org/whl/cpu/torch-2.8.0%2Bcpu-cp39-cp39-manylinux_2_28_x86_64.whl.metadata (29 kB)
+2026-11-06T15:21:42.8580936Z Collecting filelock (from torch==2.8.0)
+2026-11-06T15:21:42.9098158Z   Downloading filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+2026-11-06T15:21:42.9338643Z Collecting typing-extensions>=4.10.0 (from torch==2.8.0)
+2026-11-06T15:21:42.9480625Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-06T15:21:42.9713353Z Collecting sympy>=1.13.3 (from torch==2.8.0)
+2026-11-06T15:21:42.9837027Z   Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+2026-11-06T15:21:43.0165937Z Collecting networkx (from torch==2.8.0)
+2026-11-06T15:21:43.0307873Z   Downloading networkx-3.2.1-py3-none-any.whl.metadata (5.2 kB)
+2026-11-06T15:21:43.0505247Z Collecting jinja2 (from torch==2.8.0)
+2026-11-06T15:21:43.0637653Z   Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+2026-11-06T15:21:43.0930561Z Collecting fsspec (from torch==2.8.0)
+2026-11-06T15:21:43.1058522Z   Downloading fsspec-2025.10.0-py3-none-any.whl.metadata (10 kB)
+2026-11-06T15:21:43.1433573Z Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch==2.8.0)
+2026-11-06T15:21:43.1561901Z   Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+2026-11-06T15:21:43.1831762Z Collecting MarkupSafe>=2.0 (from jinja2->torch==2.8.0)
+2026-11-06T15:21:43.1979078Z   Downloading https://download.pytorch.org/whl/MarkupSafe-3.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.0 kB)
+2026-11-06T15:21:43.2484998Z Downloading https://download-r2.pytorch.org/whl/cpu/torch-2.8.0%2Bcpu-cp39-cp39-manylinux_2_28_x86_64.whl (184.0 MB)
+2026-11-06T15:21:45.0916700Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 184.0/184.0 MB 101.3 MB/s  0:00:01
+2026-11-06T15:21:45.1059659Z Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+2026-11-06T15:21:45.2173036Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 72.0 MB/s  0:00:00
+2026-11-06T15:21:45.2307031Z Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+2026-11-06T15:21:45.2346833Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 120.0 MB/s  0:00:00
+2026-11-06T15:21:45.2476330Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-06T15:21:45.2620552Z Downloading filelock-3.19.1-py3-none-any.whl (15 kB)
+2026-11-06T15:21:45.2777907Z Downloading fsspec-2025.10.0-py3-none-any.whl (200 kB)
+2026-11-06T15:21:45.2930341Z Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl (134 kB)
+2026-11-06T15:21:45.3104184Z Downloading https://download.pytorch.org/whl/MarkupSafe-3.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (20 kB)
+2026-11-06T15:21:45.3319713Z Downloading networkx-3.2.1-py3-none-any.whl (1.6 MB)
+2026-11-06T15:21:45.3397208Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 233.5 MB/s  0:00:00
+2026-11-06T15:21:45.6069584Z Installing collected packages: mpmath, typing-extensions, sympy, networkx, MarkupSafe, fsspec, filelock, jinja2, torch
+2026-11-06T15:21:56.0899256Z 
+2026-11-06T15:21:56.0917438Z Successfully installed MarkupSafe-3.0.2 filelock-3.19.1 fsspec-2025.10.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.2.1 sympy-1.14.0 torch-2.8.0+cpu typing-extensions-4.16.0
+2026-11-06T15:21:56.6193856Z Collecting matplotlib==3.9.4 (from -r requirements-models.txt (line 4))
+2026-11-06T15:21:56.6760431Z   Downloading matplotlib-3.9.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+2026-11-06T15:21:56.8259483Z Collecting numpy==2.0.2 (from -r requirements-models.txt (line 5))
+2026-11-06T15:21:56.8514703Z   Downloading numpy-2.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+2026-11-06T15:21:56.9819567Z Collecting scipy==1.13.1 (from -r requirements-models.txt (line 6))
+2026-11-06T15:21:57.0052456Z   Downloading scipy-1.13.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+2026-11-06T15:21:57.0111057Z Requirement already satisfied: torch==2.8.0 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from -r requirements-models.txt (line 7)) (2.8.0+cpu)
+2026-11-06T15:21:57.0360339Z Collecting gpytorch==1.11 (from -r requirements-models.txt (line 8))
+2026-11-06T15:21:57.0509321Z   Downloading gpytorch-1.11-py3-none-any.whl.metadata (7.4 kB)
+2026-11-06T15:21:57.0740858Z Collecting botorch==0.10.0 (from -r requirements-models.txt (line 9))
+2026-11-06T15:21:57.0905286Z   Downloading botorch-0.10.0-py3-none-any.whl.metadata (11 kB)
+2026-11-06T15:21:57.1533492Z Collecting scikit-learn==1.6.1 (from -r requirements-models.txt (line 10))
+2026-11-06T15:21:57.1704000Z   Downloading scikit_learn-1.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (18 kB)
+2026-11-06T15:21:57.2268440Z Collecting contourpy>=1.0.1 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.2413226Z   Downloading contourpy-1.3.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.4 kB)
+2026-11-06T15:21:57.2598224Z Collecting cycler>=0.10 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.2783819Z   Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+2026-11-06T15:21:57.4253426Z Collecting fonttools>=4.22.0 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.4400548Z   Downloading fonttools-4.60.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (113 kB)
+2026-11-06T15:21:57.5065542Z Collecting kiwisolver>=1.3.1 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.5212445Z   Downloading kiwisolver-1.4.7-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl.metadata (6.3 kB)
+2026-11-06T15:21:57.5436007Z Collecting packaging>=20.0 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.5583467Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-11-06T15:21:57.6805093Z Collecting pillow>=8 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.6961570Z   Downloading pillow-11.3.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.0 kB)
+2026-11-06T15:21:57.7265913Z Collecting pyparsing>=2.3.1 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.7427097Z   Downloading pyparsing-3.3.3-py3-none-any.whl.metadata (5.9 kB)
+2026-11-06T15:21:57.7809574Z Collecting python-dateutil>=2.7 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.7965116Z   Downloading python_dateutil-3.0.0-py2.py3-none-any.whl.metadata (8.2 kB)
+2026-11-06T15:21:57.8210321Z Collecting importlib-resources>=3.2.0 (from matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:57.8352466Z   Downloading importlib_resources-6.5.2-py3-none-any.whl.metadata (3.9 kB)
+2026-11-06T15:21:57.8418347Z Requirement already satisfied: filelock in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (3.19.1)
+2026-11-06T15:21:57.8421332Z Requirement already satisfied: typing-extensions>=4.10.0 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (4.16.0)
+2026-11-06T15:21:57.8423950Z Requirement already satisfied: sympy>=1.13.3 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (1.14.0)
+2026-11-06T15:21:57.8426111Z Requirement already satisfied: networkx in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (3.2.1)
+2026-11-06T15:21:57.8428463Z Requirement already satisfied: jinja2 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (3.1.6)
+2026-11-06T15:21:57.8430615Z Requirement already satisfied: fsspec in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from torch==2.8.0->-r requirements-models.txt (line 7)) (2025.10.0)
+2026-11-06T15:21:57.8625039Z Collecting linear-operator>=0.5.0 (from gpytorch==1.11->-r requirements-models.txt (line 8))
+2026-11-06T15:21:57.8779606Z   Downloading linear_operator-0.5.3-py3-none-any.whl.metadata (15 kB)
+2026-11-06T15:21:57.8983612Z Collecting multipledispatch (from botorch==0.10.0->-r requirements-models.txt (line 9))
+2026-11-06T15:21:57.9192019Z   Downloading multipledispatch-1.0.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-06T15:21:57.9214081Z Requirement already satisfied: mpmath<=1.3,>=0.19 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from botorch==0.10.0->-r requirements-models.txt (line 9)) (1.3.0)
+2026-11-06T15:21:57.9398306Z Collecting pyro-ppl>=1.8.4 (from botorch==0.10.0->-r requirements-models.txt (line 9))
+2026-11-06T15:21:57.9554721Z   Downloading pyro_ppl-1.9.2-py3-none-any.whl.metadata (6.5 kB)
+2026-11-06T15:21:57.9596408Z Collecting linear-operator>=0.5.0 (from gpytorch==1.11->-r requirements-models.txt (line 8))
+2026-11-06T15:21:57.9754742Z   Downloading linear_operator-0.5.1-py3-none-any.whl.metadata (15 kB)
+2026-11-06T15:21:58.0036570Z Collecting joblib>=1.2.0 (from scikit-learn==1.6.1->-r requirements-models.txt (line 10))
+2026-11-06T15:21:58.0182737Z   Downloading joblib-1.5.3-py3-none-any.whl.metadata (5.5 kB)
+2026-11-06T15:21:58.0361039Z Collecting threadpoolctl>=3.1.0 (from scikit-learn==1.6.1->-r requirements-models.txt (line 10))
+2026-11-06T15:21:58.0506228Z   Downloading threadpoolctl-3.7.0-py3-none-any.whl.metadata (24 kB)
+2026-11-06T15:21:58.0765870Z Collecting jaxtyping>=0.2.9 (from linear-operator>=0.5.0->gpytorch==1.11->-r requirements-models.txt (line 8))
+2026-11-06T15:21:58.0980221Z   Downloading jaxtyping-0.2.36-py3-none-any.whl.metadata (6.5 kB)
+2026-11-06T15:21:58.1237094Z Collecting typeguard~=2.13.3 (from linear-operator>=0.5.0->gpytorch==1.11->-r requirements-models.txt (line 8))
+2026-11-06T15:21:58.1386773Z   Downloading typeguard-2.13.3-py3-none-any.whl.metadata (3.6 kB)
+2026-11-06T15:21:58.1640427Z Collecting zipp>=3.1.0 (from importlib-resources>=3.2.0->matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:58.1797664Z   Downloading zipp-3.23.1-py3-none-any.whl.metadata (3.6 kB)
+2026-11-06T15:21:58.2019216Z Collecting opt_einsum>=2.3.2 (from pyro-ppl>=1.8.4->botorch==0.10.0->-r requirements-models.txt (line 9))
+2026-11-06T15:21:58.2160235Z   Downloading opt_einsum-3.4.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-06T15:21:58.2358778Z Collecting pyro-api>=0.1.1 (from pyro-ppl>=1.8.4->botorch==0.10.0->-r requirements-models.txt (line 9))
+2026-11-06T15:21:58.2514566Z   Downloading pyro_api-0.1.2-py3-none-any.whl.metadata (2.5 kB)
+2026-11-06T15:21:58.2815967Z Collecting tqdm>=4.36 (from pyro-ppl>=1.8.4->botorch==0.10.0->-r requirements-models.txt (line 9))
+2026-11-06T15:21:58.2958960Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-06T15:21:58.3191205Z Collecting six>=1.6 (from python-dateutil>=2.7->matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:58.3338397Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-11-06T15:21:58.4054366Z Collecting tzdata (from python-dateutil>=2.7->matplotlib==3.9.4->-r requirements-models.txt (line 4))
+2026-11-06T15:21:58.4199712Z   Downloading tzdata-2026.6-py2.py3-none-any.whl.metadata (1.4 kB)
+2026-11-06T15:21:58.4398164Z Requirement already satisfied: MarkupSafe>=2.0 in /opt/hostedtoolcache/Python/3.9.25/x64/lib/python3.9/site-packages (from jinja2->torch==2.8.0->-r requirements-models.txt (line 7)) (3.0.2)
+2026-11-06T15:21:58.4601107Z Downloading matplotlib-3.9.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
+2026-11-06T15:21:58.6299666Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 53.1 MB/s  0:00:00
+2026-11-06T15:21:58.6475800Z Downloading numpy-2.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (19.5 MB)
+2026-11-06T15:21:58.8056719Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 19.5/19.5 MB 123.7 MB/s  0:00:00
+2026-11-06T15:21:58.8208979Z Downloading scipy-1.13.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (38.6 MB)
+2026-11-06T15:21:59.1233000Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 38.6/38.6 MB 127.8 MB/s  0:00:00
+2026-11-06T15:21:59.1665147Z Downloading gpytorch-1.11-py3-none-any.whl (266 kB)
+2026-11-06T15:21:59.1858768Z Downloading botorch-0.10.0-py3-none-any.whl (613 kB)
+2026-11-06T15:21:59.1978118Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 613.1/613.1 kB 66.3 MB/s  0:00:00
+2026-11-06T15:21:59.2177836Z Downloading scikit_learn-1.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.5 MB)
+2026-11-06T15:21:59.3232742Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.5/13.5 MB 129.0 MB/s  0:00:00
+2026-11-06T15:21:59.3423213Z Downloading linear_operator-0.5.1-py3-none-any.whl (174 kB)
+2026-11-06T15:21:59.3590186Z Downloading typeguard-2.13.3-py3-none-any.whl (17 kB)
+2026-11-06T15:21:59.3803253Z Downloading contourpy-1.3.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (321 kB)
+2026-11-06T15:21:59.3989079Z Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+2026-11-06T15:21:59.4202816Z Downloading fonttools-4.60.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.8 MB)
+2026-11-06T15:21:59.4845040Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.8/4.8 MB 81.8 MB/s  0:00:00
+2026-11-06T15:21:59.5010251Z Downloading importlib_resources-6.5.2-py3-none-any.whl (37 kB)
+2026-11-06T15:21:59.5189211Z Downloading jaxtyping-0.2.36-py3-none-any.whl (55 kB)
+2026-11-06T15:21:59.5352798Z Downloading joblib-1.5.3-py3-none-any.whl (309 kB)
+2026-11-06T15:21:59.5518214Z Downloading kiwisolver-1.4.7-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.6 MB)
+2026-11-06T15:21:59.5625976Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 160.8 MB/s  0:00:00
+2026-11-06T15:21:59.5770153Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+2026-11-06T15:21:59.5934767Z Downloading pillow-11.3.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.6 MB)
+2026-11-06T15:21:59.6525709Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.6/6.6 MB 111.3 MB/s  0:00:00
+2026-11-06T15:21:59.6678061Z Downloading pyparsing-3.3.3-py3-none-any.whl (126 kB)
+2026-11-06T15:21:59.6880329Z Downloading pyro_ppl-1.9.2-py3-none-any.whl (760 kB)
+2026-11-06T15:21:59.6921222Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 760.7/760.7 kB 203.0 MB/s  0:00:00
+2026-11-06T15:21:59.7064663Z Downloading opt_einsum-3.4.0-py3-none-any.whl (71 kB)
+2026-11-06T15:21:59.7223024Z Downloading pyro_api-0.1.2-py3-none-any.whl (11 kB)
+2026-11-06T15:21:59.7569413Z Downloading python_dateutil-3.0.0-py2.py3-none-any.whl (94 kB)
+2026-11-06T15:21:59.7725798Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-11-06T15:21:59.7888258Z Downloading threadpoolctl-3.7.0-py3-none-any.whl (26 kB)
+2026-11-06T15:21:59.8050068Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-06T15:21:59.8220795Z Downloading zipp-3.23.1-py3-none-any.whl (10 kB)
+2026-11-06T15:21:59.8375758Z Downloading multipledispatch-1.0.0-py3-none-any.whl (12 kB)
+2026-11-06T15:21:59.8536674Z Downloading tzdata-2026.6-py2.py3-none-any.whl (348 kB)
+2026-11-06T15:22:00.0034170Z Installing collected packages: pyro-api, multipledispatch, zipp, tzdata, typeguard, tqdm, threadpoolctl, six, pyparsing, pillow, packaging, opt_einsum, numpy, kiwisolver, joblib, jaxtyping, fonttools, cycler, scipy, python-dateutil, importlib-resources, contourpy, scikit-learn, pyro-ppl, matplotlib, linear-operator, gpytorch, botorch
+2026-11-06T15:22:06.6890234Z 
+2026-11-06T15:22:06.6925979Z Successfully installed botorch-0.10.0 contourpy-1.3.0 cycler-0.12.1 fonttools-4.60.2 gpytorch-1.11 importlib-resources-6.5.2 jaxtyping-0.2.36 joblib-1.5.3 kiwisolver-1.4.7 linear-operator-0.5.1 matplotlib-3.9.4 multipledispatch-1.0.0 numpy-2.0.2 opt_einsum-3.4.0 packaging-26.3 pillow-11.3.0 pyparsing-3.3.3 pyro-api-0.1.2 pyro-ppl-1.9.2 python-dateutil-3.0.0 scikit-learn-1.6.1 scipy-1.13.1 six-1.17.0 threadpoolctl-3.7.0 tqdm-4.70.1 typeguard-2.13.3 tzdata-2026.6 zipp-3.23.1
+2026-11-06T15:22:07.0920418Z ##[group]Run python -S -m unittest discover -s tests -p test_quadrature_identity.py -v
+2026-11-06T15:22:07.0920768Z [36;1mpython -S -m unittest discover -s tests -p test_quadrature_identity.py -v[0m
+2026-11-06T15:22:07.0939034Z shell: /usr/bin/bash -e {0}
+2026-11-06T15:22:07.0939176Z env:
+2026-11-06T15:22:07.0939288Z   OMP_NUM_THREADS: 1
+2026-11-06T15:22:07.0939409Z   MKL_NUM_THREADS: 1
+2026-11-06T15:22:07.0939530Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:22:07.0939701Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.0939935Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:22:07.0940166Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.0940376Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.0940582Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.0940790Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:22:07.0941156Z ##[endgroup]
+2026-11-06T15:22:07.1522681Z test_all_four_actual_historical_contract_ids (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1523282Z test_anchored_cross_eol_attestation (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1523660Z test_bom_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1525961Z test_changed_case_settings_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1526599Z test_crlf_checkout_attestation (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1529514Z test_cross_eol_binding_without_record_rewrite (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1530016Z test_empty_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1530657Z test_lf_and_crlf_forms (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1540286Z test_lone_cr_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1540788Z test_matching_eol_no_binding_needed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1541488Z test_mixed_contract_history_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1542287Z test_mixed_line_endings_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1543029Z test_non_newline_content_change_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1543777Z test_nonliteral_constructor_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1545048Z test_only_instance_is_changed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1547493Z test_parent_literals_not_executed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1548051Z test_pinned_blob_mismatch_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1810589Z test_pure_import_needs_no_scientific_libraries (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1817549Z test_receipt_reconstruction_and_tamper_rejection (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1820073Z test_tampered_source_attestation_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1820696Z test_unknown_historical_sha_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1823312Z test_wrong_case_and_empty_prefix_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1826221Z test_wrong_native_contract_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1829188Z test_wrong_record_contract_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:07.1829518Z 
+2026-11-06T15:22:07.1829864Z ----------------------------------------------------------------------
+2026-11-06T15:22:07.1830156Z Ran 24 tests in 0.031s
+2026-11-06T15:22:07.1830563Z 
+2026-11-06T15:22:07.1830618Z OK
+2026-11-06T15:22:07.1933268Z ##[group]Run python -m unittest discover -s tests -p 'test_quadrature_*.py' -v
+2026-11-06T15:22:07.1933593Z [36;1mpython -m unittest discover -s tests -p 'test_quadrature_*.py' -v[0m
+2026-11-06T15:22:07.1951239Z shell: /usr/bin/bash -e {0}
+2026-11-06T15:22:07.1951382Z env:
+2026-11-06T15:22:07.1951496Z   OMP_NUM_THREADS: 1
+2026-11-06T15:22:07.1951621Z   MKL_NUM_THREADS: 1
+2026-11-06T15:22:07.1951749Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:22:07.1951921Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.1952164Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:22:07.1952401Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.1952612Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.1952827Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:07.1953173Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:22:07.1953378Z ##[endgroup]
+2026-11-06T15:22:08.6966836Z test_abort_value_leak_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6967355Z test_bad_replicate_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6967780Z test_budget_is_zero (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6972711Z test_changed_score_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6991296Z test_constant_contribution_invariance (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6991817Z test_empty_summary_null_comparisons (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6994525Z test_finite_interior_nodes (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6999542Z test_formula_and_winner (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.6999962Z test_full_count (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7004635Z test_inputs_not_mutated (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7005021Z test_nan_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7009785Z test_nested_nodes (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7010156Z test_no_vae_training (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7014507Z test_nodes_reproducible (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7014927Z test_non_power_of_two_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7019208Z test_numerical_failure_not_fake_winner (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7019651Z test_profile_invalid (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7023455Z test_programming_error_propagates (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7028340Z test_raw_reconciliation (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7028774Z test_replay_missingness_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7029225Z test_replay_numeric_tolerance (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7032771Z test_replicate_differs (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7033147Z test_smoke_count (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7033522Z test_smoke_subset (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7077593Z test_summary_winner_change (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7082481Z test_wrong_second_rejected (test_quadrature_audit.ProtocolTests) ... ok
+2026-11-06T15:22:08.7165036Z test_active_geometry_is_the_frozen_native_geometry (test_quadrature_codebook_runtime.ArchivedGeometryTests) ... ok
+2026-11-06T15:22:08.7175963Z test_batch_order_and_repetition_cannot_change_latents (test_quadrature_codebook_runtime.ArchivedGeometryTests) ... ok
+2026-11-06T15:22:08.7185400Z test_each_configuration_uses_its_sealed_vector (test_quadrature_codebook_runtime.ArchivedGeometryTests) ... ok
+2026-11-06T15:22:08.7192972Z test_missing_archived_configuration_is_not_invented (test_quadrature_codebook_runtime.ArchivedGeometryTests) ... ok
+2026-11-06T15:22:08.7198535Z test_all_four_actual_historical_contract_ids (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7199315Z test_anchored_cross_eol_attestation (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7199729Z test_bom_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7204349Z test_changed_case_settings_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7204867Z test_crlf_checkout_attestation (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7208529Z test_cross_eol_binding_without_record_rewrite (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7209033Z test_empty_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7209829Z test_lf_and_crlf_forms (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7210254Z test_lone_cr_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7212866Z test_matching_eol_no_binding_needed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7215522Z test_mixed_contract_history_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7215942Z test_mixed_line_endings_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7216360Z test_non_newline_content_change_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7220032Z test_nonliteral_constructor_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7224391Z test_only_instance_is_changed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7226141Z test_parent_literals_not_executed (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7226785Z test_pinned_blob_mismatch_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7623118Z test_pure_import_needs_no_scientific_libraries (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7631310Z test_receipt_reconstruction_and_tamper_rejection (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7634015Z test_tampered_source_attestation_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7634744Z test_unknown_historical_sha_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7637851Z test_wrong_case_and_empty_prefix_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7640854Z test_wrong_native_contract_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7643811Z test_wrong_record_contract_rejected (test_quadrature_identity.SourceIdentityTests) ... ok
+2026-11-06T15:22:08.7966415Z test_actual_historical_source_hashes_reproduce_all_four_recorded_ids (test_quadrature_identity_runtime.NativeIdentityTests) ... ok
+2026-11-06T15:22:08.7984135Z test_all_native_case_contracts_match_reconstructed_local_sources (test_quadrature_identity_runtime.NativeIdentityTests) ... ok
+2026-11-06T15:22:08.7992298Z test_invalid_native_prefix_is_rejected_before_binding (test_quadrature_identity_runtime.NativeIdentityTests) ... ok
+2026-11-06T15:22:08.8035924Z test_native_binding_keeps_records_and_other_instances_unchanged (test_quadrature_identity_runtime.NativeIdentityTests) ... ok
+2026-11-06T15:22:09.0092743Z test_four_node_equivalence_with_frozen_pr70 (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.0099512Z test_native_sobol_first_four (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.4038517Z test_real_16_node_fits_and_reconciliation (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.5021203Z test_real_predictions_are_not_mutated (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.5056072Z test_true_evaluator_is_blocked (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.5056775Z test_vae_training_is_blocked (test_quadrature_runtime.RuntimeTests) ... ok
+2026-11-06T15:22:09.5057040Z 
+2026-11-06T15:22:09.5057179Z ----------------------------------------------------------------------
+2026-11-06T15:22:09.5057478Z Ran 64 tests in 0.818s
+2026-11-06T15:22:09.5057599Z 
+2026-11-06T15:22:09.5057676Z OK
+2026-11-06T15:22:09.9770017Z ##[group]Run python -m compileall -q quadrature_audit_protocol.py quadrature_audit_numeric.py run_pr70_quadrature_diagnostic.py quadrature_source_identity.py quadrature_checkpoint_features.py
+2026-11-06T15:22:09.9770733Z [36;1mpython -m compileall -q quadrature_audit_protocol.py quadrature_audit_numeric.py run_pr70_quadrature_diagnostic.py quadrature_source_identity.py quadrature_checkpoint_features.py[0m
+2026-11-06T15:22:09.9788146Z shell: /usr/bin/bash -e {0}
+2026-11-06T15:22:09.9788442Z env:
+2026-11-06T15:22:09.9788551Z   OMP_NUM_THREADS: 1
+2026-11-06T15:22:09.9788676Z   MKL_NUM_THREADS: 1
+2026-11-06T15:22:09.9788798Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:22:09.9788968Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:09.9789209Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:22:09.9789441Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:09.9789669Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:09.9789872Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:09.9790079Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:22:09.9790260Z ##[endgroup]
+2026-11-06T15:22:10.0118664Z ##[group]Run python run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha "2defbb275bac93c41cbcfbed9ca0b5f39f168e26" --evidence-root "/home/runner/work/RA-LSBO/RA-LSBO/evidence" --output "/home/runner/work/_temp/quadrature-smoke"
+2026-11-06T15:22:10.0119600Z [36;1mpython run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha "2defbb275bac93c41cbcfbed9ca0b5f39f168e26" --evidence-root "/home/runner/work/RA-LSBO/RA-LSBO/evidence" --output "/home/runner/work/_temp/quadrature-smoke"[0m
+2026-11-06T15:22:10.0136902Z shell: /usr/bin/bash -e {0}
+2026-11-06T15:22:10.0137045Z env:
+2026-11-06T15:22:10.0137159Z   OMP_NUM_THREADS: 1
+2026-11-06T15:22:10.0137288Z   MKL_NUM_THREADS: 1
+2026-11-06T15:22:10.0137414Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:22:10.0137587Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:10.0137830Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:22:10.0138084Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:10.0138295Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:10.0138504Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:10.0138718Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:22:10.0138907Z ##[endgroup]
+2026-11-06T15:22:12.7965876Z Traceback (most recent call last):
+2026-11-06T15:22:12.7972603Z   File "/home/runner/work/RA-LSBO/RA-LSBO/code/run_pr70_quadrature_diagnostic.py", line 299, in <module>
+2026-11-06T15:22:12.7972918Z     if __name__=='__main__':main()
+2026-11-06T15:22:12.7973206Z   File "/home/runner/work/RA-LSBO/RA-LSBO/code/run_pr70_quadrature_diagnostic.py", line 295, in main
+2026-11-06T15:22:12.7973510Z     r=run(a.output,a.evidence_root,a.profile,a.expected_sha)
+2026-11-06T15:22:12.7973822Z   File "/home/runner/work/RA-LSBO/RA-LSBO/code/run_pr70_quadrature_diagnostic.py", line 170, in run
+2026-11-06T15:22:12.7974255Z     posterior,diag=restore(problem,model_base,seed,initial,history,folder/'representation'/'iteration_000',meta)
+2026-11-06T15:22:12.7974649Z   File "/home/runner/work/RA-LSBO/RA-LSBO/code/run_pr70_quadrature_diagnostic.py", line 103, in restore
+2026-11-06T15:22:12.7975019Z     obj,risk,feature_proof=restore_features(problem,base,seed,history,session,checkpoint,metadata)
+2026-11-06T15:22:12.7975429Z   File "/home/runner/work/RA-LSBO/RA-LSBO/code/quadrature_checkpoint_features.py", line 83, in restore_features
+2026-11-06T15:22:12.7975700Z     raise error
+2026-11-06T15:22:12.7978460Z ValueError: Archived codebook also fails EXACT historical feature identity: {"archived_codebook_digest": "15e1316adbecb524cc82679d897d77a988f177476a6dc268bcacd86f0289abc8", "diagnostics_file_sha256": "fe9c4aa3d9d09e2d3ca5bfa37e5c0aa5dfee910e2df0e5fe0677c7e3d9fdcba7", "encoder_state": "dc40665ee85f82bd7520768a0c6a6516245cc70fbfb9de19a4083d4ed44d2758", "max_abs_native_forward_difference": 7.105427357601002e-15, "mode": "sealed_archived_codebook", "native_objective_identity": "a34dd6beee8742c11b638a384786f28dbe10c1d549d9da3b6089f58b445aea4a", "native_offset": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -22.736969423148754, -15.82054829079327, -14.382017393453168, 0.9241664062310995], "native_scale": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 30.336567247774887, 24.229843595177883, 20.287745268104388, 29.64974237179495], "original_atol": 1e-09, "original_rtol": 1e-07, "recorded_identity_assigned_without_reconstruction": false, "recorded_objective_identity": "5caa6360fa5e8663c0c9945ffd5c74c20b64237a1b301e06f2cddc6168aad8b5", "restored_objective_identity": "5d6afa7259e2ef9507cea248e9b6fd16b30bef87248f6b02dadcb4964c6bbdbe", "restored_offset": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -22.736969423148757, -15.82054829079327, -14.382017393453168, 0.9241664062310992], "restored_scale": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 30.33656724777489, 24.229843595177883, 20.287745268104388, 29.649742371794943], "risk_identity": "689334a7515c9d156645f88acdb2b1e3727f203dabada9a22d12f049116c19ca", "vae_training": false}
+2026-11-06T15:22:13.2207186Z ##[error]Process completed with exit code 1.
+2026-11-06T15:22:13.2261166Z ##[group]Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+2026-11-06T15:22:13.2261412Z with:
+2026-11-06T15:22:13.2261547Z   name: quadrature-r1-ubuntu-latest-lf
+2026-11-06T15:22:13.2261744Z   path: /home/runner/work/_temp/quadrature-smoke
+2026-11-06T15:22:13.2261926Z   if-no-files-found: ignore
+2026-11-06T15:22:13.2262071Z   compression-level: 6
+2026-11-06T15:22:13.2262198Z   overwrite: false
+2026-11-06T15:22:13.2262327Z   include-hidden-files: false
+2026-11-06T15:22:13.2262468Z env:
+2026-11-06T15:22:13.2262581Z   OMP_NUM_THREADS: 1
+2026-11-06T15:22:13.2262706Z   MKL_NUM_THREADS: 1
+2026-11-06T15:22:13.2262835Z   OPENBLAS_NUM_THREADS: 1
+2026-11-06T15:22:13.2263004Z   pythonLocation: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:13.2263248Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib/pkgconfig
+2026-11-06T15:22:13.2263482Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:13.2263714Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:13.2263930Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.9.25/x64
+2026-11-06T15:22:13.2264146Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.9.25/x64/lib
+2026-11-06T15:22:13.2264335Z ##[endgroup]
+2026-11-06T15:22:13.3438872Z (node:2429) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-06T15:22:13.3439302Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-06T15:22:13.3494465Z With the provided path, there will be 5 files uploaded
+2026-11-06T15:22:13.3494945Z Artifact name is valid!
+2026-11-06T15:22:13.3495164Z Root directory input is valid!
+2026-11-06T15:22:13.6301701Z Beginning upload of artifact content to blob storage
+2026-11-06T15:22:13.6480488Z (node:2429) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-06T15:22:13.7779531Z Uploaded bytes 4823
+2026-11-06T15:22:13.8164548Z Finished uploading artifact content to blob storage!
+2026-11-06T15:22:13.8165091Z SHA256 digest of uploaded artifact zip is f6f5184014ff7831d6fbad27a38533d2856464a4ef08a8c305b051054e60f241
+2026-11-06T15:22:13.8165919Z Finalizing artifact upload
+2026-11-06T15:22:14.2777208Z Artifact quadrature-r1-ubuntu-latest-lf.zip successfully finalized. Artifact ID 13516801588
+2026-11-06T15:22:14.2777707Z Artifact quadrature-r1-ubuntu-latest-lf has been successfully uploaded! Final size is 4823 bytes. Artifact ID is 13516801588
+2026-11-06T15:22:14.2781709Z Artifact download URL: https://github.com/Luyi1235/RA-LSBO/actions/runs/42242255386/artifacts/13516801588
+2026-11-06T15:22:14.3012016Z Post job cleanup.
+2026-11-06T15:22:14.3605440Z [command]/usr/bin/git version
+2026-11-06T15:22:14.3641759Z git version 2.56.0
+2026-11-06T15:22:14.3667090Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/1c69fefd-6a03-4082-8150-cd38ef335990/.gitconfig'
+2026-11-06T15:22:14.3673236Z Temporarily overriding HOME='/home/runner/work/_temp/1c69fefd-6a03-4082-8150-cd38ef335990' before making global git config changes
+2026-11-06T15:22:14.3673946Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-06T15:22:14.3677319Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RA-LSBO/RA-LSBO/evidence
+2026-11-06T15:22:14.3710296Z Removing SSH command configuration
+2026-11-06T15:22:14.3715176Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-06T15:22:14.3748475Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-06T15:22:14.3966819Z Removing HTTP extra header
+2026-11-06T15:22:14.3972386Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-06T15:22:14.4010119Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-06T15:22:14.4221814Z Removing includeIf entries pointing to credentials config files
+2026-11-06T15:22:14.4229121Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-06T15:22:14.4263552Z includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git.path
+2026-11-06T15:22:14.4264035Z includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git/worktrees/*.path
+2026-11-06T15:22:14.4264468Z includeif.gitdir:/github/workspace/evidence/.git.path
+2026-11-06T15:22:14.4264875Z includeif.gitdir:/github/workspace/evidence/.git/worktrees/*.path
+2026-11-06T15:22:14.4272067Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git.path
+2026-11-06T15:22:14.4302138Z /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4311161Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git.path /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4351564Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git/worktrees/*.path
+2026-11-06T15:22:14.4381431Z /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4389460Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/evidence/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4426892Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/evidence/.git.path
+2026-11-06T15:22:14.4455612Z /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4462183Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/evidence/.git.path /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4500485Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/evidence/.git/worktrees/*.path
+2026-11-06T15:22:14.4531513Z /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4537580Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/evidence/.git/worktrees/*.path /github/runner_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config
+2026-11-06T15:22:14.4576247Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-06T15:22:14.4776928Z Removing credentials config '/home/runner/work/_temp/git-credentials-f291fa85-2cab-4124-98aa-983dd3d642e0.config'
+2026-11-06T15:22:14.4912514Z Post job cleanup.
+2026-11-06T15:22:14.5498469Z [command]/usr/bin/git version
+2026-11-06T15:22:14.5567433Z git version 2.56.0
+2026-11-06T15:22:14.5589478Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/5fc1c3b7-b3f0-46b4-a52b-7867cb4b8aae/.gitconfig'
+2026-11-06T15:22:14.5595816Z Temporarily overriding HOME='/home/runner/work/_temp/5fc1c3b7-b3f0-46b4-a52b-7867cb4b8aae' before making global git config changes
+2026-11-06T15:22:14.5596963Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-06T15:22:14.5599781Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RA-LSBO/RA-LSBO/code
+2026-11-06T15:22:14.5633275Z Removing SSH command configuration
+2026-11-06T15:22:14.5637887Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-06T15:22:14.5670395Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-06T15:22:14.5889304Z Removing HTTP extra header
+2026-11-06T15:22:14.5890029Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-06T15:22:14.5928146Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-06T15:22:14.6197157Z Removing includeIf entries pointing to credentials config files
+2026-11-06T15:22:14.6211428Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-06T15:22:14.6246141Z includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git.path
+2026-11-06T15:22:14.6247003Z includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git/worktrees/*.path
+2026-11-06T15:22:14.6247603Z includeif.gitdir:/github/workspace/code/.git.path
+2026-11-06T15:22:14.6248142Z includeif.gitdir:/github/workspace/code/.git/worktrees/*.path
+2026-11-06T15:22:14.6254965Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git.path
+2026-11-06T15:22:14.6287166Z /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6296889Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git.path /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6342569Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git/worktrees/*.path
+2026-11-06T15:22:14.6374554Z /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6384592Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RA-LSBO/RA-LSBO/code/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6425699Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/code/.git.path
+2026-11-06T15:22:14.6456631Z /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6463421Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/code/.git.path /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6504731Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/code/.git/worktrees/*.path
+2026-11-06T15:22:14.6535379Z /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6551437Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/code/.git/worktrees/*.path /github/runner_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config
+2026-11-06T15:22:14.6592659Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-06T15:22:14.6831910Z Removing credentials config '/home/runner/work/_temp/git-credentials-ec8fbbc7-203e-4115-b9d3-455341081b2e.config'
+2026-11-06T15:22:14.6961929Z Cleaning up orphan processes
+2026-11-06T15:22:14.7229001Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

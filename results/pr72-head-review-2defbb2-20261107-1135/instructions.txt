@@ -1,0 +1,83 @@
+任务：复核 RA-LSBO PR72 当前 head 并归档 CI 证据
+
+本轮只读复核，不修改代码、不安装/升级依赖、不运行 smoke/full 或任何 PR70 历史诊断。
+你的职责是核对固定 head/CI，下载该 run 的四个 job、artifact 和日志，定位三个失败 job 的首个异常，上传复核归档。
+
+【固定身份】
+
+仓库：
+https://github.com/Luyi1235/RA-LSBO
+
+PR：
+https://github.com/Luyi1235/RA-LSBO/pull/72
+
+固定 head（只读）：
+2defbb275bac93c41cbcfbed9ca0b5f39f168e26
+
+该 run：
+42242255386
+
+工作流：
+.github/workflows/quadrature-diagnostic.yml
+
+当前工作机代码/结果 worktree 不得修改。不得 checkout、reset、clean 或覆盖 PR68–PR71 已封存结果、PR72 诊断输出和旧 failure 证据。
+不安装、升级任何依赖；不运行新的 smoke/full；不修改算法代码。
+
+【必须核对】
+
+1. 核对固定 head 及提交链：
+   f46e268 -> 1a460fb -> 2defbb2
+
+2. 保留 2defbb2 的代码 worktree；如只读归档需要，可在全新结果 worktree 中检出一个 detached 2defbb2 或使用现有只读 worktree，但禁止修改 2defbb2 对应代码。
+
+3. 从 GitHub API 下载该 run 的四组 job 状态、artifact 和日志：
+   - 该 run 共四个 job：Windows/Linux × LF/CRLF；
+   - 成功和失败 artifact 都要下载；
+   - Windows 成功 job 的 artifact 完整保留。
+
+4. 记录四组合状态、完整日志、artifact 内容、失败 job 的 failure.json 摘要、bills、首个异常和 traceback。
+   三个失败 job 的首个异常和 traceback 必须分别核对，不要预设完全相同。
+
+5. 该 run 的 job 状态和 artifact 应以 GitHub API 返回为准；工作机不重新执行。
+
+6. 任何下载、解压、哈希或 API 异常立即停止并保留证据；不得因异常修改代码或安装依赖。
+
+【GitHub 上传】
+
+使用全新独立结果分支：
+results/pr72-head-review-2defbb2-<唯一时间戳>
+
+仅允许向该新结果分支提交核验资料：
+- 核对说明 README（中文）；
+- run/job 元数据；
+- 四个 job 完整日志；
+- 四个 artifact 原始 ZIP 及解压内容；
+- failure.json、bills、首个异常和 traceback 摘要；
+- Windows 成功 artifact 的 schema/文件清单；
+- 固定 head 校验和文件 SHA256 清单；
+- 当前任务指令副本。
+
+结果目录使用专用 .gitattributes：* -text。
+
+不要合并 PR72，不修改 main、其他代码分支或旧结果分支。
+上传后核对远程文件与本地字节和 SHA256 一致。
+
+【最终返回】
+
+结果分支 URL：
+结果分支 HEAD：
+固定 head：
+四组合状态：
+Windows 成功 artifact 是否保留：
+Windows 成功 artifact 是否包含 source_identity.json/contract_binding.json：
+失败 job 首个异常：
+Windows LF 与 Ubuntu LF/CRLF 是否相同：
+
+另报告：
+- 测试数、compileall、--help、smoke/full 是否执行（本轮不应执行）；
+- 新增数学评价/GP/VAE/飞机/RCAIDE 调用（本轮必须为 0）；
+- worktree 是否干净；
+- artifact/日志/字节核验；
+- 异常或未知记录。
+
+当前只归档事实，不启动新实验、不现场修代码、不建议用“再跑一次”替代根因判断。
