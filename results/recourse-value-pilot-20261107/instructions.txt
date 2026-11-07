@@ -1,0 +1,81 @@
+# PR73 可观测反馈自适应价值消融：任务指令副本
+
+执行新的在线数学优化实验，不是 PR72 历史重建。读取固定 GitHub 代码，完成预检、smoke、full、只读核验和原始结果上传。
+
+## 固定身份
+
+- 仓库：https://github.com/Luyi1235/RA-LSBO
+- PR：https://github.com/Luyi1235/RA-LSBO/pull/73
+- 代码分支：`research/observable-recourse-value-20261107`
+- 唯一固定代码 SHA：`1949c3139d2256b35e1734af184248f551912ba0`
+- 入口：`run_recourse_value_pilot.py`
+- 执行前完整阅读：`docs/RECOURSE_VALUE_PILOT.txt`
+- 成功 CI run：`42347534776`
+- 上一阶段结果 HEAD（仅引用）：`61c189edd3986da3cec1e13d9d525013810bd3fd`
+
+不要使用浮动 HEAD、PR 自动合并 SHA、旧 PR72 入口或此前 ZIP；不要安装旧 ZIP，不需要 feature_reference，不读取旧结果标签训练。
+
+## 环境与预检
+
+在已有 RA-LSBO 仓库根部创建全新的 detached worktree，保留旧 worktree/结果；核对 HEAD 等于固定 SHA、`git status --porcelain` 为空；结果父目录必须是全新路径，smoke/full 不提前创建。
+
+使用已有 `Rcaide_vsp` Python 3.9.25，不安装/升级依赖，不改变 Git 全局换行配置。
+
+```text
+python -S -m unittest discover -s tests -p test_recourse_core.py -v
+python -m unittest discover -s tests -p test_recourse_runtime.py -v
+python -m compileall -q recourse_value_core.py recourse_value_protocol.py recourse_value_engine.py run_recourse_value_pilot.py
+python -S run_recourse_value_pilot.py --help
+```
+
+预期 25 项 core + 18 项 runtime 测试通过、0 skip；compileall 与 help 为 0。真实 EP 测试是合成观测 GP 拟合，不是在线收益证据。
+
+## smoke/full
+
+```text
+python run_recourse_value_pilot.py --profile smoke --expected-sha <SHA> --output <NEW smoke>
+python -S run_recourse_value_pilot.py --task verify --input <smoke>
+
+python run_recourse_value_pilot.py --profile full --expected-sha <SHA> --output <NEW full>
+python -S run_recourse_value_pilot.py --task verify --input <full>
+```
+
+正式运行不加 `-S`；verify 使用 `-S`。只有 smoke 运行/核验/费用全部通过才执行 full；效果方向不是继续条件。
+
+- smoke：4 tasks × seed 999091，48 initial + 32 online = 80 calls，16 trials。
+- full：4 tasks × seeds 999101–999108，384 initial + 768 online = 1,152 calls，128 trials。
+- 四臂恰好：`soft_gp_eligible`、`cei_myopic`、`cei_two_step_adaptive`、`cei_two_step_fixed_second`。
+- 工作机 smoke+full 合计 1,232 次；CI 的 80 次不重复。
+- 飞机/RCAIDE 0/0；本轮真实在线历史更新 GP/VAE，不能沿用 PR72 的“零新增 VAE”表述。
+
+预期状态：smoke `COMPLETE_SMOKE_TECHNICAL_ONLY`；full `COMPLETE_RECOURSE_SCORING_PILOT`。
+
+## 机制验收
+
+- 同 case/seed 四臂共享完全相同的 12 个真实初始评价；之后各用自身在线历史。
+- 两个两步臂使用相同幻想反馈与 GP 更新；唯一差异是 Q1+逐反馈 max 后平均（adaptive）vs 先对第二点求反馈平均再选（fixed_second）。
+- fixed_second 只限制评分中的第二点，不强制下一次真实评价执行旧第二点。
+- 重算 future_values、support、权重、观察契约与 recourse_decomposition；正 premium 只是模型计算差值，不是方法有效性。
+- 核对下一轮候选；无模型外覆盖时 `future_pool_checks` smoke=8、full=320。
+- 三个 CEI 臂最后决策单步、零幻想；soft_gp 保留内部 horizon=12。
+- 中止幻想不得泄漏精确正 region 或隐藏目标；部分观测保留。
+
+## 汇总与判读
+
+主比较 adaptive vs fixed_second；次比较 adaptive vs myopic、fixed vs myopic、adaptive vs soft_gp、myopic vs soft_gp。逐任务报告 feasible-first W/L/T、双方可行逐种子目标差、无解运行、冷启动发现、首次可行调用、实际失败与路径变化。
+
+机制报告同状态首动作差异、相对自身单步最优改选、premium 分布和真实轨迹结果；不把未执行动作写成反事实收益；跨任务不混合目标均值。
+
+判读：adaptive 未超过 fixed 不能证明反馈后改选价值；未超过 soft_gp 不能默认提升；评分几乎不改变首动作要如实报告机制弱；有限节点非负差值不是真实收益或安全。
+
+## 异常与上传
+
+任何未处理异常、版本/候选/分数/账本/哈希错误立即停止，保存 traceback 与账本；已注册幻想数值失败整体回退并记录，不删除失败场景；不现场修代码、不换种子、不原地重跑、不改旧证据。
+
+结果分支：`results/recourse-value-pilot-20261107`；重名加唯一后缀；不推送 PR73 代码分支、不 force push、不合并 PR。
+
+上传：plan/source_receipt/report/progress/evaluations/manifest、shared_initial、trials 全部 proposal/observation/result、future_values/future_supports/recourse_decomposition、representation checkpoints、预检/运行/verify 日志、环境、固定 SHA、失败/未知记录、逐任务汇总、SHA256 清单、README、指令副本。证据目录 `* -text`，日志和说明放在封存输出外。
+
+## 回报
+
+结果分支/HEAD、固定 SHA；25/18 测试、compileall/help；smoke/full 状态、初始/在线/总调用、verify；逐任务主次比较；同状态评分分歧；自身单步改选；future_pool_checks；幻想拟合/回退/耗时；飞机/RCAIDE；未知/中断；源 worktree 干净；远端字节与 SHA256；完整证据位置。

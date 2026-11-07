@@ -1,0 +1,14 @@
+# PR73 commands actually executed
+# code worktree: D:\LSBO\RA-LSBO-pr73-20261107-152452
+# result root:   D:\LSBO\RA-LSBO-pr73-results-20261107-152452
+
+python -S -m unittest discover -s tests -p test_recourse_core.py -v
+python -m unittest discover -s tests -p test_recourse_runtime.py -v
+python -m compileall -q recourse_value_core.py recourse_value_protocol.py recourse_value_engine.py run_recourse_value_pilot.py
+python -S run_recourse_value_pilot.py --help
+
+python run_recourse_value_pilot.py --profile smoke --expected-sha 1949c3139d2256b35e1734af184248f551912ba0 --output D:\LSBO\RA-LSBO-pr73-results-20261107-152452\smoke
+python -S run_recourse_value_pilot.py --task verify --input D:\LSBO\RA-LSBO-pr73-results-20261107-152452\smoke
+
+python run_recourse_value_pilot.py --profile full --expected-sha 1949c3139d2256b35e1734af184248f551912ba0 --output D:\LSBO\RA-LSBO-pr73-results-20261107-152452\full
+python -S run_recourse_value_pilot.py --task verify --input D:\LSBO\RA-LSBO-pr73-results-20261107-152452\full
