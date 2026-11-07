@@ -1,0 +1,93 @@
+RA-LSBO 新方向 Phase A：监督风险可学习性诊断
+================================================
+历史父提交：491dbf6f1fd340864f5b5332bc2b75d75e9a6a9e。
+仅从本次新PR已核实的固定40位SHA读取代码，不能用浮动HEAD或PR自动合并SHA。
+本协议不授权重跑PR74，不安装旧ZIP，不安装Linux，不更换工作机环境。
+
+研究问题
+--------
+风险模型随有监督样本增加是否改善？限制主要来自样本量、删失信息、还是模型？
+本轮是独立测试集上的监督诊断，不执行优化、不输出“新算法已经更好”的结论。
+
+冻结数据
+--------
+六任务：legacy_branin_sparse、legacy_rosenbrock_sparse、tradeoff_s0..s3。
+旧两任务在新纯解析接口中按旧公式实现，CI与原MathematicalCase逐值/反馈/可行性核对。
+新四任务有不同构型的最优可行见证，场景间最优构型反转；不是物理飞机模型。
+每个任务/重复独立IID采样：四构型等概率，活动连续坐标均匀。
+不根据标签重新采样，不按是否冷启动筛数据，不强制平衡成功/失败标签。
+训练与测试种子不同且设计ID不重叠；不同profile种子分离。
+样本量12/24/48/96/192为同一个训练数据集的嵌套前缀，绝不为每个n重新购买整套评价。
+所有模型/样本量使用同一固定测试集，不根据测试结果调参或选择训练点。
+s4..s7尚未开放，入口拒绝评价；不宣称完成跨任务泛化。
+
+模型
+----
+joint_prevalence：仅训练标签的Laplace平滑联合可行率常数基线；逐头同理。
+native_censored：原有StableGroupedHead、4x2网格，区间/精确混合EP。
+native_sign：同一原生头，仅符号反馈，completion=True的probit噪声为1；预测用latent variance+1。
+privileged_exact：同一原生头，拿到训练点全部真实region/resource数值。
+最后一项是特权信息参照，不是“同信息/同成本可部署优越性”对照。
+原生风险特征与PrefixFeatures(latent=False)相同，维数13、前三项连续；无VAE，无目标拟合。
+未知/基础设施失败不伪造标签。当前数学任务是确定性约束，不学习独立的随机完成失败。
+
+预算
+----
+ci：2任务、1重复、n12/24、64测试点；48训练+128测试=176次，16模型行。
+smoke：6任务、1重复、n12/24、128测试点；144训练+768测试=912次，48模型行。
+full：6任务、3重复、n12/24/48/96/192、512测试点；3456训练+9216测试=12672次，360模型行。
+工作机smoke+full=13584次便宜解析数学评价；其中3600训练，9984独立测试。
+无飞机/RCAIDE；无在线优化调用；无VAE/幻想拟合。
+无全头失败时，smoke72个原生头/576个核构造，full540个头/4320个核构造。
+以原始bill为准：started/completed/errors和选核拒绝单独记账；选核拒绝不一定等于构造异常。
+CI每平台另有176次正式集成评价。单元测试的原生拟合/解析校验另列，不伪称全CI只有176次计算。
+
+执行
+----
+先查找同固定SHA+profile+计划的完整既有结果。已完成则只核验引用，不再次运行。
+唯一数据源是本次固定Git代码，不需要历史worktree或artifact下载。
+在全新clean detached worktree，用已有Rcaide_vsp解释器；不安装/升级依赖。
+输出目录在代码worktree以外；smoke/full目录必须尚不存在，程序负责创建。
+日志放在封存目录外。
+
+预检（每条保存stdout/stderr与退出码；任何错误停止）：
+python -S -m unittest discover -s tests -p test_risk_learning_core.py -v
+python -m unittest discover -s tests -p test_risk_learning_native.py -v
+python -m compileall -q risk_learning run_risk_learnability.py check_risk_learning_evidence.py
+python -S run_risk_learnability.py --help
+python -S run_risk_learnability.py --task plan --profile full
+
+核心测试31项，原生测试4项，均不得skip。
+这些测试包含解析函数校验及少量原生GP拟合，不是零计算；不算正式曲线样本。
+
+python run_risk_learnability.py --task run --profile smoke --expected-sha <固定SHA> --output <新smoke目录>
+python -S run_risk_learnability.py --task verify --expected-sha <固定SHA> --input <smoke目录>
+python -S check_risk_learning_evidence.py --input <smoke目录>
+
+仅当smoke为COMPLETE_LEARNABILITY、verify通过、篡改检查通过且账本闭合，执行full。
+是否取得较好预测不构成继续条件，不能按smoke效果改变计划。
+python run_risk_learnability.py --task run --profile full --expected-sha <固定SHA> --output <新full目录>
+python -S run_risk_learnability.py --task verify --expected-sha <固定SHA> --input <full目录>
+
+默认--task为plan，单独双击/运行不触发真值评价。
+
+失败策略
+--------
+未处理异常立即停止，failure.json封存实际bill和traceback。不得原地重跑、现场补丁或改种子。
+已注册ModelNumericalFailure保留失败模型行并继续预定诊断，不删除/填补预测。
+smoke有此失败不放行full；full若产生此失败，状态为COMPLETE_WITH_MODEL_FAILURES，不报全通过。
+只读verify/check不拟合GP，不评价真值；用已存预测、观测、真值重算指标和费用。
+新错误报告给ChatGPT负责修复，旧结果目录不覆盖。
+
+交付与判读
+----------
+上传完整plan/source/environment/report、datasets训练和测试的truth与observed、每个fit的
+training_input_sha256/标签覆盖/native诊断/高斯矩/概率/逐任务指标、evaluations/progress/manifest。
+外层存日志/执行返回码/摘要和额外SHA256清单，结果路径使用* -text。
+新结果分支results/risk-learnability-phase-a-20261107；占用时唯一后缀，禁止force push。
+远端字节核验；不推送代码分支、不合并PR、不改旧实验。
+
+分任务报告n的学习曲线、正负类、exact/interval/missing、可行排序、边界分层、Brier/log loss、
+假可行/假不可行与校准分箱（描述性，不是安全认证）。无正类时AUROC/recall为null。
+不混合任务目标值，不从样本级伪造独立重复数，不只汇总成功模型，不把oracle参照作公平基线。
+Phase A结果必须审阅后才能提出B/C的新代码；当前没有后续自动实验。
