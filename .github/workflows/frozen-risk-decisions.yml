@@ -1,0 +1,57 @@
+name: frozen-risk-decision-value
+on:
+  pull_request:
+    paths:
+      - 'decision_value_core.py'
+      - 'run_frozen_risk_decisions.py'
+      - 'tests/test_frozen_risk_decisions.py'
+      - 'docs/PHASE_B0_FROZEN_DECISIONS.txt'
+      - 'PHASE_A_FINDINGS.md'
+      - '.github/workflows/frozen-risk-decisions.yml'
+permissions:
+  contents: read
+jobs:
+  readonly-replay:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: windows-latest
+            python: '3.9'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: code
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: fba37629d003e2b528b7c3e3c5f50d3f245eb21d
+          fetch-depth: 1
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Pure tests, syntax and plan (no models/evaluation)
+        run: |
+          python -S -m unittest discover -s tests -p test_frozen_risk_decisions.py -v
+          python -S -m compileall -q decision_value_core.py run_frozen_risk_decisions.py
+          python -S run_frozen_risk_decisions.py --task plan
+      - name: Verify fixed Phase A and replay archived predictions
+        run: python -S run_frozen_risk_decisions.py --task run --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/phase-b0"
+      - name: Reconstruct all outputs read-only
+        run: python -S run_frozen_risk_decisions.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --input "${{ runner.temp }}/phase-b0"
+      - name: Save complete evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: phase-b0-${{ matrix.os }}
+          path: ${{ runner.temp }}/phase-b0
+          if-no-files-found: ignore
