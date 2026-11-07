@@ -1,0 +1,80 @@
+PR72 R1 — pinned source and archived-feature identity for historical replay
+
+Original failed code: f46e268706aab1c9cefe19cdbd887408c424058b.
+Original evidence: f859cca5adc56dd101d2f59665f7829a2b0331c4.
+Failure archive: f9fa0b875cdb5f5e0419792240ff2b7193a9278b.
+The original Ubuntu CI failed before prefix GP construction. Windows passed.
+Workstation smoke/full were NOT executed. Preserve that history.
+
+SOURCE CONTRACT
+DevelopmentProblem hashes raw partial_bo/problems.py bytes. MathematicalCase
+also hashes experiments/core/problems.py. LF/CRLF therefore changes the native
+contract ID even when executable text is identical. Normalizing old hashes now
+would destroy the original historical contract; do not migrate old records.
+
+R1 reads both exact pinned PR70 Git blobs and verifies their object IDs. Loaded
+source bytes must be exactly their uniform LF or CRLF representation. The sealed
+original source receipt must independently identify one of those representations.
+No whitespace stripping, mixed newlines, AST-equivalence shortcut, or unknown
+source hash is accepted. Actual constructor literals are read with literal_eval,
+not executed. BOTH parent and child contract layers are independently recomputed.
+The native instance settings/contract and every prefix record must all match the
+reconstructed local/historical contracts before only the TEMPORARY diagnostic
+problem is bound to the original historical identity. No unchecked record-ID copy.
+
+The original Training contract differs assertion remains intact. No ra_lsbo/
+source, record, checkpoint, original manifest or result branch is modified.
+Output identity_source_receipt.json records both representations; each snapshot
+has contract_identity, independently reconciled by verify.
+
+FEATURE CONTRACT
+R1 CI passed the source-contract proof but Ubuntu then stopped at the EXACT
+feature-identity assertion, still before GP fits. Native floating-point VAE
+forward results enter the objective feature normalization hash. The original
+checkpoint already includes a complete finite configuration codebook in its
+sealed diagnostics.json. When native feature identity differs, R1 attempts to
+load that archived representation, NOT retrain or assign the expected hash.
+It verifies original diagnostics file SHA, exact configuration roster, exact
+checkpoint tensor-state binding, and native codebook forward agreement using
+the UNCHANGED RTOL=1e-7/ATOL=1e-9. The complete original feature ID is recomputed
+from the saved codebook-derived normalization, full prefix and tensor identity.
+It must EXACTLY equal the recorded ID. Failure remains fatal and includes an
+identity proof. Explicit-risk features still must match their exact original ID.
+Subsequent kernel choices, forecasts, Q1/Q2 tolerances and four-node action replay
+remain unchanged. The per-state checkpoint_feature_replay receipt identifies
+native-forward versus archived-codebook use. Do not call this a new optimizer.
+
+VALIDATION
+24 new stdlib identity tests + 4 native constructor tests + 4 native-geometry
+codebook tests, plus original 26 numerical and 6 real EP tests: 64 total.
+CI: Windows/Ubuntu x LF/CRLF; each runs all 64 tests and the SAME four-case real
+checkpoint smoke followed by read-only reconciliation. Test fixtures do not
+replace this integration. All four jobs must pass for the SAME final commit
+before workstation smoke/full. Consult actual CI; no success is preclaimed.
+
+UNCHANGED SCIENTIFIC PROTOCOL
+Smoke 4 states; full 32 states (full includes smoke). Same histories, 4/16/64 and
+second 64 scramble, first-action screen, selected GP kernels, tolerances and GP
+ceilings. No new true evaluations, VAE training, aircraft or RCAIDE. GP refits are
+billed and are NOT zero. No cross-task objective averaging, new online outcome,
+convergence proof or safety claim. All original PR70 blobs remain unchanged.
+
+WORKSTATION
+Fetch the final fixed SHA into a NEW clean detached worktree; input evidence
+remains at f859cca5adc56dd101d2f59665f7829a2b0331c4. Do not reinstall the old ZIP,
+edit source newlines, change global Git configuration, or tune tolerances.
+python -S -m unittest discover -s tests -p test_quadrature_identity.py -v
+python -m unittest discover -s tests -p "test_quadrature_*.py" -v
+python -m compileall -q quadrature_source_identity.py quadrature_checkpoint_features.py run_pr70_quadrature_diagnostic.py
+python -S run_pr70_quadrature_diagnostic.py --help
+python run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha <SHA> --evidence-root <pinned result root> --output <new smoke>
+python run_pr70_quadrature_diagnostic.py --task verify --input <smoke>
+Only after technical validation, never effect-based selection:
+python run_pr70_quadrature_diagnostic.py --profile full --expected-sha <SHA> --evidence-root <pinned result root> --output <new full>
+python run_pr70_quadrature_diagnostic.py --task verify --input <full>
+
+Uncaught error or four-node replay mismatch stops the run. Preserve partial
+outputs, traceback and bill, no on-machine edits or in-place retries. Use
+results/pr72-source-identity-r1-20261106, unique suffix if needed. No force push,
+merge or old result change. Keep logs outside sealed output, use * -text for
+uploaded evidence and verify remote bytes. Instructions directly in chat.
