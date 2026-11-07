@@ -11,6 +11,7 @@ from risk_learning.core import (HEADS, MODELS, PARENT, TASKS, binary_metrics, ca
 from risk_learning.io import read, write, seal, check_manifest
 from risk_learning.native import predict, training_payload
 from risk_learning.study import new_bill, run, verify
+from risk_learning.validation import metric_equal
 
 
 class DesignTests(unittest.TestCase):
@@ -140,6 +141,15 @@ class DesignTests(unittest.TestCase):
         import subprocess,sys
         script='import risk_learning.study, risk_learning.native; import sys; assert "numpy" not in sys.modules; assert "torch" not in sys.modules'
         subprocess.run([sys.executable,'-S','-c',script],check=True)
+
+    def test_metric_roundoff_across_python_versions(self):
+        self.assertTrue(metric_equal({'brier': .16326530612244897}, {'brier': .16326530612244894}))
+    def test_metric_material_change_is_rejected(self):
+        self.assertFalse(metric_equal({'brier': .2}, {'brier': .20000001}))
+        self.assertFalse(metric_equal(float('nan'), float('nan')))
+    def test_metric_counts_and_types_remain_exact(self):
+        for a,b in [(12,13),(12,12.),(True,1),({'a':1},{'b':1}),([1,2],[1])]:
+            self.assertFalse(metric_equal(a,b))
 
 
 if __name__=='__main__': unittest.main()

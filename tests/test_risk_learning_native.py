@@ -58,5 +58,15 @@ class NativeTests(unittest.TestCase):
         self.assertIsNotNone(guess)
         self.assertEqual(receipt['training_rows'],12)
 
+    def test_maximum_training_size_real_censored(self):
+        cs=candidates(751998,192)
+        rows=[observed(c,truth(TASKS[3],c)) for c in cs]
+        bill=new_bill()
+        p,r=predict(rows,candidates(751999,8),'native_censored',0,bill)
+        self.assertIsNotNone(p)
+        self.assertEqual(r['training_rows'],192)
+        self.assertEqual(bill['gp_head_completed'],2)
+        self.assertEqual(bill['gp_kernel_started'],16)
+
 
 if __name__=='__main__': unittest.main()

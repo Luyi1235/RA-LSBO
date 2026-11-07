@@ -9,6 +9,7 @@ import traceback
 
 from .core import HEADS, MODELS, SCHEMA, candidates, digest, label_counts, observed, plan, score, truth
 from .io import append, read, write, seal, check_manifest
+from .validation import metric_equal
 
 
 def new_bill():
@@ -167,7 +168,7 @@ def verify(root, expected_sha=None):
                 if receipt['query_ids'] != [r['candidate_id'] for r in test]:
                     raise ValueError('Query receipt changed')
                 if row['status']=='OK':
-                    if score(test,row['predictions']) != row['metrics']:
+                    if not metric_equal(score(test,row['predictions']), row['metrics']):
                         raise ValueError('Prediction metrics cannot be reproduced')
                     if method=='joint_prevalence':
                         from .native import predict

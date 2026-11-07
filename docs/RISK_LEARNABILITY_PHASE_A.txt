@@ -57,7 +57,7 @@ python -m compileall -q risk_learning run_risk_learnability.py check_risk_learni
 python -S run_risk_learnability.py --help
 python -S run_risk_learnability.py --task plan --profile full
 
-核心测试31项，原生测试4项，均不得skip。
+核心测试34项，原生测试5项，均不得skip。
 这些测试包含解析函数校验及少量原生GP拟合，不是零计算；不算正式曲线样本。
 
 python run_risk_learnability.py --task run --profile smoke --expected-sha <固定SHA> --output <新smoke目录>
@@ -91,3 +91,9 @@ training_input_sha256/标签覆盖/native诊断/高斯矩/概率/逐任务指标
 假可行/假不可行与校准分箱（描述性，不是安全认证）。无正类时AUROC/recall为null。
 不混合任务目标值，不从样本级伪造独立重复数，不只汇总成功模型，不把oracle参照作公平基线。
 Phase A结果必须审阅后才能提出B/C的新代码；当前没有后续自动实验。
+
+跨版本报告复算
+--------------
+文件SHA256、候选/数据/代码身份、整数账本与模型契约仍精确相等。
+仅重新聚合的浮点指标允许rtol=1e-12/atol=1e-14的末位舍入差；不改变GP/EP或选核。
+原生测试额外覆盖192条训练记录；CI另设Python3.13仅核验Python3.9生成的artifact，零新评价/拟合。
