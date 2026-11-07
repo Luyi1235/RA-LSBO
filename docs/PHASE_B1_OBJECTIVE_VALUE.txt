@@ -1,0 +1,104 @@
+Phase B1: supervised risk -> fixed objective decision value (2026-11-07)
+
+STATUS AND PROVENANCE
+Resume explicitly authorized after pause. Base is PR77 commit
+634ff13c07d11e4df4748199806726a3eb14fd70.
+PR75 Phase A result fba37629d003e2b528b7c3e3c5f50d3f245eb21d is complete.
+PR77 B0 archive 74b984a568c0211a7ff50a432793c435fdc4cf50 is complete.
+Neither is an execution input and neither must be repeated.
+The discarded paused draft reused decision_value_core.py; B1 instead uses
+b1_* modules. All old algorithms, Phase A/B0 modules and results are retained.
+
+QUESTION
+Does the already learned feasibility probability improve objective selection
+when training data, objective model, feasible incumbent and candidate pool are
+identical? This is a prospective new-data fixed-ranking diagnostic, not a new
+optimization algorithm, online BO, qEI batch optimizer or safety method.
+
+FOUR POLICIES, ONE FIT PER STATE
+uniform_hash: outcome-independent salted hash ranking (one deterministic
+uniform-like realization, not an exact uniform-random expectation).
+risk_only: descending learned joint feasibility probability.
+objective_ei: ordinary scalar Gaussian EI against best OBSERVED FEASIBLE target.
+risk_ei: the SAME EI multiplied by the SAME learned joint feasibility probability.
+No probability gate, tuned weight, information bonus or multi-step fantasy.
+The conventional EI times feasibility product assumes independent objective/
+constraint posteriors; it is an opt-in baseline, not an innovation claim.
+No target is imputed for region-aborted designs. Exact objective values from
+completed-but-resource-infeasible training designs remain legitimate labels.
+Objective GP uses all available exact objective labels and original
+StableGroupedHead(objective=True,reference_scale=1), frozen 4x2 kernel grid.
+Risk uses unmodified native_censored. Features are explicit, no VAE.
+All policies share the objective predictions AND normalization exactly.
+
+WARM/COLD
+Primary analysis is initially-feasible (warm) states. Do not reject/resample
+cold groups. Without feasible incumbent, objective_ei and risk_ei both use
+the identical uniform_hash ordering; risk_only remains a separate reference.
+These cold groups do NOT test objective EI or online first-feasible learning.
+
+FIXED DESIGN
+Six known development tasks: two legacy sparse controls and tradeoff_s0..s3.
+Reserved s4..s7 remain unevaluated. No claim of cross-task transfer/generalization.
+New outcome-blind IID samples; disjoint profile/task/repeat train/pool seeds.
+Training sizes 12/48/192 are nested; entire candidate rankings fixed using
+ONLY each prefix's observable data. No candidates are changed after scoring.
+For each task/repeat ALL sizes and policies are sealed BEFORE its pool truth
+is evaluated. Pool labels are assessment-only; no posterior update after choice.
+Budgets 1/2/4/6/12 are prefixes of one ranking, not independent experiments.
+Primary: n=48,k=6,risk_ei vs objective_ei on warm tradeoff tasks; report each task.
+Primary endpoint: paired final best feasible objective, W/L/T and raw differences.
+Secondary: two legacy tasks, n=12/192, remaining k, feasibility/failure counts,
+uniform_hash/risk_only, risk metrics and pool opportunity (posthoc only).
+No raw objective averages across tasks, no seed selection, no tuning on results.
+A zero opportunity pool must remain in the primary report; report it separately,
+not as a reason to remove an unfavorable/tied run. Never replace null with zero.
+No early advancement to Phase C or aircraft based on CI or a single trial.
+
+FORMAL EVALUATION BUDGET (cheap analytic mathematical calls)
+ci: 2 tasks x1 repeat; train48 + pool32 each =160 calls;4 states;80 scored rows.
+smoke:6 tasks x1; train48 +pool64 =672 calls;12 states;240 scored rows.
+full:6 tasks x8; train192+pool256 =21504 calls;144 states;2880 scored rows.
+Workstation smoke+full=22176, training9504+assessment12672. Technical tests separate.
+Full max432 native heads and3456 kernel constructions; fewer objective heads
+when no exact target exists. Actual counters are authoritative.
+All truth calls (including pool audit) are charged once, reused across policies/n.
+n+k denotes nominal from-scratch deployment cost; k denotes incremental cost
+when training already exists. Neither is additional actual calls atop pool audit.
+Different n are NOT equal-total-cost algorithms; this is not the Phase C study.
+Aircraft/RCAIDE/VAE/fantasy=0; real GP fits occur. CI costs recorded separately.
+
+ENTRY AND DELIVERY
+run_objective_risk_value.py defaults to --task plan (no fits/evaluations).
+Fixed-SHA clean detached Git worktree; no ZIP, external artifacts or old results.
+First check same SHA/profile/plan has not already completed. Do not repeat an
+existing run by inventing a new folder/suffix. Existing failed attempts also
+require review, not an unregistered retry.
+python -S -m unittest discover -s tests -p test_b1_core.py -v
+python -m unittest discover -s tests -p test_b1_native.py -v
+python -m compileall -q b1_core.py b1_native.py b1_study.py b1_verify.py run_objective_risk_value.py
+python -S run_objective_risk_value.py --help
+python -S run_objective_risk_value.py --task plan --profile full
+python run_objective_risk_value.py --task run --profile smoke --expected-sha <SHA> --output <fresh>
+python -S run_objective_risk_value.py --task verify --expected-sha <SHA> --input <smoke>
+python -S check_b1_evidence.py --input <smoke>
+Only technical success and zero smoke failed_states allow full, regardless of
+optimization effect. Full uses a DIFFERENT fresh output directory and same SHA.
+python run_objective_risk_value.py --task run --profile full --expected-sha <SHA> --output <fresh>
+python -S run_objective_risk_value.py --task verify --expected-sha <SHA> --input <full>
+ModelNumericalFailure is explicitly retained; full completes with failed states.
+Unexpected failures stop, seal evidence and traceback. No workstation patches,
+parameter changes, dependency upgrades, on-place reruns or CI reruns to improve effect.
+
+EVIDENCE
+Keep plan/source_receipt/environment, datasets(train/queries/pool), states,
+scores, evaluations and timeline journals, report/failure, manifest, all logs.
+Logs go OUTSIDE sealed output. Use * -text for evidence; verify remote bytes.
+Do not require VAE checkpoints or fantasy files: neither is produced here.
+Compare risk_ei and objective_ei per task/n/k, stratify initial_warm/cold and
+include counts. Report changed rankings, available improvement in the pool,
+selected failures, initial/final target and per-repeat deltas. Large feasible
+selection rates alone do not prove objective gain. Correlated n/k share data.
+New results only: results/phase-b1-objective-value-20261107 (unique suffix only
+for genuinely different approved attempts, not a license to repeat the experiment).
+No code-branch push, force push, merge, old evidence changes or Phase C execution.
