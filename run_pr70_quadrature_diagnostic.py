@@ -88,7 +88,7 @@ def model_only_guard(bill, ceiling):
         yield
 
 
-def restore(problem, base, seed, initial, history, checkpoint, metadata):
+def restore(problem, base, seed, initial, history, checkpoint, metadata, reference=None):
     from ra_lsbo.features import load_base
     from ra_lsbo.structured_encoder import hierarchy_space
     from ra_lsbo.structure_corpus import CorpusRepresentation, native_observations
@@ -99,8 +99,12 @@ def restore(problem, base, seed, initial, history, checkpoint, metadata):
     session=CorpusRepresentation.load_checkpoint(checkpoint,space,native_observations(initial,modules,space))
     require(session.seed==seed and len(session.events)==1, 'Wrong original VAE checkpoint')
     require(session._sealed_state==metadata['corpus_training']['latest']['parameter_state'], 'VAE state differs')
-    from quadrature_checkpoint_features import restore_features
-    obj,risk,feature_proof=restore_features(problem,base,seed,history,session,checkpoint,metadata)
+    if reference is None:
+        from quadrature_checkpoint_features import restore_features
+        obj,risk,feature_proof=restore_features(problem,base,seed,history,session,checkpoint,metadata)
+    else:
+        from quadrature_feature_reference import restore_reference_features
+        obj,risk,feature_proof=restore_reference_features(problem,base,seed,history,session,checkpoint,metadata,reference)
     require(obj.identity==metadata['objective_feature_identity'] and risk.identity==metadata['risk_feature_identity'],
             'Feature identity differs; do not silently retrain or relax replay')
     posterior=HeterogeneousRiskPosterior(problem,history,seed,replace(settings_for_math54(),horizon=6,local=False),
@@ -116,7 +120,7 @@ def restore(problem, base, seed, initial, history, checkpoint, metadata):
     return posterior,diag
 
 
-def run(output, evidence_root, profile, expected_sha):
+def run(output, evidence_root, profile, expected_sha, feature_reference=None):
     from ra_lsbo.experiments.information_value_stage1.io import write_new, manifest, file_sha
     from pr70_protocol import verify as verify_input
     code=Path(__file__).resolve().parent
@@ -130,12 +134,19 @@ def run(output, evidence_root, profile, expected_sha):
     source=ev/RESULT
     verified_before=verify_input(source)
     require(read(source/'report.json')['code_sha']==BASE, 'Input is not fixed PR70 code')
+    from quadrature_feature_reference import read_reference, validate_reference, state_key
+    require(feature_reference is not None, 'An exact original-prefix feature reference is required')
+    reference,reference_verified=read_reference(feature_reference,expected_sha)
+    references=validate_reference(reference,expected_sha)
+    require(reference['input_manifest_sha256']==file_sha(source/'manifest.json'),'Reference input manifest differs')
     spec=plan(profile)
     out.mkdir(parents=True,exist_ok=False)
     write_new(out/'plan.json',spec)
+    write_new(out/'feature_reference.json',reference)
     write_new(out/'source_receipt.json',{'diagnostic_code_sha':expected_sha,'base_code_sha':BASE,
         'input_result_sha':EVIDENCE,'input_manifest_sha256':file_sha(source/'manifest.json'),
-        'verified_input_before':verified_before,'python':platform.python_version(),'platform':platform.platform(),
+        'verified_input_before':verified_before,'reference_verification':reference_verified,
+        'feature_reference_sha256':file_sha(out/'feature_reference.json'),'python':platform.python_version(),'platform':platform.platform(),
         'added_source_sha256':{x.split('\t',1)[1]:file_sha(code/x.split('\t',1)[1]) for x in changes}})
     bill={'phase':'imports','gp_started':0,'gp_completed':0,'gp_errors':0,'by_phase':{},
           'blocked_evaluator_attempts':0,'blocked_vae_training_attempts':0,
@@ -167,7 +178,7 @@ def run(output, evidence_root, profile, expected_sha):
                 problem=_case(case)
                 binding=bind_historical_math_contract(problem,history,identity,code)
                 bill['phase']='prefix_gp_reconstruction'
-                posterior,diag=restore(problem,model_base,seed,initial,history,folder/'representation'/'iteration_000',meta)
+                posterior,diag=restore(problem,model_base,seed,initial,history,folder/'representation'/'iteration_000',meta,references[state_key(state)])
                 candidates=meta['pool']
                 forecast=posterior.predict(candidates)
                 close(serial(forecast),meta['forecasts'],'original forecasts')
@@ -212,6 +223,7 @@ def run(output, evidence_root, profile, expected_sha):
                 'input_verify_before':verified_before,'input_verify_after':verified_after,
                 'source_identity_schema':IDENTITY_SCHEMA,
                 'identity_source_receipt_sha256':file_sha(out/'identity_source_receipt.json'),
+                'feature_reference_sha256':file_sha(out/'feature_reference.json'),
                 'state_count':len(states),'states':states,'summary':summarize(states),'bill':bill,
                 'elapsed_seconds':time.perf_counter()-start,
                 'limits':['Fixed existing-policy prefixes, no new online outcomes.',
@@ -235,6 +247,12 @@ def verify(output):
     from quadrature_audit_numeric import verify_rule
     out=Path(output);hashes=verify_manifest(out)
     spec=read(out/'plan.json');report=read(out/'report.json');source=read(out/'source_receipt.json')
+    from quadrature_feature_reference import validate_reference, state_key, verify_replay_proof
+    reference=read(out/'feature_reference.json')
+    references=validate_reference(reference,report['diagnostic_code_sha'])
+    require(report['feature_reference_sha256']==source['feature_reference_sha256']==file_sha(out/'feature_reference.json'),
+            'Exact normalization reference bytes differ')
+    require(reference['input_manifest_sha256']==source['input_manifest_sha256'],'Reference provenance differs')
     identity=read(out/'identity_source_receipt.json')
     validate_attestation(identity)
     require(report['source_identity_schema']==IDENTITY_SCHEMA and
@@ -253,6 +271,7 @@ def verify(output):
         family,difficulty=row['case'].split('_')
         verify_binding(snap['contract_identity'],family,difficulty,snap['history'],identity)
         fp=snap['checkpoint_feature_replay']
+        verify_replay_proof(fp,references[state_key(row)],snap['history'])
         require(fp['restored_objective_identity']==fp['recorded_objective_identity']
                 and fp['recorded_identity_assigned_without_reconstruction'] is False
                 and fp['vae_training'] is False, 'Checkpoint feature replay proof invalid')
@@ -276,6 +295,7 @@ def verify(output):
     require(all(bill[k]==0 for k in ('blocked_evaluator_attempts','blocked_vae_training_attempts',
                   'new_true_evaluations','new_vae_training','aircraft_calls','rcaide_calls')),'Nonzero forbidden work')
     return {**hashes,'status':'VERIFIED_SAME_STATE_QUADRATURE','states':len(report['states']),
+            'exact_feature_references_verified':len(report['states']),
             'gp_fits_in_this_verification':0,'new_evaluations_in_this_verification':0}
 
 
@@ -284,15 +304,16 @@ def main():
     p.add_argument('--task',choices=('run','verify'),default='run')
     p.add_argument('--profile',choices=('smoke','full'),default='smoke')
     p.add_argument('--expected-sha');p.add_argument('--evidence-root',type=Path)
+    p.add_argument('--feature-reference',type=Path)
     p.add_argument('--output',type=Path);p.add_argument('--input',type=Path)
     a=p.parse_args()
     if a.task=='verify':
         if a.input is None:p.error('--input required')
         result=verify(a.input)
     else:
-        if a.output is None or a.evidence_root is None or a.expected_sha is None:
-            p.error('--output, --evidence-root and --expected-sha required')
-        r=run(a.output,a.evidence_root,a.profile,a.expected_sha)
+        if a.output is None or a.evidence_root is None or a.expected_sha is None or a.feature_reference is None:
+            p.error('--output, --evidence-root, --expected-sha and --feature-reference required')
+        r=run(a.output,a.evidence_root,a.profile,a.expected_sha,a.feature_reference)
         result={k:r[k] for k in ('status','diagnostic_code_sha','profile','state_count','bill')}
     print(json.dumps(result,indent=2),flush=True)
 

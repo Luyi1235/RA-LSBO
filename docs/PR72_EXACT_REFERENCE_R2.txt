@@ -1,0 +1,56 @@
+PR72 R2: exact historical-prefix normalization reference
+
+Parent: 2defbb275bac93c41cbcfbed9ca0b5f39f168e26.
+Reviewed failure archive: d0d8ce224c09c880fc1aec7d0b5da81a23c31876.
+Input remains f859cca5adc56dd101d2f59665f7829a2b0331c4.
+
+The previous full-configuration codebook is not the stored original-prefix
+normalization payload. The native prefix and four-configuration forward calls
+can round differently, even when their values agree well inside the unchanged
+1e-7/1e-9 tolerance. A cryptographic feature digest cannot tolerate any bit
+change. Source LF/CRLF and numerical feature identity are separate contracts.
+
+R2 does NOT assign an expected digest, search rounding variants, round hashes,
+loosen tolerances or alter original observations/checkpoints/frozen sources.
+A producer must first use the native checkpoint forward on EACH of the 32
+registered prefixes and reconstruct the EXACT feature ID already in PR70.
+Only successful native normalization payloads are exported; no codebook fallback.
+This reference capture does ZERO GP fits, VAE training or evaluator calls. The
+checkpoint loading/forward passes are recorded as such, not as no computation.
+Any producer mismatch stops; downstream CI jobs cannot run on a failed registry.
+
+Every consumer verifies the reference manifest, producer code SHA, original
+result SHA, original manifest, state roster, checkpoint bytes, tensor identity,
+prefix and COMPLETE feature identity payload. Native prefix raw features and
+normalization still must agree at the unchanged tolerance. Only authenticated
+original offset/scale are restored. The native encoder is preserved, and the
+complete feature ID is freshly recomputed and must equal the historical digest.
+Kernel selection, original forecasts, Q1/Q2 and four-node action replay gates
+remain unchanged. The old archived-codebook module remains in history but is
+not the R2 production replay path.
+
+CI: one Windows/CRLF reference producer for 32 prefixes (0 GP), followed by
+Windows/Ubuntu x LF/CRLF consuming the SAME artifact, 84 total tests each and
+4-state historical replay plus raw verification. All FIVE jobs must pass for
+the same final SHA. These are technical checks, not independent BO experiments.
+
+No ZIP installation. Obtain code by fixed Git SHA; obtain the reference artifact
+from that exact successful Actions run using existing GitHub tools or gh run
+download --repo Luyi1235/RA-LSBO <RUN_ID> --name pr72-exact-feature-reference
+--dir <NEW_REFERENCE_DIRECTORY>. Do not assume a local attachment exists.
+Verify with:
+python quadrature_feature_reference.py --task verify --expected-sha <SHA> --input <REF_DIR>
+Local run requires --feature-reference <REF_DIR> in addition to the original
+--profile, --expected-sha, --evidence-root, --output arguments. Smoke=4 states,
+full=32 (including smoke). GP work billed, true/VAE-training/aircraft/RCAIDE=0.
+
+Output schema: identity_source_receipt.json (source proof), feature_reference.json
+(complete registry copied into sealed output), per-state snapshot.json containing
+contract_identity and checkpoint_feature_replay. There are no required files
+named source_identity.json or contract_binding.json. verify reports
+exact_feature_references_verified=4 or 32. Keep logs outside sealed output.
+
+Preserve failure archives and all existing result branches. New evidence branch:
+results/pr72-exact-reference-r2-20261107 (unique suffix when needed).
+Do not repeat old ZIP installation, force push, change environments or merge PR.
+Do not call 64-node results ground truth, confidence intervals or online gains.
