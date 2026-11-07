@@ -1,0 +1,25 @@
+code_sha=932f7202cf81890a108e37266bbb639affba0ae7
+code_worktree=D:\LSBO\RA-LSBO-pr72-r2-code-20261107-134400
+evidence_worktree=D:\LSBO\RA-LSBO-pr72-r2-evidence-20261107-134400
+result_root=D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400
+
+reference_verify:
+python -S quadrature_feature_reference.py --task verify --input D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400\reference
+
+prechecks:
+python -S -m unittest discover -s tests -p test_quadrature_feature_reference.py -v
+python -S -m unittest discover -s tests -p test_pr70_quadrature_diagnostic.py -v
+python -S -m compileall -q quadrature_feature_reference.py quadrature_checkpoint_features.py quadrature_nodes.py pr70_quadrature_common.py run_pr70_quadrature_diagnostic.py
+python -S run_pr70_quadrature_diagnostic.py --help
+
+smoke:
+python -S run_pr70_quadrature_diagnostic.py --profile smoke --expected-sha 932f7202cf81890a108e37266bbb639affba0ae7 --output D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400\smoke
+
+smoke_verify:
+python -S run_pr70_quadrature_diagnostic.py --task verify --input D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400\smoke
+
+full:
+python -S run_pr70_quadrature_diagnostic.py --profile full --expected-sha 932f7202cf81890a108e37266bbb639affba0ae7 --output D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400\full
+
+full_verify:
+python -S run_pr70_quadrature_diagnostic.py --task verify --input D:\LSBO\RA-LSBO-pr72-r2-results-20261107-134400\full

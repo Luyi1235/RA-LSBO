@@ -1,0 +1,42 @@
+# PR72 R2 任务指令副本
+
+执行 PR72 R2 固定状态真实 GP 求积一致性诊断，只读固定结果提交与固定特征参考，不新增真实评价。
+
+## 固定身份
+
+- 仓库：https://github.com/Luyi1235/RA-LSBO
+- PR：https://github.com/Luyi1235/RA-LSBO/pull/72
+- 代码分支：`analysis/pr70-quadrature-resolution-20261106-223912`
+- 固定代码 SHA：`932f7202cf81890a108e37266bbb639affba0ae7`
+- 输入结果分支：`results/pr70-next-pool-20261106`
+- 固定输入结果 HEAD：`f859cca5adc56dd101d2f59665f7829a2b0331c4`
+- 成功 CI run：`42336743192`
+- artifact：`pr72-exact-feature-reference`，id `13560260956`
+- 入口：`run_pr70_quadrature_diagnostic.py`
+- 先阅读：`docs/PR72_EXACT_REFERENCE_R2.txt`
+
+## 准备与边界
+
+在全新 worktree 中 detached 检出固定代码 SHA 和输入结果 HEAD；核对 `git rev-parse HEAD` 与 `git status --porcelain`。使用现有 `Rcaide_vsp` Python 3.9.25，不安装/升级依赖，不修改代码、PR72 分支或旧证据。
+
+下载 artifact，核对 ZIP 144,188 B、SHA256 `f312c4b4...a347`；解压 `feature_reference.json` 1,331,282 B、SHA256 `0fc0a6b0...e4396`；用 `quadrature_feature_reference.py --task verify` 验证 32 states。
+
+## 执行
+
+1. 22 项 reference 测试、86 项 quadrature 测试，compileall 与 `--help` 全部通过。
+2. smoke：4 states，`COMPLETE_SAME_STATE_QUADRATURE_DIAGNOSTIC`，8,736 GP fits，0 errors；verify 25 files。
+3. full：32 states，83,582 GP fits，0 errors；verify 165 files。
+4. 任何非零退出码、数值异常或 manifest 失败都停止并保留 traceback；不得重跑或修改证据。
+
+## 禁止事项
+
+- 新增真实数学评价、VAE 训练、飞机或 RCAIDE 调用必须为 0。
+- 不得重新运行 PR70 优化器或 PR72 smoke/full 之外的实验。
+- 不修改原始输入 commit、PR72 分支、旧结果分支或 README。
+- 不把 64 节点当 ground truth；不把固定状态动作一致写成“16 节点足够”或“飞机安全已验证”。
+
+## 上传与回报
+
+新建结果分支 `results/pr72-r2-quadrature-20261107`，上传 smoke/full 全部原始证据、reference artifact/特征文件、日志、测试、环境、固定 SHA、SHA256 清单、中文 README 和指令副本。结果目录使用 `* -text`。
+
+回报：分支 URL/HEAD、固定代码 SHA、输入 HEAD、smoke/full/verify/manifest、动作改变与分数漂移、四规则估计优势、GP 拟合成本、失败/未知记录和证据路径。

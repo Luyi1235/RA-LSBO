@@ -1,0 +1,26 @@
+usage: run_pr70_quadrature_diagnostic.py [-h] [--task {run,verify}]
+                                         [--profile {smoke,full}]
+                                         [--expected-sha EXPECTED_SHA]
+                                         [--evidence-root EVIDENCE_ROOT]
+                                         [--feature-reference FEATURE_REFERENCE]
+                                         [--output OUTPUT] [--input INPUT]
+
+Offline quadrature diagnostic on pinned PR70 prefixes, NEVER new BO trials.
+Load the original numerical VAE checkpoint, refit only prefix GP heads,
+require four-node replay agreement, then change quadrature nodes at the SAME
+state. All true evaluators and VAE training methods are blocked during
+reconstruction. R1 attests the original two source hashes and binds ONLY the
+temporary replay problem to their independently reconstructed historical
+contract. No source or record bytes are rewritten, and all original
+reconstruction tests remain.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --task {run,verify}
+  --profile {smoke,full}
+  --expected-sha EXPECTED_SHA
+  --evidence-root EVIDENCE_ROOT
+  --feature-reference FEATURE_REFERENCE
+  --output OUTPUT
+  --input INPUT
+EXIT=0
