@@ -1,0 +1,109 @@
+Observable-feedback recourse scoring pilot — 2026-11-07
+Parent: 932f7202cf81890a108e37266bbb639affba0ae7 (PR72 R2)
+Reviewed quadrature evidence: 61c189edd3986da3cec1e13d9d525013810bd3fd
+
+Evidence decision
+PR72 full: 32 saved states, only two n4/n16 or n4/n64 winner changes (both
+Rosenbrock sparse, seed 998901, iterations 0 and 3); n16/n64 and the two n64
+scrambles have identical winners in every saved state. These are correlated,
+policy-selected prefixes, not 32 independent trials or convergence proof.
+Do not keep increasing nodes as the main innovation. This pilot retains FOUR
+nodes to isolate a different mechanism, not because four nodes are proven exact.
+
+Corrections to interpretation, without modifying old results
+83,582 full GP constructions INCLUDE 992 prefix constructions; fantasy-only
+sum is 82,590. Scoring gaps do not establish geometric proximity. No real
+outcomes were generated for changed actions, so their final feasibility is
+unknown, not demonstrated unchanged. n64_r1 is a separate Sobol scramble,
+not merely a permutation of the same nodes. Per-rule GP fit time differs from
+end-to-end compute_rule time. Keep both timings, do not call them inconsistent.
+
+Question and exact intervention
+For first candidate x and observable outcome O, let v(y,O) be the second-call
+one-step score after the SAME EP fantasy update, on the SAME actual next pool.
+Cold feasible first outcomes have v=0 because delivery has been achieved.
+Q_adaptive(x) = Q1(x) + sum_w max_y v(y,O).
+Q_fixed(x)    = Q1(x) + max_y sum_w v(y,O).
+Their finite-node difference >=0 follows algebraically; this alone is NOT an
+empirical information benefit, calibrated probability, or safety statement.
+Only changing the order of max and averaging removes outcome-specific second
+choice in the acquisition, without deleting observations or changing GP heads.
+All genuine future observations are used and next calls are replanned in BOTH
+arms. 'fixed_second' means fixed WITHIN THE SCORING CALCULATION, not execution
+of a stale commitment. This is not a nonadaptive batch optimizer comparison.
+
+Arms
+soft_gp_eligible: frozen PR63 reference, legacy internal horizon 12 retained.
+cei_myopic: frozen PR68 one-step under real horizon 2/6.
+cei_two_step_adaptive: equivalent selection to PR70 next_pool, with added full
+  future-value vectors and recourse decomposition. Parity tested warm/cold.
+cei_two_step_fixed_second: identical forecasts, updates, nodes, supports and
+  budget; first root selected by Q_fixed instead of Q_adaptive.
+Primary: adaptive vs fixed_second. Secondary: each vs myopic, adaptive vs old
+soft_gp, myopic vs old soft_gp. Legacy arm is not a matched scoring ablation.
+
+Unchanged approximations
+128 root candidates, four-root shortlist, four Sobol nodes per region branch,
+fixed-current-kernel/normalization/VAE fantasies, exact next raw/protected pools,
+original partial observation contract. No penalty tuning, risk gate, new head,
+no-abort removal, stopping, altered initial sampling, or old labels in training.
+Actual partial histories refit independently by arm. Zero aircraft/RCAIDE.
+A future pool is available, not guaranteed to be the finally chosen next point.
+The last call is one-step with zero fantasy fits for all three CEI arms.
+Registered numerical fantasy failure discards the entire two-step calculation;
+programming errors propagate. Never average only successful scenario rows.
+
+Frozen budgets (fresh seeds distinct from PR66-72 registered blocks)
+ci: Branin ordinary + Rosenbrock sparse; seed 999090; shared 24 initial,
+  four arms x two calls x two tasks =16 online; TOTAL 40 actual calls per OS.
+smoke: four tasks, seed 999091; 48 initial +32 online =80 actual calls.
+full: four tasks x seeds 999101-999108; 384 shared initial +768 online =1152.
+  32 case/seed groups; 128 trials; each arm 192 actual online evaluations.
+Workstation total smoke+full=1232. CI is separately billed (two OS: 80).
+Eight seeds/task and six online calls remain exploratory, not confirmatory.
+Do not extend seeds or tune parameters based on the results.
+
+Integrity and costs
+Every actual evaluator start/settlement is journalled. Fantasy fits are separate
+computation with started/completed/seconds receipts. Full scenario vectors make
+both Q criteria independently reconstructible without GP fits. Initial prefix
+hashes must agree across four arms. All PR72 parent blobs remain unchanged.
+Raw evidence includes pool lists, future supports, vectors, observed outcomes,
+checkpoints, actual evaluation ledger, logs, source receipt and sealed manifest.
+Record same-state adaptive/fixed root disagreement and own-myopic override.
+Do not pool raw objectives across tasks or count both-infeasible as numeric zero.
+One trajectory contributes multiple decisions, not independent trial replicates.
+
+Decision gates
+Positive finite-node premium alone is tautological and cannot support novelty.
+If adaptive beats myopic but not fixed-second, better two-call planning has not
+established a benefit from outcome-adaptive continuation. If it fails against
+soft_gp, no default promotion. If nearly no roots differ, stop developing this
+specific recourse mechanism on these tasks instead of inventing a stronger bonus.
+A positive result supports only an isolated mechanism signal; failure-interval
+attribution and longer-budget/engineering validation remain separate questions.
+This experiment does not establish that partial failure information specifically
+caused a gain, even though all interval feedback is retained in both arms.
+
+Workstation delivery
+Use only published fixed Git SHA, new clean detached worktree, NEW external
+output. No ZIP installation, exact-feature-reference artifact, or replay of old
+Windows normalization is needed: this is fresh online optimization, not PR72
+historical reconstruction. Existing Rcaide_vsp; no dependency upgrades.
+python -S -m unittest discover -s tests -p test_recourse_core.py -v
+python -m unittest discover -s tests -p test_recourse_runtime.py -v
+python -m compileall -q recourse_value_core.py recourse_value_protocol.py recourse_value_engine.py run_recourse_value_pilot.py
+python -S run_recourse_value_pilot.py --help
+python run_recourse_value_pilot.py --profile smoke --expected-sha SHA --output NEW
+python -S run_recourse_value_pilot.py --task verify --input SMOKE
+Only after technical success, irrespective of effect direction, full in NEW dir.
+python run_recourse_value_pilot.py --profile full --expected-sha SHA --output NEW
+python -S run_recourse_value_pilot.py --task verify --input FULL
+Expected: 25 stdlib +18 actual-EP tests (43 distinct), 0 skips. CI actual status
+must be checked; no local mock or syntax result substitutes for real integration.
+Full status COMPLETE_RECOURSE_SCORING_PILOT; smoke COMPLETE_SMOKE_TECHNICAL_ONLY.
+With no model failures: future_pool_checks smoke=8, full=320 across TWO arms.
+Stop on any unhandled error, preserve partial bill and traceback, no in-place
+retry or workstation edits. New results/recourse-value-pilot-20261107 branch,
+unique suffix if occupied. Do not merge PRs or overwrite old evidence. Evidence
+folder * -text, remote byte checks, logs outside sealed run directories.
