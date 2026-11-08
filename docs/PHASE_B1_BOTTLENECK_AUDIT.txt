@@ -1,0 +1,48 @@
+PR78 已完成后的只读瓶颈诊断，2026-11-08。
+
+原代码：ab12650769e685966661648940301f330a84993e。
+唯一输入结果HEAD：5ff896b387a7506991ee356d9bfc981a8e080e6a。
+不重复 PR78 smoke/full，不运行 Phase C，不评价预留任务 s4-s7。
+
+目的与边界
+PR78 主比较的四个 tradeoff 任务、n48/k6、初始已有可行解设置不变。
+用原始全候选池审计标签，检验剩余机会受哪种信息替换影响。
+这是看过 PR78 结果之后设计的事后分析，不是独立确认。
+先执行未经修改的 b1_verify，对 full 原始文件、模型状态、排名和账本核验。
+本轮不调用 truth，不导入模型依赖，不进行 GP/VAE/幻想拟合或真值评价。
+全部历史评价和拟合次数列在 historical_verification，不能冒充新增成本。
+
+四个存档策略原样保留，并独立重算其所有预算结果。
+特权诊断只作用于 warm 状态，沿用原 tie hash：
+1. known_feasibility_ei：真实可行点优先，仍按原 EI 排序。
+2. known_objective_learned_risk：用真实正目标改进替代 EI，再乘原学习可行概率。
+3. known_both：真实可行点优先，并按真实正目标改进排序。
+4. known_feasibility_mean：真实可行点优先，按原目标均值从小到大排序。
+
+真实可行性是排序优先级，避免所有EI为0时与不可行点混在一起。
+若可行点不足k，其余点仅填满固定预算，不能隐瞒不可行数。
+known_objective 读取了中止点原本不可见的目标，也是特权信息。
+此条件同时移除了目标误差和目标不确定性，不能称为只消融一个核参数。
+known_both 只代表本有限候选池内的上界，不是整个连续设计域全局最优。
+特权方案不是新算法、同信息对照、可部署方案或安全保证。
+
+每个状态的四种特权排名和五个预算1/2/4/6/12全部保留，不挑有利档位。
+信息替换的收益差可以为负，联合交互项也可以为负。
+不得将它们归一化为“风险错误占比/目标错误占比”等因果份额。
+初始cold、模型失败、池内零机会和所有平局都保留；cold不制造oracle-EI结论。
+区分：原池无改进机会；有机会但两策略均未改善；两策略同样改善；近似平局；胜负。
+报告训练目标exact数量，而不是把n条风险记录当作n个完整目标样本。
+按任务/n/k汇总；跨任务只作描述性计数，不合并原始目标均值，不作新增显著性结论。
+
+技术执行（已有同SHA/输入结果时只归档，不重复）：
+python -S -m unittest discover -s tests -p test_b1_bottleneck.py -v
+python -S run_b1_bottleneck_audit.py --task run --expected-sha <审计固定SHA> --evidence-root <固定结果worktree根目录> --output <新目录>
+python -S run_b1_bottleneck_audit.py --task verify --expected-sha <审计固定SHA> --evidence-root <固定结果worktree根目录> --input <输出目录>
+python -S run_b1_bottleneck_audit.py --task check --expected-sha <审计固定SHA> --evidence-root <固定结果worktree根目录> --input <输出目录>
+
+程序默认只打印plan。固定源代码和输入证据都要求干净worktree。
+run完成为 COMPLETE_READ_ONLY_B1_BOTTLENECK_AUDIT；输出 report/states/plan/manifest。
+verify为 VERIFIED_B1_BOTTLENECK_AUDIT；check为 REJECTED_ALL_B1_AUDIT_TAMPERING。
+只修改临时副本进行4类篡改检测，不覆盖任何源文件、原始结果或封存输出。
+CI完成全量审计后，工作机只下载固定run的两份artifact归档，不再运行诊断。
+任何异常保留日志，停止，不现场修复、不放宽检查、不重跑旧实验。
