@@ -1,0 +1,56 @@
+name: b1-bottleneck-audit
+on:
+  pull_request:
+    paths:
+      - 'pr78_bottleneck_core.py'
+      - 'run_b1_bottleneck_audit.py'
+      - 'tests/test_pr78_*.py'
+      - '.github/workflows/b1-bottleneck-audit.yml'
+permissions:
+  contents: read
+jobs:
+  readonly:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: windows-latest
+            python: '3.9'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 5ff896b387a7506991ee356d9bfc981a8e080e6a
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Pure tests and safe entrypoint, no dependencies
+        working-directory: code
+        run: |
+          python -S -m unittest discover -s tests -p "test_pr78_*.py" -v
+          python -S -m compileall -q pr78_bottleneck_core.py run_b1_bottleneck_audit.py
+          python -S run_b1_bottleneck_audit.py --help
+          python -S run_b1_bottleneck_audit.py --task plan
+      - name: Verify pinned PR78 full evidence and audit all states
+        working-directory: code
+        run: python -S run_b1_bottleneck_audit.py --task run --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root ../evidence --output "${{ runner.temp }}/b1-bottleneck"
+      - name: Independent output reconstruction without fitting
+        working-directory: code
+        run: python -S run_b1_bottleneck_audit.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root ../evidence --input "${{ runner.temp }}/b1-bottleneck"
+      - name: Reject resealed output tampering
+        working-directory: code
+        run: python -S run_b1_bottleneck_audit.py --task check --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root ../evidence --input "${{ runner.temp }}/b1-bottleneck"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: b1-bottleneck-${{ matrix.os }}
+          path: ${{ runner.temp }}/b1-bottleneck
+          if-no-files-found: ignore
