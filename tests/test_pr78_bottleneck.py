@@ -3,7 +3,7 @@ import inspect
 import math
 import unittest
 
-from b1_bottleneck_core import (ACTUAL, BUDGETS, PRIVILEGED, NEW_BILL, analyze_state,
+from pr78_bottleneck_core import (ACTUAL, BUDGETS, PRIVILEGED, NEW_BILL, analyze_state,
     counts, digest, distribution, outcome, privileged_orders, summarize, winner)
 
 

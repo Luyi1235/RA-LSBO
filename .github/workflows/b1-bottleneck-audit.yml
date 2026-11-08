@@ -2,9 +2,9 @@ name: b1-bottleneck-audit
 on:
   pull_request:
     paths:
-      - 'b1_bottleneck_core.py'
+      - 'pr78_bottleneck_core.py'
       - 'run_b1_bottleneck_audit.py'
-      - 'tests/test_b1_bottleneck.py'
+      - 'tests/test_pr78_*.py'
       - '.github/workflows/b1-bottleneck-audit.yml'
 permissions:
   contents: read
@@ -35,8 +35,8 @@ jobs:
       - name: Pure tests and safe entrypoint, no dependencies
         working-directory: code
         run: |
-          python -S -m unittest discover -s tests -p test_b1_bottleneck.py -v
-          python -S -m compileall -q b1_bottleneck_core.py run_b1_bottleneck_audit.py
+          python -S -m unittest discover -s tests -p "test_pr78_*.py" -v
+          python -S -m compileall -q pr78_bottleneck_core.py run_b1_bottleneck_audit.py
           python -S run_b1_bottleneck_audit.py --help
           python -S run_b1_bottleneck_audit.py --task plan
       - name: Verify pinned PR78 full evidence and audit all states

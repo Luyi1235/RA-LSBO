@@ -10,7 +10,7 @@ import sys
 import tempfile
 from unittest.mock import patch
 
-from b1_bottleneck_core import (SCHEMA, PARENT, EVIDENCE, EVIDENCE_PATH,
+from pr78_bottleneck_core import (SCHEMA, PARENT, EVIDENCE, EVIDENCE_PATH,
     BUDGETS, NEW_BILL, analyze_state, summarize, require)
 
 
