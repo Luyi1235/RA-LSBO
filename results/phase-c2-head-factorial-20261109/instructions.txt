@@ -1,0 +1,33 @@
+# PR83 C2 任务指令副本
+
+执行 PR83 C2 风险头 × 目标头 2×2 因子在线消融；固定代码 SHA `975d96caac53d675ebe1b790a0647479a75a2ed5`，CI run `42611798409` success，分支 `research/phase-c2-head-factorial-20261109`，入口 `run_c2_head_factorial.py`。
+
+## 设计
+
+四个 task `tradeoff_s0..s3`，每 task 16 repeats，预注册种子 `960000+block+repeat`。四个因子格：风险头 frozen/updated × 目标头 frozen/updated；另加 `risk_only_updated`、`uniform_hash` 参照。四格必须完整，missing 不得填 0。
+
+smoke：264 calls（192 initial +72 online），24 trials。full：12,288 calls（3,072 initial+9,216 online），384 trials。每 trial 6 次在线评价；0 VAE、0 幻想、0 飞机/RCAIDE。真实 GP/VAE 按原算法更新。
+
+## 执行
+
+预检 34 core +15 native 测试、compileall、`--help`、`--task plan` 全部通过。smoke 成功后执行 full；任何未处理异常、种子/候选/分数/账本/manifest/哈希错误立即停止，保留 traceback 与账单，不现场修代码、不换种子、不原地重跑。
+
+## 主效应
+
+对同一 task/repeat 四格：
+
+```
+ΔR = [(y10 - y00) + (y11 - y01)] / 2
+ΔO = [(y01 - y00) + (y11 - y10)] / 2
+ΔRO = (y11 - y10) - (y01 - y00)
+```
+
+负值表示更新带来更低目标。必须报告每任务均值、中位数、W/L/T、双侧符号 p 与 12 检验 Holm；不得把任务均值混成总体均值。
+
+## 代价
+
+逐 arm 报告最终可行、无解运行、冷启动、在线失败次数、新增精确目标标签、GP head/kernel 拟合与预测计数。程序未独立拆分的字段（如 per-arm prediction）必须说明缺失，不得补造。四格在线拟合与共享初始拟合要区分。
+
+## 上传
+
+结果分支 `results/phase-c2-head-factorial-20261109`；只提交结果，不推送代码分支、不合并 PR、不 force push。保留完整 `smoke/`、`full/`、`*-analysis/`、日志、测试、plan、source receipt、账本、manifest、逐 trial proposal/observation/result、representation checkpoint、固定 SHA、环境、指令副本、SHA256 清单、中文 README。证据目录 `* -text`，上传后核对远端字节与 SHA256。
