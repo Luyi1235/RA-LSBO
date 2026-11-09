@@ -72,6 +72,7 @@ def run(root,profile,source):
   row=dict(receipt=receipt,bill_delta={k:b[k]-before[k] for k in b})
   save(rel,row,"initial_composite_sealed")
   if model is None: raise RuntimeError("Initial composite fit failed; stop")
+  model.provenance={k:dict(mode="frozen",identity=v.identity) for k,v in model.heads.items()}
   return model
  def fit_arm(public,seed,arm,frozen,rel):
   ur,uo=FLAGS[arm];before=dict(b)
