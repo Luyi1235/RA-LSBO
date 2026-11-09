@@ -12,6 +12,21 @@ from risk_learning.core import candidates,canonical,observed,truth
 
 def require(x,m):
  if not x: raise ValueError(m)
+def metric_equal(a,b,atol=1e-10,rtol=1e-10):
+ if type(a) in (int,float) and type(b) in (int,float):
+  return math.isfinite(a) and math.isfinite(b) and abs(a-b)<=atol+rtol*max(abs(a),abs(b))
+ if isinstance(a,dict) and isinstance(b,dict):
+  return set(a)==set(b) and all(metric_equal(a[k],b[k],atol,rtol) for k in a)
+ if isinstance(a,(list,tuple)) and isinstance(b,(list,tuple)):
+  return len(a)==len(b) and all(metric_equal(x,y,atol,rtol) for x,y in zip(a,b))
+ return a==b
+def same_decision_record(recorded,replayed):
+ if not isinstance(recorded,dict) or not isinstance(replayed,dict):return False
+ # Action identity and tie-breaking remain exact; only floating score serialization
+ # is compared with a tight cross-platform tolerance.
+ for key in ("mode","selected_index","selected_candidate_id"):
+  if recorded.get(key)!=replayed.get(key):return False
+ return metric_equal(recorded.get("incumbent"),replayed.get("incumbent")) and metric_equal(recorded.get("scores"),replayed.get("scores"))
 def lines(p):return [json.loads(s) for s in Path(p).read_text(encoding="utf-8").splitlines()]
 def verify(root,expected_sha=None):
  root=Path(root).resolve();nfiles=check_manifest(root)
@@ -126,7 +141,7 @@ def verify(root,expected_sha=None):
     require(proposal["pool_ref"]==poolref and proposal["pool_sha256"]==digest(pool) and proposal["available_indices"]==available and proposal["prediction_ref"]==predref,"Proposal pool/prediction binding differs")
     require(proposal["update_factors"]==FACTOR_FLAGS[a],"Proposal update factor differs")
     require(proposal["model_id"]==model_id and proposal["head_modes"]==head_modes,"Proposal head composition mismatch")
-    require(proposal["decision"]==decision,"Selected action/score mismatch")
+    require(same_decision_record(proposal["decision"],decision),"Selected action differs or score outside cross-platform tolerance")
     trial_props[a].append(proposal)
     obsref=prefix+"/trials/"+a+"/observation_%03d.json"%t;obs=get(obsref)
     c=pool[decision["selected_index"]]
