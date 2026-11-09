@@ -6,7 +6,8 @@ PROTECTED=("c1_protocol.py","c1_native.py","c1_study.py","c1_verify.py","run_c1_
  "online_confirm.py","online_confirm_stats.py","ra_lsbo","risk_learning")
 def main():
  p=argparse.ArgumentParser(description="C2 risk/objective posterior-head factorial")
- p.add_argument("--task",choices=("plan","run","verify"),default="plan")
+ p.add_argument("--task",choices=("plan","run","verify","analyze"),default="plan")
+ p.add_argument("--analysis-output",type=Path)
  p.add_argument("--profile",choices=("ci","smoke","full"),default="smoke")
  p.add_argument("--expected-sha");p.add_argument("--output",type=Path);p.add_argument("--input",type=Path)
  a=p.parse_args()
@@ -16,6 +17,10 @@ def main():
   if a.input is None:p.error("--input required")
   from c2_verify import verify
   result=verify(a.input,a.expected_sha)
+ elif a.task=="analyze":
+  if a.input is None or a.analysis_output is None or a.expected_sha is None:p.error("--input, --analysis-output and --expected-sha required")
+  from c2_analysis import analyze
+  result=analyze(a.input,a.analysis_output,a.expected_sha)
  else:
   if a.output is None or a.expected_sha is None:p.error("--output and --expected-sha required")
   from risk_learning.io import source_receipt,git
