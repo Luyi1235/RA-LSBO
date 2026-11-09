@@ -42,6 +42,8 @@ def verify(root,expected_sha=None):
   ir=get(prefix+"/models/initial.json");addbill(ir)
   initial_receipt=ir["receipt"];require(initial_receipt["status"]=="OK" and initial_receipt["training_sha256"]==digest([x["observed"] for x in initial]),"Initial composite failed/prefix mismatch")
   initial_ids={k:v["identity"] for k,v in initial_receipt["heads"].items()}
+  initial_model_id=digest(dict(training_sha256=digest([x["observed"] for x in initial]),seed=u["seed"],risk_only=False,heads=initial_ids))
+  require(initial_receipt["model_id"]==initial_model_id,"Initial model identity cannot be reconstructed")
   require({"region","resource"}.issubset(initial_ids) and set(initial_ids).issubset({"region","resource","objective"}),"Initial risk heads absent/extra")
   histories={a:[r["observed"] for r in initial] for a in ARMS}
   trial_obs={a:[] for a in ARMS};trial_props={a:[] for a in ARMS}
@@ -65,6 +67,7 @@ def verify(root,expected_sha=None):
     else:
      if a=="risk_only_updated" or a!="uniform_hash":
       fit=get(modelref);addbill(fit);rec=fit["receipt"];model_id=rec["model_id"];head_modes=rec["heads"]
+      require(rec.get("seed")==u["seed"]+t,"Updated model seed differs")
       require(rec["training_sha256"]==digest(histories[a]),"Fit used wrong arm prefix")
       for hrec in head_modes.values():
        if hrec.get("mode")=="updated":require(hrec["training_sha256"]==digest(histories[a]),"Updated head used wrong prefix")
@@ -73,6 +76,7 @@ def verify(root,expected_sha=None):
       else:
        ur,uo={"risk_frozen_objective_frozen":(False,False),"risk_updated_objective_frozen":(True,False),
         "risk_frozen_objective_updated":(False,True),"risk_updated_objective_updated":(True,True)}[a]
+       require(rec.get("update_risk") is ur and rec.get("update_objective") is uo,"Receipt factor flags differ")
        for h in ("region","resource"):
         require(head_modes[h]["mode"]==("updated" if ur else "frozen"),"Risk factor mismatch")
         if not ur: require(head_modes[h]["identity"]==initial_ids[h],"Frozen risk identity changed")
@@ -87,10 +91,24 @@ def verify(root,expected_sha=None):
     require(predrow["model_id"]==model_id and predrow["query_sha256"]==digest(pool),"Prediction provenance mismatch")
     if pred is not None:
      require(pred["candidate_ids"]==ids and pred["model_id"]==model_id,"Prediction candidate/model identity mismatch")
+     require(set(pred["probabilities"])=={"region","resource","joint"},"Risk prediction heads differ")
+     for h in ("region","resource"):
+      g=pred["gaussian"][h];ps=pred["probabilities"][h]
+      require(len(g["mean"])==len(g["variance"])==len(ps)==len(ids),"Risk prediction shape differs")
+      for m,v,q in zip(g["mean"],g["variance"],ps):
+       expected=.5*math.erfc(m/math.sqrt(2*v)) if v>0 else float(m<=0)
+       require(math.isfinite(m) and math.isfinite(v) and v>=0 and abs(q-expected)<=1e-12,"Risk probability not implied by Gaussian")
+     require(all(abs(a*b-q)<=1e-12 for a,b,q in zip(pred["probabilities"]["region"],pred["probabilities"]["resource"],pred["probabilities"]["joint"])),"Joint probability differs")
+     if "objective" not in head_modes or head_modes["objective"]["mode"] in ("unavailable_no_exact_labels","frozen_unavailable"):
+      require(pred["objective"] is None,"Unavailable objective head fabricated")
+     else:
+      require(pred["objective"] is not None and len(pred["objective"]["mean"])==len(ids)==len(pred["objective"]["variance"]),"Objective prediction shape differs")
     seen={r["candidate_id"] for r in histories[a]};available=[i for i,cid in enumerate(ids) if cid not in seen]
     decision=select_c2(a,ids,available,pred,best(histories[a]),[unit,t])
     propref=prefix+"/trials/"+a+"/proposal_%03d.json"%t;proposal=get(propref)
     require(proposal["history_sha256"]==digest(histories[a]) and proposal["history_information"]==information(histories[a]),"Proposal prefix mismatch")
+    require(proposal["pool_ref"]==poolref and proposal["pool_sha256"]==digest(pool) and proposal["available_indices"]==available and proposal["prediction_ref"]==predref,"Proposal pool/prediction binding differs")
+    require(proposal["update_factors"]==list(FLAGS[a]) if a in FLAGS else proposal["update_factors"]==[False,False],"Proposal update factor differs")
     require(proposal["model_id"]==model_id and proposal["head_modes"]==head_modes,"Proposal head composition mismatch")
     require(proposal["decision"]==decision,"Selected action/score mismatch")
     trial_props[a].append(proposal)
