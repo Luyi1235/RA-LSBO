@@ -1,0 +1,34 @@
+# PR80 Phase C1 指令副本
+
+执行等评价预算下的风险引导与代理更新试点；只读固定代码，完成预检、smoke、full、verify、证据检查和上传。不修改源码、依赖、种子或参数，不重跑 PR75/77/78/79。
+
+## 固定身份
+
+- 仓库：`https://github.com/Luyi1235/RA-LSBO`
+- PR：80
+- 代码分支：`research/phase-c1-online-learning-20261109`
+- 固定 SHA：`62b46f7a30ab5c3475cd59b86c7f3ad51974a1da`
+- CI：`42553718118`
+- 入口：`run_c1_online.py`
+- 先阅读：`docs/PHASE_C1_ONLINE_LEARNING.txt`
+
+## 范围
+
+四个 tradeoff 任务；smoke 24 trials/264 calls（192 初始+72 在线），full 192 trials/6,144 calls（1,536 共享初始+4,608 在线）；每臂每组 24 次在线，六臂 `ei_frozen`、`risk_ei_frozen`、`ei_updated`、`risk_ei_updated`、`risk_only_updated`、`uniform_hash`。
+
+## 执行
+
+- `python -S -m unittest discover -s tests -p test_c1_core.py -v`（34）
+- `python -m unittest discover -s tests -p test_c1_native.py -v`（15）
+- compileall / `--help` / `--task plan --profile full`
+- smoke：`run --profile smoke`、`verify`、`check_c1_evidence.py`
+- 只有 smoke 264 calls、0 model failures、verify `VERIFIED_C1_ONLINE`、8 类 tamper 全部拒绝，才进入 full
+- full：`run --profile full`、`verify`；不执行 CI profile
+
+## 验收
+
+- full status `COMPLETE_C1_ONLINE_PILOT`；0 未处理异常/未知；GP/预测 started=completed，errors=0
+- 六臂共享 48 条初始记录；冻结/更新首动作相同；中止目标保持缺失；无 VAE/幻想/飞机/RCAIDE
+- 主比较 `risk_ei_updated vs risk_ei_frozen`；次比较按 README
+- 上传完整 `units/*/records.jsonl`、plan、source receipt、environment、report、events、evaluations、progress、manifest、logs、analysis、integrity、SHA256 清单
+- 结果分支 `results/phase-c1-online-learning-20261109`；`* -text`；上传后核对远端字节
