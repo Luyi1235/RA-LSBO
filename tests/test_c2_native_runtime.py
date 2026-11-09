@@ -7,8 +7,8 @@ from risk_learning.core import observed
 def rows(n=18):
  out=[]
  for i in range(n):
-  x=.05+.9*i/(n-1);c=dict(branch=i%2,x=x,y=.3+.1*(i%3),trim=.4+.1*(i%2))
-  target=dict(region=x-.52,resource=-.2 if i%3 else .1,objective=(x-.31)**2+.2,feasible=(x<=.52 and i%3!=0))
+  x=.05+.9*i/(n-1);c=dict(branch=i%2,x=x,y=.3+.1*(i%3),trim=.5 if i%2==0 else .4)
+  target=dict(region=x-.52,resource=(-.2 if i%2==0 or i%3 else .1),objective=(x-.31)**2+.2,feasible=(x<=.52 and (i%2==0 or i%3!=0)))
   out.append(observed(c,target))
  return out
 
