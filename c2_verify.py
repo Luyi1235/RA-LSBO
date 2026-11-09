@@ -1,8 +1,8 @@
 """Model-free C2 verifier: replay recorded head modes, prefix isolation, scores and ledger."""
 import json,math
 from pathlib import Path
-from c2_protocol import plan,ARMS,digest,factorial
-from c2_study import select_c2,bill as empty_bill
+from c2_protocol import plan,ARMS,digest,select_c2
+from c2_protocol import bill as empty_bill
 from c1_protocol import candidates,canonical,best,information,trial_result
 from risk_learning.io import read,check_manifest
 from risk_learning.core import observed
