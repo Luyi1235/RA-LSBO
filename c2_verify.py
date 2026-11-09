@@ -40,7 +40,7 @@ def verify(root,expected_sha=None):
    eval_events.extend([dict(event="started",call_id=r["call_id"],task=u["task"],candidate_id=r["candidate_id"],candidate=r["candidate"]),dict(event="settled",call_id=r["call_id"],record_sha256=digest(r))])
    total["math_started"]+=1;total["math_settled"]+=1
   ir=get(prefix+"/models/initial.json");addbill(ir)
-  initial_receipt=ir["receipt"];require(initial_receipt["status"]=="OK","Initial composite failed")
+  initial_receipt=ir["receipt"];require(initial_receipt["status"]=="OK" and initial_receipt["training_sha256"]==digest([x["observed"] for x in initial]),"Initial composite failed/prefix mismatch")
   initial_ids={k:v["identity"] for k,v in initial_receipt["heads"].items()}
   require({"region","resource"}.issubset(initial_ids) and set(initial_ids).issubset({"region","resource","objective"}),"Initial risk heads absent/extra")
   histories={a:[r["observed"] for r in initial] for a in ARMS}
@@ -66,6 +66,8 @@ def verify(root,expected_sha=None):
      if a=="risk_only_updated" or a!="uniform_hash":
       fit=get(modelref);addbill(fit);rec=fit["receipt"];model_id=rec["model_id"];head_modes=rec["heads"]
       require(rec["training_sha256"]==digest(histories[a]),"Fit used wrong arm prefix")
+      for hrec in head_modes.values():
+       if hrec.get("mode")=="updated":require(hrec["training_sha256"]==digest(histories[a]),"Updated head used wrong prefix")
       if a=="risk_only_updated":
        require(set(head_modes)=={"region","resource"},"Risk-only fit contains objective head")
       else:
@@ -74,9 +76,9 @@ def verify(root,expected_sha=None):
        for h in ("region","resource"):
         require(head_modes[h]["mode"]==("updated" if ur else "frozen"),"Risk factor mismatch")
         if not ur: require(head_modes[h]["identity"]==initial_ids[h],"Frozen risk identity changed")
-       if uo and head_modes["objective"]["mode"]=="unavailable_no_exact_labels":
-        require("objective" not in head_modes or head_modes["objective"]["mode"]=="unavailable_no_exact_labels","Objective unavailable fabricated")
-       elif uo: require(head_modes["objective"]["mode"]=="updated","Objective factor not updated")
+       exact_objectives=sum(x["objective"]["kind"]=="exact" for x in histories[a])
+       if uo and exact_objectives==0:require(head_modes["objective"]["mode"]=="unavailable_no_exact_labels","Objective head fabricated without exact labels")
+       elif uo:require(head_modes["objective"]["mode"]=="updated","Objective factor not updated")
        else:
         require(head_modes["objective"]["mode"] in ("frozen","frozen_unavailable"),"Objective factor mismatch")
         if "objective" in initial_ids:require(head_modes["objective"]["identity"]==initial_ids["objective"],"Frozen objective identity changed")
@@ -124,7 +126,8 @@ def verify(root,expected_sha=None):
  require(lines(root/"progress.jsonl")==progress,"Progress mismatch")
  require(set(read(root/"manifest.json")["files"])==expected_paths,"Evidence file set differs")
  require(total["math_started"]==total["math_settled"]==spec["total_math_calls"],"Math budget mismatch")
+ require(total["gp_head_started"]<=spec["max_gp_heads"] and total["gp_kernel_started"]<=spec["max_gp_kernels"],"GP construction exceeds frozen maximum")
  require(total==report["bill"],"Bill differs from report")
- require(report["schema"]=="c2_head_factorial_v1" and report["status"]=="COMPLETE_C2_FACTORIAL" and report["trial_count"]==len(all_trials)==spec["trials"],"C2 report status/count differs")
+ require(report["schema"]=="c2_head_factorial_v1" and report["status"]=="COMPLETE_C2_FACTORIAL" and report["trial_count"]==len(all_trials)==spec["trials"] and report["summary"]==dict(trials=all_trials),"C2 report status/count/summary differs")
  require(all(total[k]==0 for k in ("math_errors","vae_fits","fantasy_fits","aircraft_calls","rcaide_calls")),"Forbidden/failed call")
  return dict(status="VERIFIED_C2_FACTORIAL",files=nfiles,units=len(spec["units"]),trials=len(all_trials),bill=total,new_math_calls=0)
