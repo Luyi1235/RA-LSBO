@@ -60,7 +60,7 @@ def fit_composite(rows,seed,bill,*,update_risk,update_objective,frozen=None):
  for index,name in enumerate(("region","resource")):
   if update_risk:
    h,r=_head(rows,name,seed+index,bill)
-   heads[name]=h;provenance[name]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
+   heads[name]=h;provenance[name]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"],diagnostics=r["head"])
   else:
    if frozen is None: raise ValueError("Missing frozen risk head")
    heads[name]=frozen.heads[name];provenance[name]=dict(mode="frozen",identity=heads[name].identity)
