@@ -5,7 +5,7 @@ import platform,time,traceback
 from unittest.mock import patch
 from c1_protocol import (SCHEMA as C1_SCHEMA,INITIAL,POOL,digest,best,information,
                          trial_result,feasible,ei)
-from c2_protocol import plan,ARMS
+from c2_protocol import plan,ARMS,select_c2
 from c2_native import fit_composite,_head,CompositePosterior
 from c1_native import fit as fit_all
 from c1_protocol import select as c1_select
@@ -24,25 +24,6 @@ def bill():
   gp_head_errors=0,gp_kernel_started=0,gp_kernel_completed=0,gp_kernel_errors=0,
   kernel_candidates_rejected=0,prediction_started=0,prediction_completed=0,prediction_errors=0,
   vae_fits=0,fantasy_fits=0,aircraft_calls=0,rcaide_calls=0)
-def select_c2(arm,ids,available,pred,incumbent,salt):
- import math
- from c1_protocol import digest as dg
- if arm not in ARMS or not available: raise ValueError("Invalid C2 selection request")
- scores=[0.]*len(ids);mode="uniform_hash"
- if arm!="uniform_hash":
-  if pred is None: mode="model_failure_hash"
-  elif arm=="risk_only_updated":
-   scores=list(pred["probabilities"]["joint"]);mode="risk_only"
-  elif incumbent is None or pred.get("objective") is None:
-   mode="cold_shared_hash" if incumbent is None else "no_objective_model_hash"
-  else:
-   o=pred["objective"]
-   scores=[ei(m,v,incumbent)*p for m,v,p in zip(o["mean"],o["variance"],pred["probabilities"]["joint"])]
-   mode="risk_ei"
- tie=[dg(["c2_outcome_blind_tie_v1",salt,i]) for i in ids]
- i=min(available,key=lambda j:(-scores[j],tie[j],ids[j]))
- return dict(mode=mode,scores=scores,selected_index=i,selected_candidate_id=ids[i],incumbent=incumbent)
-
 def run(root,profile,source):
  root=Path(root).resolve()
  if root.exists(): raise FileExistsError("Write-once C2 output")
