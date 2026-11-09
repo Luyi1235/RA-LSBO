@@ -94,13 +94,13 @@ def run(root,profile,source):
      if a in ("risk_only_updated","uniform_hash"):
       if a=="risk_only_updated":
        if t==0: model=risk_frozen
-       else: model,_=fit_arm(histories[a],u["seed"],a,None,prefix+"/models/"+a+"/t%03d.json"%t)
+       else: model,_=fit_arm(histories[a],u["seed"]+t,a,None,prefix+"/models/"+a+"/t%03d.json"%t)
       else:model=None
      else:
       ur,uo=FLAGS[a]
       if t==0:model=frozen
       elif ur or uo:
-       model,_=fit_arm(histories[a],u["seed"],a,frozen,prefix+"/models/"+a+"/t%03d.json"%t)
+       model,_=fit_arm(histories[a],u["seed"]+t,a,frozen,prefix+"/models/"+a+"/t%03d.json"%t)
       else:model=frozen
      predref=prefix+"/predictions/"+a+"/t%03d.json"%t
      pred=predict(model,pool,predref)
