@@ -102,14 +102,16 @@ def run(root,profile,source):
    init=[r["observed"] for r in initial]
    frozen=fit_initial(init,u["seed"],prefix+"/models/initial.json")
    histories={a:deepcopy(init) for a in ARMS};observations={a:[] for a in ARMS};proposals={a:[] for a in ARMS}
-   models={a:frozen if a not in ("risk_only_updated","uniform_hash") else None for a in ARMS}
+   risk_frozen=CompositePosterior({k:frozen.heads[k] for k in ("region","resource")},
+      digest({k:frozen.heads[k].identity for k in ("region","resource")}),
+      {k:dict(mode="frozen",identity=frozen.heads[k].identity) for k in ("region","resource")})
    for t in range(spec["steps"]):
     pool=candidates(u["seed"]+1+t,POOL);poolref=prefix+"/pools/t%03d.json"%t;save(poolref,pool,"pool_sealed")
     ids=[digest(c) for c in pool]
     for a in ARMS:
      if a in ("risk_only_updated","uniform_hash"):
       if a=="risk_only_updated":
-       if t==0: model,_=fit_arm(histories[a],u["seed"],a,None,prefix+"/models/"+a+"/t000.json")
+       if t==0: model=risk_frozen
        else: model,_=fit_arm(histories[a],u["seed"]+t,a,None,prefix+"/models/"+a+"/t%03d.json"%t)
       else:model=None
      else:
