@@ -37,7 +37,8 @@ def verify(root,expected_sha=None):
    c=candidates(u["seed"],48)[i]
    require(r["candidate"]==canonical(c) and r["candidate_id"]==digest(c),"Initial candidate changed")
    require(r["observed"]==observed(c,r["truth"]),"Initial observation changed")
-   eval_events.extend([dict(event="started",call_id=r["call_id"],task=u["task"],candidate_id=r["candidate_id"],candidate=r["candidate"]),dict(event="settled",call_id=r["call_id"],record_sha256=digest(r))])\n   total["math_started"]+=1;total["math_settled"]+=1
+   eval_events.extend([dict(event="started",call_id=r["call_id"],task=u["task"],candidate_id=r["candidate_id"],candidate=r["candidate"]),dict(event="settled",call_id=r["call_id"],record_sha256=digest(r))])
+   total["math_started"]+=1;total["math_settled"]+=1
   ir=get(prefix+"/models/initial.json");addbill(ir)
   initial_receipt=ir["receipt"];require(initial_receipt["status"]=="OK","Initial composite failed")
   initial_ids={k:v["identity"] for k,v in initial_receipt["heads"].items()}
@@ -56,8 +57,8 @@ def verify(root,expected_sha=None):
     elif a=="risk_only_updated" and t==0:
      model_id=digest({k:initial_ids[k] for k in ("region","resource")})
      head_modes={k:dict(mode="frozen",identity=initial_ids[k]) for k in ("region","resource")}
-    elif a in ("risk_frozen_objective_frozen","risk_frozen_objective_updated",
-                "risk_updated_objective_frozen","risk_updated_objective_updated") and t==0:
+    elif a=="risk_frozen_objective_frozen" or (a in ("risk_frozen_objective_updated",
+                "risk_updated_objective_frozen","risk_updated_objective_updated") and t==0):
      model_id=initial_receipt["model_id"]
      head_modes={k:dict(mode="frozen",identity=v) for k,v in initial_ids.items()}
     else:
@@ -93,13 +94,19 @@ def verify(root,expected_sha=None):
     c=pool[decision["selected_index"]]
     require(obs["candidate"]==canonical(c) and obs["candidate_id"]==digest(c),"Unevaluated/wrong candidate selected")
     require(obs["observed"]==observed(c,obs["truth"]),"Observation differs from truth")
-    eval_events.extend([dict(event="started",call_id=obs["call_id"],task=u["task"],candidate_id=obs["candidate_id"],candidate=obs["candidate"]),dict(event="settled",call_id=obs["call_id"],record_sha256=digest(obs))])\n    total["math_started"]+=1;total["math_settled"]+=1
+    eval_events.extend([dict(event="started",call_id=obs["call_id"],task=u["task"],candidate_id=obs["candidate_id"],candidate=obs["candidate"]),dict(event="settled",call_id=obs["call_id"],record_sha256=digest(obs))])
+    total["math_started"]+=1;total["math_settled"]+=1
     trial_obs[a].append(obs["observed"]);histories[a].append(obs["observed"])
+  first_actions=[trial_props[a][0]["decision"]["selected_candidate_id"] for a in ("risk_frozen_objective_frozen","risk_updated_objective_frozen","risk_frozen_objective_updated","risk_updated_objective_updated")]
+  require(len(set(first_actions))==1,"Four factorial cells do not share first action")
   for a in ARMS:
-   ref=prefix+"/trials/"+a+"/result.json";r=get(ref);all_trials.append(r)\n   expected_trial=trial_result(u["task"],u["repeat"],a,[x["observed"] for x in initial],trial_obs[a],trial_props[a])\n   require(r==expected_trial,"Trial summary differs from observable trajectory")
+   ref=prefix+"/trials/"+a+"/result.json";r=get(ref);all_trials.append(r)
+   expected_trial=trial_result(u["task"],u["repeat"],a,[x["observed"] for x in initial],trial_obs[a],trial_props[a])
+   require(r==expected_trial,"Trial summary differs from observable trajectory")
   require(order==[x["ref"] for x in rows],"Record order mismatch")
   progress.append(dict(unit=unit,completed_trials=len(all_trials),math_settled=total["math_settled"]))
- require(lines(root/"evaluations.jsonl")==eval_events,"Evaluation ledger mismatch")\n require(len(lines(root/"events.jsonl"))>=len(eval_events),"Event journal incomplete")
+ require(lines(root/"evaluations.jsonl")==eval_events,"Evaluation ledger mismatch")
+ require(len(lines(root/"events.jsonl"))>=len(eval_events),"Event journal incomplete")
  require(lines(root/"progress.jsonl")==progress,"Progress mismatch")
  require(set(read(root/"manifest.json")["files"])==expected_paths,"Evidence file set differs")
  require(total["math_started"]==total["math_settled"]==spec["total_math_calls"],"Math budget mismatch")
