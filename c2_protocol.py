@@ -24,6 +24,7 @@ def plan(profile):
  return dict(schema="c2_head_factorial_v1",profile=profile,units=units,tasks=list(p["tasks"]),
   arms=list(ARMS),initial=INITIAL,pool=POOL,steps=h,checkpoints=[k for k in (6,12,24) if k<=h] or [h],
   initial_calls=n*INITIAL,online_calls=n*len(ARMS)*h,total_math_calls=n*(INITIAL+len(ARMS)*h),
+  max_gp_heads=n*(3+8*(h-1)),max_gp_kernels=8*n*(3+8*(h-1)),
   trials=n*len(ARMS),training_shared_once=True,same_design_across_arms_charged_per_arm=True,
   no_label_resampling=True,no_unselected_evaluation=True,new_vae_fits=0,new_fantasy_fits=0,
   aircraft_calls=0,rcaide_calls=0,seed_block=p["block"],
