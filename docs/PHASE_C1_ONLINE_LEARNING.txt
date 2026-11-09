@@ -1,0 +1,91 @@
+RA-LSBO Phase C1 / 2026-11-09
+共同初始数据、相同真实调用预算下：风险信息 × 代理更新。
+
+当前阶段不是 PR78 固定排名或 PR79 只读审计的重复，不使用旧结果标签。
+PR79已归档于55c94b8b2d0b0d00f40d60f37af84c75c2c14bb8。
+源码父提交27e9724150961b44268bd6672dc41abe32b8455b；仅新增c1文件，不改变旧模型/任务。
+进入工作机实验前必须核对新固定代码SHA及其完整CI，不以浮动HEAD执行。
+
+一、唯一研究问题与局限
+先前主设置48条记录的目标exact标签仅2–10、中位5.5；这一观察提出数据获取/更新假设，不能证明样本数是唯一原因。
+本阶段让简单策略每次只评价自身选中的点，检查风险引导获得的可观测目标信息及在线重拟合能否改善最终可行设计。
+不是新算法创新验证，不加入前瞻、额外信息奖励、风险阈值、复杂覆盖、VAE或特权真值。
+保持当前显式结构特征、StableGroupedHead、4x2核网格、部分观测契约和EI公式。
+只用tradeoff_s0–s3已知开发任务；不运行预留s4–s7，不外推跨任务/飞机/安全保证。
+
+二、六臂、2x2与参照
+- ei_frozen：初始代理固定，按EI选点。
+- risk_ei_frozen：初始代理固定，按EI乘学习可行概率选点。
+- ei_updated：自身每次真实反馈加入后，下次选点前重新拟合，按EI。
+- risk_ei_updated：同样更新自身历史，按EI乘学习可行概率。
+- risk_only_updated：更新自身约束代理，只按联合可行概率选点。
+- uniform_hash：与标签无关的候选哈希排序，确定性随机式参照，不是解析随机期望。
+所有臂共同使用48个随机初始真值；初始拟合/首步预测共享，保证匹配EI两臂首动作相同。
+冻结的是后验，而不是当前最佳可行目标：所有EI臂都用自己的实时可行incumbent。
+无可行incumbent时四EI臂共用哈希回退；初始无目标头的冻结臂后来发现可行目标后仍不补训，明确记录no_objective_model_hash。
+主终点按initial_warm预定义，不把这些cold回退当作EI学习有效性证据。cold不删除、不重采样。
+风险加权使用约束头独立乘积，保留建模假设，不声称概率校准。
+更新臂重拟合目标/约束，但对risk_only参照不做无用的目标拟合（共享初始拟合除外）。
+注册ModelNumericalFailure必须保留原因，本步显式hash回退；下一步新历史可重新拟合，不在同前缀重试。
+未处理程序、数值或评价器异常立即停止封存，不把未知当物理失败。
+
+三、冻结任务/样本/预算
+每profile固定初始48，候选池每轮256，使用不依赖标签的同一逐轮候选流；仅剔除本臂已经评价的精确重复点。
+ci：s0/s3，各1重复，在线2次/臂；96初始+24在线=120实际评价，12轨迹。
+smoke：s0–s3，各1重复，在线3次/臂；192初始+72在线=264实际评价，24轨迹。
+full：s0–s3，各8重复，在线24次/臂；1536初始+4608在线=6144实际评价，192轨迹。
+工作机smoke+full合计6408次解析数学评价；不重跑CI，测试与CI费用另列。
+full检查点6/12/24来自同一轨迹，不是独立重复。每臂真实从零成本48+k，既有数据成本k，24步时每臂72次。
+共同初始只计一次；不同臂即使选到同一点，也实际单独调用并收费，不缓存真值冒充调用。
+无全候选池真值审计：未选中点不评价，不在本轮补充oracle标签。
+full最多5984个GP头、47872次核构造；部分初始无目标时减少，错误和拒绝如实计数。
+预测调用另计，冻结模型可对新候选池预测但禁止重新拟合。
+候选随机块ci810000/smoke820000/full830000，每任务间隔1000、重复间隔32；所有profile/任务/迭代的种子不重叠。
+不为了凑够目标标签持续评价；24次预算内失败也消耗一次。真实目标标签数是结果，不是停止条件。
+
+四、主分析及非事后挑选
+主比较risk_ei_updated对risk_ei_frozen，固定四任务、initial_warm、最终24调用，逐任务配对目标差/WLT。
+同时完整保留all与initial_cold以及6/12步次要结果；不跨任务平均原始目标。
+匹配交叉对照：ei_updated对ei_frozen；risk_ei_updated对ei_updated；risk_ei_frozen对ei_frozen。
+参照：risk_ei_updated对risk_only_updated与uniform_hash。
+每个比较报告最终可行目标、改善次数、首次发现位置、全部无解轨迹、失败数、新exact目标数、构型覆盖、拟合/预测费用、回退。
+样本更多与目标更好可以相关，但不由此宣称因果中介或仅由标签数量导致。更新后的选点历史不同，不冒称同历史后验对比。
+即使risk加权更新更好，也不能宣称48初始+24在线为最优分配；本轮没有改变初始分配或总预算。
+若两种评分都从更新获益：先归因于这套学习闭环，不直接证明风险专属机制。
+若标签数增加而目标无改善：如实保留，不加信息奖励系数或删掉负例。
+这仍是探索性开发任务试点，不提供显著性/安全保证，不自动启动下一阶段。
+
+五、实现与证据
+入口run_c1_online.py默认plan，run需要--task run --profile --expected-sha --output。
+每个task/repeat的完整数据保存在units/<task>/r<repeat>/records.jsonl。
+该journal逐条追加并flush，包含ref和value：initial、模型拟合收据、原始池、预测、每次proposal、observation和trial结果。
+ref为逻辑引用，不是磁盘上另一份JSON文件；不得据ref去补造不存在的文件。
+events.jsonl记录每个逻辑记录的SHA256，以及fit、proposal封存和evaluation顺序；evaluations.jsonl独立记录started/settled/error。
+只有proposal已写入journal且封存后才调用evaluator。fit只接收本臂observable记录，不能读取task公式、未来/其他臂结果或旧实验数据。
+冻结模型始终绑定initial；更新模型逐次绑定自身已结算前缀，原始真值不传入模型。
+无VAE checkpoint、fantasy文件或feature_reference；不需要旧证据worktree/附件。
+封存目录包含plan/source_receipt/environment/report或failure/evaluations/events/progress/units/manifest。
+标准库verify不评价/拟合，复算全部可观测反馈、EI/P(feasible)、选点、历史哈希、标签数、模型来源、首步匹配、曲线、配对汇总和费用。
+只读重算的浮点聚合沿用原rtol1e-12/atol1e-14；文件SHA/标签/整数账本严格相同，不放宽旧模型检查。
+check_c1_evidence.py只改临时副本，重封后测试8类篡改拒绝，不改输入证据。
+源文件防回归检查保护ra_lsbo/risk_learning/B1；命名c1避免旧b1通配CI误触发。
+
+六、工作机执行
+先查同SHA/profile/plan是否已有成功或失败尝试；完整结果只核验引用，不换目录重做；失败先报告，不自动重试。
+新干净detached worktree，已有Rcaide_vsp，不安装Linux、不升级依赖、不改全局Git设置、不推送代码。
+每条命令分别保存日志/退出码，非零立即停止。
+预检：
+python -S -m unittest discover -s tests -p test_c1_core.py -v
+python -m unittest discover -s tests -p test_c1_native.py -v
+python -m compileall -q c1_protocol.py c1_native.py c1_study.py c1_verify.py run_c1_online.py check_c1_evidence.py
+python -S run_c1_online.py --help
+python -S run_c1_online.py --task plan --profile full
+纯测试34项，原生测试15项，0skip；合成测试的真实GP计算另计。
+run smoke后verify及check_c1_evidence全部通过，且model_failure_calls=0，才启动full。不得依据smoke优化效果决定继续。
+成功状态COMPLETE_C1_ONLINE_PILOT；注册模型回退时COMPLETE_WITH_MODEL_FALLBACKS；verify为VERIFIED_C1_ONLINE。
+full中的已注册回退保留并继续预定预算，不删除轨迹；意外错误立即STOPPED_ERROR并封存账本。
+结果根必须在源码worktree外，smoke/full各自新目录由程序创建；外层日志不能写进封存目录。
+运行和核验指令见PR最终说明，只有CI全通过后才执行。
+结果新分支results/phase-c1-online-learning-20261109；如已存在先核对是否已完成，不因名字被占用就新增后缀重跑。
+证据路径* -text，上传原始journal/manifest/日志/版本/退出码/SHA清单并核对远端字节。
+禁止覆盖PR75/77/78/79，不合并PR，不更改main，不运行保留任务或飞机。
