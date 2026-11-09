@@ -73,6 +73,7 @@ def run(root,profile,source):
   save(rel,row,"initial_composite_sealed")
   if model is None: raise RuntimeError("Initial composite fit failed; stop")
   model.provenance={k:dict(mode="frozen",identity=v.identity) for k,v in model.heads.items()}
+  if "objective" not in model.heads:model.provenance["objective"]=dict(mode="frozen_unavailable")
   return model
  def fit_arm(public,seed,arm,frozen,rel):
   ur,uo=FLAGS[arm];before=dict(b)
