@@ -1,0 +1,33 @@
+# PR81 / C1R 任务指令副本
+
+执行冻结 C1 方法的新种子复现；只读固定代码，完成预检、smoke、full、只读核验和分析，并上传完整证据。不得重跑 PR80、review-pilot 或 CI，不读取旧标签训练。
+
+## 固定身份
+
+- 仓库：`Luyi1235/RA-LSBO`
+- PR：81
+- 分支：`research/phase-c1-replication-20261109`
+- 固定代码 SHA：`0a532a16e59c0f94e5263ad77a8a7e6f145196d1`
+- CI run：`42563035210`
+- 实验身份：`c1r_fresh_seed_replication_v1`
+- 输入 PR80 结果 HEAD：`b3ebfec2c7771eef57919a0a96eb7a0223a266ed`
+
+## 预检
+
+38 项标准库测试、15 项原生测试，0 skip；compileall、`--help`、`--task plan --profile full` 均 exit 0。计划必须显示 `replication_id=c1r_fresh_seed_replication_v1`、384 trials、12,288 次评价、种子块 930000。
+
+## 运行
+
+- smoke：264 次（192 initial + 72 online），24 trials；状态 `COMPLETE_C1_ONLINE_PILOT`；`model_failure_calls=0`；verify 11 files；十类篡改全部拒绝。
+- full：12,288 次（3,072 + 9,216），384 trials；状态 `COMPLETE_C1_ONLINE_PILOT` 或 `COMPLETE_WITH_MODEL_FALLBACKS`；verify 71 files。
+- 独立分析：`--task analyze --input full --output full-analysis`，状态 `COMPLETE_C1R_ANALYSIS`；不得写入 full 目录。
+
+## 冻结设计
+
+六臂：`ei_frozen`、`risk_ei_frozen`、`ei_updated`、`risk_ei_updated`、`risk_only_updated`、`uniform_hash`。四任务 tradeoff_s0–s3；每任务 16 repeats；48 初始 + 24 在线/臂；共享初始 3,072；在线 9,216；总计 12,288。VAE/幻想/飞机/RCAIDE 为 0；GP 拟合与预测为真实计算。
+
+主分析：每任务 initial_warm、24 步终点、`risk_ei_updated` vs `risk_ei_frozen`；双侧精确符号检验 + 四任务 Holm。不混合任务原始目标，不把同轨迹检查点当独立重复。
+
+## 上传
+
+结果分支 `results/phase-c1r-replication-20261109`。保留 smoke/full 的 plan、source_receipt、environment、report、events、evaluations、progress、units/*/records.jsonl、manifest；保留独立 full-analysis/report.json、trials.json、manifest.json；外层日志、退出码、环境、指令和 SHA256 清单。证据目录 `* -text`，上传后核对远端字节。不推送代码分支、不 force push、不合并 PR、不覆盖旧结果。

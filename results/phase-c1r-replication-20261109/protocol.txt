@@ -1,0 +1,101 @@
+C1R: fresh-seed replication of the frozen C1 method
+
+Parent implementation: 62b46f7a30ab5c3475cd59b86c7f3ad51974a1da.
+Completed pilot result: b3ebfec2c7771eef57919a0a96eb7a0223a266ed.
+The pilot is complete. Never rerun its smoke/full or overwrite its evidence.
+
+1. Scientific question and freeze
+The positive C1 comparison motivates an independent fresh-seed replication,
+not an additional tuned acquisition function. Keep exactly the same four
+known tradeoff tasks, six arms, initial48, pool256, online24, GP models, kernel
+grid, EI, feasible incumbent updates, censored feedback and fallback rules.
+Run the unmodified c1_study engine. Only its plan provider and the verifier's
+plan provider are scoped to the C1R plan. Old source files are unchanged.
+No evaluation of held-out s4-s7; this is NOT held-out-task confirmation.
+No new algorithm novelty or safety guarantee is claimed.
+
+Arms: ei_frozen, risk_ei_frozen, ei_updated, risk_ei_updated,
+risk_only_updated, uniform_hash.
+Main comparison: risk_ei_updated vs risk_ei_frozen.
+Endpoint: final best feasible objective after 24 calls, initial_warm only,
+separately for each of tradeoff_s0,s1,s2,s3. Lower is better.
+Failures, exact-objective yield, branches and computation costs are reported
+alongside target improvement, not hidden or turned into an unregistered penalty.
+All cold groups retained. No replacement seeds, no resampling to obtain labels.
+
+2. New data, fixed resources
+ci: tasks s0,s3, one repeat, 48+6*2 calls/unit = 120 total.
+smoke: all four tasks, one repeat, 48+6*3 = 264 total.
+full: all four tasks, sixteen repeats, 48+6*24 = 12288 total.
+Full: 3072 shared initial + 9216 online; 384 trajectories; at most
+11968 GP heads and 95744 kernel constructions; actual errors counted.
+Workstation smoke+full = 12552 cheap mathematical evaluations. CI/tests separate.
+Seed blocks ci910000/smoke920000/full930000; each unit seed is
+block+1000*task_index+32*repeat; each candidate stream uses seed+1+t.
+The blocks and repeats are fixed before full data; no optional sample-size increase.
+The six arms share initial labels once. Cross-arm same-point online calls are
+still separately executed and charged. Unchosen pool points are not evaluated.
+Each full arm has equal from-zero cost72 or incremental24 if historical data exist.
+This does not imply equal GP wall time or an optimal initial/online split.
+No old experiment labels are used by the replication.
+
+3. Predefined statistical report
+For each of four tasks, report all seed-level objective differences, mean,
+median and W/L/T. Ties use the original tolerance 1e-10*max(1,abs(a),abs(b)).
+Primary directional test is the two-sided exact binomial sign test on non-ties.
+No discordances gives p=1. Apply Holm adjustment across exactly four tasks,
+family-wise alpha=.05. This tests win/loss direction, NOT the mean effect size.
+A rejection in the opposite direction is adverse, not success. Always report
+sign, raw effects, ties, failures and sample counts. Absence of rejection is
+inconclusive, not proof of equivalence. No pooling with the eight pilot seeds.
+No cross-task raw objective average. Other contrasts and k6/k12 are descriptive,
+not additional independent samples or new primary tests.
+The same report can summarize the old pilot, but confirmatory=false there.
+With registered model failures, keep the predefined fallback trajectories in
+analysis; no selective removal. No assumed calibrated real-world failure cost.
+
+4. Entry points and readiness
+run_online_confirmation.py defaults to --task plan --profile full.
+All tasks except plan require --expected-sha of the new fixed tested code.
+--task run: --profile smoke/full --output NEW_DIR.
+--task verify: --input RUN_DIR (standard library; no evaluation/fitting).
+--task tamper: --input RUN_DIR; eight inherited + two replication-specific
+checks using temporary copies only.
+--task analyze: --input RUN_DIR --output NEW_ANALYSIS_DIR; verifies first.
+Analysis is outside sealed run output, has its own manifest, is model-free.
+--task review-pilot: CI only, pinned --evidence-root at old result HEAD;
+no model fitting or truth calls. Workstation does not rerun this review.
+
+Runtime report status remains COMPLETE_C1_ONLINE_PILOT or
+COMPLETE_WITH_MODEL_FALLBACKS because the C1 runner is reused unchanged.
+Replication identity is plan.replication_id and source_receipt.replication_id =
+c1r_fresh_seed_replication_v1. Never identify an experiment by status alone.
+verify status remains VERIFIED_C1_ONLINE and adds replication_id.
+Analysis status COMPLETE_C1R_ANALYSIS. Tamper REJECTED_ALL_REPLICATION_TAMPERING.
+The read-only original review is COMPLETE_PILOT_READ_ONLY_REVIEW.
+
+5. Gate and handling
+First check same SHA/profile/plan already completed or failed. Completed is
+referenced, not rerun; failed attempt requires review, not new-directory retry.
+Git-only delivery, clean detached worktree, existing Rcaide_vsp environment.
+No ZIP, no dependency upgrade, no edits or working-machine code pushes.
+38 new pure tests plus 15 unchanged native tests, compile/help/plan must pass.
+Smoke must complete with model_failure_calls=0, math started=settled264,
+verification and all ten tamper checks passing before full. Positive/negative
+optimization effects do NOT control continuation. Full registered fallback is
+retained; unexpected errors stop and preserve tracebacks and actual bills.
+No early stop for success, failure-count patterns or p-values. No extra seeds.
+
+6. Evidence
+Keep original run journals: plan/source_receipt/environment/report or failure,
+evaluations/events/progress/units/*/records.jsonl and manifest. ref/value are
+logical records, not missing disk files. No VAE/fantasy artifacts are expected.
+Keep full-analysis/report.json,trials.json,manifest.json separately. These
+recompute paired objectives/failures and online-only branch coverage. Stored
+selected-point forecast diagnostics are policy-conditioned, not global calibration.
+External logs, exit codes, environment, instructions and SHA256 list remain
+outside sealed run/analysis directories. Evidence * -text, remote byte checks.
+Suggested result branch results/phase-c1r-replication-20261109; check for prior
+results before choosing a suffix. Do not merge PRs, overwrite prior results,
+force push, run held-out tasks or aircraft/RCAIDE. VAE/fantasies/aircraft all0;
+real GP fits and costs are not0.
