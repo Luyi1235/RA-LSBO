@@ -1,6 +1,6 @@
 """Independent C2 posterior-head composer; never edits the frozen C1 fitter."""
 from copy import deepcopy
-import hashlib,json,math,time
+import math
 from unittest.mock import patch
 from c1_native import Posterior
 from c1_protocol import digest
@@ -12,8 +12,7 @@ from ra_lsbo.risk_core.observations import OutputObservation
 def _head(rows,name,seed,bill):
  public=deepcopy(rows)
  if name in ("region","resource"):
-  payload=training_payload(public,"native_censored")
-  subset=payload
+  subset=training_payload(public,"native_censored")
  else:
   subset=[dict(candidate=r["candidate"],candidate_id=r["candidate_id"],objective=r["objective"])
           for r in public if r["objective"]["kind"]=="exact"]
@@ -47,9 +46,10 @@ def _head(rows,name,seed,bill):
  return head,dict(status="OK",training_sha256=digest(public),head=diag)
 
 class CompositePosterior(Posterior):
- """Prediction uses exactly two risk heads and one objective head."""
+ """Prediction composes two risk heads and an optional objective head."""
  def __init__(self,heads,identity,provenance):
-  if set(heads)!={"region","resource","objective"}: raise ValueError("Composite requires exactly three heads")
+  if not {"region","resource"}.issubset(heads) or set(heads)-{"region","resource","objective"}:
+   raise ValueError("Composite requires both risk heads and at most one objective head")
   super().__init__(heads,identity);self.provenance=provenance
 
 def fit_composite(rows,seed,bill,*,update_risk,update_objective,frozen=None):
@@ -57,25 +57,30 @@ def fit_composite(rows,seed,bill,*,update_risk,update_objective,frozen=None):
  if frozen is None and not (update_risk and update_objective):
   raise ValueError("Initial composite must fit both factors")
  heads={};provenance={}
- for name in ("region","resource"):
+ for index,name in enumerate(("region","resource")):
   if update_risk:
-   h,r=_head(rows,name,seed+("region","resource").index(name),bill)
+   h,r=_head(rows,name,seed+index,bill)
    heads[name]=h;provenance[name]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
   else:
    if frozen is None: raise ValueError("Missing frozen risk head")
    heads[name]=frozen.heads[name];provenance[name]=dict(mode="frozen",identity=heads[name].identity)
  if update_objective:
   h,r=_head(rows,"objective",seed+2,bill)
-  if h is None: raise ValueError("No exact objective labels for objective-head update")
-  heads["objective"]=h;provenance["objective"]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
+  heads["objective"]=h
+  provenance["objective"]=(dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
+                           if h is not None else dict(mode="unavailable_no_exact_labels"))
  else:
-  if frozen is None: raise ValueError("Missing frozen objective head")
-  heads["objective"]=frozen.heads["objective"];provenance["objective"]=dict(mode="frozen",identity=heads["objective"].identity)
- if not all(heads.values()): raise ValueError("Composite has missing head")
+  if frozen is None: raise ValueError("Missing frozen objective state")
+  h=frozen.heads.get("objective")
+  if h is not None: heads["objective"]=h
+  provenance["objective"]=(dict(mode="frozen",identity=h.identity) if h is not None
+                           else dict(mode="frozen_unavailable"))
+ if not heads["region"] or not heads["resource"]: raise ValueError("Composite missing risk head")
  if frozen is not None:
-  for name in ("region","resource","objective"):
-   if not (update_risk if name!="objective" else update_objective):
-    if heads[name] is not frozen.heads[name]: raise ValueError("Frozen head object was not reused")
+  for name,update in (("region",update_risk),("resource",update_risk),("objective",update_objective)):
+   if not update:
+    old=frozen.heads.get(name);new=heads.get(name)
+    if new is not old: raise ValueError("Frozen head object was not reused: "+name)
  identity=digest(dict(training_sha256=digest(rows),seed=seed,update_risk=update_risk,
   update_objective=update_objective,heads={k:v.identity for k,v in heads.items()}))
  return CompositePosterior(heads,identity,provenance),dict(status="OK",model_id=identity,
