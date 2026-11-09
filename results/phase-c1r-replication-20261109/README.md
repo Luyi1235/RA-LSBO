@@ -54,12 +54,12 @@ PR：<https://github.com/Luyi1235/RA-LSBO/pull/81>
 | comparison | s0 | s1 | s2 | s3 | 总 W/L/T |
 |---|---:|---:|---:|---:|---:|
 | `ei_updated` vs `ei_frozen` | −0.3907 | +0.0910 | −0.4343 | −0.0798 | 17/17/28 |
-| `risk_ei_updated` vs `ei_updated` | −0.0525 | −0.2577 | −0.1377 | +0.1358 | 43/7/14 |
-| `risk_ei_frozen` vs `ei_frozen` | −0.2017 | −0.0927 | −0.4263 | +0.3868 | 26/12/26 |
-| `risk_ei_updated` vs `risk_only_updated` | −0.2151 | −0.1906 | −0.5827 | −0.9946 | 52/6/6 |
-| `risk_ei_updated` vs `uniform_hash` | −0.2524 | −0.1432 | −0.5756 | −0.0816 | 48/8/8 |
+| `risk_ei_updated` vs `ei_updated` | −0.0525 | −0.2577 | −0.1377 | +0.1358 | 43/6/13 |
+| `risk_ei_frozen` vs `ei_frozen` | −0.2017 | −0.0927 | −0.4263 | +0.3868 | 25/12/25 |
+| `risk_ei_updated` vs `risk_only_updated` | −0.2151 | −0.1906 | −0.5827 | −0.9946 | 51/5/6 |
+| `risk_ei_updated` vs `uniform_hash` | −0.2524 | −0.1432 | −0.5756 | −0.0816 | 47/8/7 |
 
-- 单纯“在线更新”（`ei_updated` vs `ei_frozen`）没有稳定收益；风险更新臂相对普通更新臂更好（43/7/14），但相对冻结风险臂的优势主要来自更新。
+- 单纯“在线更新”（`ei_updated` vs `ei_frozen`）没有稳定收益；风险更新臂相对普通更新臂更好（43/6/13），但相对冻结风险臂的优势主要来自更新。
 - `risk_only_updated` 目标差、失败和标签量与 `risk_ei_updated` 方向相反：它只有 81 次在线失败、1,455 个新标签，但最终只有 63/64 可行、36 次改善，目标更差；`risk_ei_updated` 用更多失败/更少标签换取目标改善。
 - `risk_ei_frozen` 相对 `ei_frozen` 的收益在 s3 反向（+0.3868），说明冻结风险不是一致优势。
 - 6/12 步为次要描述结果，不构成新的独立检验。
