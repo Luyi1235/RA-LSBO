@@ -3,7 +3,7 @@ import json,math
 from pathlib import Path
 from c2_protocol import plan,ARMS,digest,factorial
 from c2_study import select_c2,bill as empty_bill
-from c1_protocol import candidates,canonical,best,information
+from c1_protocol import candidates,canonical,best,information,trial_result
 from risk_learning.io import read,check_manifest
 from risk_learning.core import observed
 
@@ -96,8 +96,7 @@ def verify(root,expected_sha=None):
     eval_events.extend([dict(event="started",call_id=obs["call_id"],task=u["task"],candidate_id=obs["candidate_id"],candidate=obs["candidate"]),dict(event="settled",call_id=obs["call_id"],record_sha256=digest(obs))])\n    total["math_started"]+=1;total["math_settled"]+=1
     trial_obs[a].append(obs["observed"]);histories[a].append(obs["observed"])
   for a in ARMS:
-   ref=prefix+"/trials/"+a+"/result.json";r=get(ref);all_trials.append(r)
-   require(r["candidate_path"]==[x["candidate_id"] for x in []] or len(r["candidate_path"])==spec["steps"],"Trial path length mismatch")
+   ref=prefix+"/trials/"+a+"/result.json";r=get(ref);all_trials.append(r)\n   expected_trial=trial_result(u["task"],u["repeat"],a,[x["observed"] for x in initial],trial_obs[a],trial_props[a])\n   require(r==expected_trial,"Trial summary differs from observable trajectory")
   require(order==[x["ref"] for x in rows],"Record order mismatch")
   progress.append(dict(unit=unit,completed_trials=len(all_trials),math_settled=total["math_settled"]))
  require(lines(root/"evaluations.jsonl")==eval_events,"Evaluation ledger mismatch")\n require(len(lines(root/"events.jsonl"))>=len(eval_events),"Event journal incomplete")
