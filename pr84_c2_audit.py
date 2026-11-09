@@ -113,6 +113,9 @@ def audit(root,output):
   require(key in recomputed_results and row==recomputed_results[key],"Report-level trial differs from unit journal: "+str(key))
  # Compare independent recomputation to all published summaries.
  published=summary["arms"]
+ with (root/"arm_costs.csv").open(encoding="utf-8",newline="") as fh:
+  cost_rows={r["arm"]:r for r in csv.DictReader(fh)}
+ require(set(cost_rows)==set(ARMS),"arm_costs.csv arm set mismatch")
  comparisons={}
  for arm,s in byarm.items():
   p=published[arm]
