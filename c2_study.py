@@ -60,7 +60,7 @@ def run(root,profile,source):
   if arm=="risk_only_updated":
    heads={};prov={}
    for i,n in enumerate(("region","resource")):
-    h,r=_head(public,n,seed+i,b);heads[n]=h;prov[n]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
+    h,r=_head(public,n,seed+i,b);heads[n]=h;prov[n]=dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"],diagnostics=r["head"])
    model=CompositePosterior(heads,digest({k:v.identity for k,v in heads.items()}),prov)
    receipt=dict(status="OK",model_id=model.identity,heads=prov,training_sha256=digest(public),seed=seed,update_risk=True,update_objective=False)
   else:
