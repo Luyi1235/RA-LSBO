@@ -45,19 +45,19 @@ evaluation, no label resampling. VAE/fantasy/aircraft/RCAIDE zero.
 
 Implementation and authorization status
 
-The runnable C2 implementation is complete at code SHA:
-64ecc3b2f1638ba1e3586be71400ed420579582e
+The runnable C2 implementation and all technical gates have been completed.
+The only authorized workstation code version is the exact current head SHA
+shown in PR #83, provided the latest C2 workflow run for that same SHA has
+conclusion SUCCESS for both Windows/Python 3.9 and Ubuntu/Python 3.9, and the
+dependent Python 3.13 cross-version verifier also succeeds.
 
-GitHub Actions run 42610032063 completed successfully on this exact SHA:
-- Ubuntu/Python 3.9 native integration: success.
-- Windows/Python 3.9 native integration: success.
-- Python 3.13 verification and read-only analysis of the Windows artifact: success.
+The successful CI gate includes the six-arm real-GP integration (120
+mathematical evaluations), model-free verification, read-only factorial
+analysis, and resealed-copy tamper checks. CI technical calls are not part of
+the workstation smoke/full budget.
 
-The CI included the six-arm real-GP integration (120 mathematical evaluations),
-model-free verification, read-only factorial analysis, and resealed-copy tamper
-checks. This authorizes workstation smoke, followed by full only after smoke
-verification and evidence checks pass.
-
-The PR remains draft and unmerged. Workstation execution must use this exact
-SHA and the frozen profiles above. No code modification, dependency change,
-seed replacement, budget change, or old-stage rerun is authorized.
+PR #83 remains draft and unmerged. Workstation execution must use the exact
+current PR head after verifying the matching CI run. No code modification,
+dependency change, seed replacement, budget change, or old-stage rerun is
+authorized. Run smoke first; run full only after smoke verification and
+evidence checks pass.
