@@ -18,7 +18,7 @@ def _head(rows,name,seed,bill):
           for r in public if r["objective"]["kind"]=="exact"]
   if not subset: return None,dict(status="NO_EXACT_OBJECTIVE")
  x=__import__("numpy").asarray([features(r["candidate"]) for r in subset])
- observations=[OutputObservation(evidence_id=digest(["c2",name,r["candidate_id"]]),**r[name]) for r in subset]
+ observations=[OutputObservation(evidence_id=digest(["c1",name,r["candidate_id"]]),**r[name]) for r in subset]
  exact=[r[name]["value"] for r in subset if r[name]["kind"]=="exact"]
  center=math.fsum(exact)/len(exact) if name=="objective" and exact else 0.
  if name=="objective" and len(exact)>1:
