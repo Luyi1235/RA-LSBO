@@ -98,12 +98,25 @@ class NativeTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         new=['c1_protocol.py','c1_native.py','c1_study.py','c1_verify.py','check_c1_evidence.py','run_c1_online.py',
              'tests/test_c1_core.py','tests/test_c1_native.py','docs/PHASE_C1_ONLINE_LEARNING.txt','.github/workflows/c1-online-learning.yml']
+        def pr_patterns(content):
+            # The historical comparison workflow is branch-restricted PUSH only.
+            # Read the actual PR event, not an unrelated event's paths block.
+            event=re.search(r'(?ms)^  pull_request:[ \t]*\n(.*?)(?=^  \S|^\S|\Z)',content)
+            if not event:
+                return []
+            paths=re.search(r'(?m)^    paths:[ \t]*\n((?:      .*\n)+)',event.group(1))
+            return ([x.strip().strip("'\"") for x in re.findall(r'^      - (.+)$',paths.group(1),re.M)]
+                    if paths else [])
+        push="on:\n  push:\n    branches: [old-fix]\n    paths:\n      - 'tests/**'\n  workflow_dispatch:\n"
+        pr="on:\n  pull_request:\n    paths:\n      - 'b1_*.py'\n      - 'tests/test_b1_*.py'\n  push:\n    paths:\n      - 'tests/**'\npermissions:\n  contents: read\n"
+        self.assertEqual(pr_patterns(push),[])
+        self.assertEqual(pr_patterns(pr),['b1_*.py','tests/test_b1_*.py'])
+        self.assertTrue(fnmatch.fnmatchcase('tests/test_b1_audit.py',pr_patterns(pr)[1]))
         for f in (root/'.github/workflows').glob('*.yml'):
             if f.name=='c1-online-learning.yml':continue
-            content=f.read_text(encoding='utf-8');match=re.search(r'(?m)^    paths:\s*\n((?:      .*\n)+)',content)
-            if match:
-                patterns=[x.strip().strip("'\"") for x in re.findall(r'^      - (.+)$',match.group(1),re.M)]
-                for name in new:
-                    self.assertFalse(any(fnmatch.fnmatchcase(name,p) for p in patterns),'Old CI matches '+f.name+': '+name)
+            content=f.read_text(encoding='utf-8')
+            for name in new:
+                self.assertFalse(any(fnmatch.fnmatchcase(name,p) for p in pr_patterns(content)),
+                                 'Old pull-request CI matches '+f.name+': '+name)
 
 if __name__=='__main__':unittest.main()
