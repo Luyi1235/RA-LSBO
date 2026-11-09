@@ -44,6 +44,20 @@ Six arms, initial shared once; online calls charged per arm, no unselected pool
 evaluation, no label resampling. VAE/fantasy/aircraft/RCAIDE zero.
 
 Current implementation status
+
+The C2 implementation is still under technical validation. The current draft
+contains protocol, native head composer, online runner, model-free verifier,
+read-only factorial analysis, tamper checker and Windows/Ubuntu CI workflow.
+The CI must pass on the exact final PR head before the workstation is authorized.
+No smoke/full run is authorized while PR83 remains draft or any CI job is pending/failing.
+
+Workstation profiles are frozen in c2_protocol.py:
+CI = 2 tasks x 1 repeat x (48 + 6*2) = 120 mathematical evaluations.
+Smoke = 4 tasks x 1 repeat x (48 + 6*3) = 264.
+Full = 4 tasks x 16 repeats x (48 + 6*24) = 12,288.
+Full maximum is 11,968 GP heads and 95,744 kernel constructions. Actual costs
+must come from the sealed bill. No VAE/fantasy/aircraft/RCAIDE calls.
+
 This commit introduces only the factorial protocol, standard-library effect
 statistics, and an independently testable native head composer. It is NOT yet
 a runnable experiment: C2 runner, causal journal, model-free verifier,
