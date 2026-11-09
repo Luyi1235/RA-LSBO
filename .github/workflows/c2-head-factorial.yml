@@ -59,7 +59,7 @@ jobs:
       - name: Model-free C2 verification
         run: python -S run_c2_online.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci"
       - name: Read-only factorial analysis
-        run: python -S run_c2_online.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci" --analysis-output "${{ runner.temp }}/c2-evidence/analysis"
+        run: python -S run_c2_online.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci" --analysis-output "${{ runner.temp }}/c2-evidence/analysis-python313"
       - name: Eight C2 resealed-copy tamper checks
         run: python -S run_c2_online.py --task tamper --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
