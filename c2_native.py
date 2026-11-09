@@ -66,7 +66,7 @@ def fit_composite(rows,seed,bill,*,update_risk,update_objective,frozen=None):
    heads[name]=frozen.heads[name];provenance[name]=dict(mode="frozen",identity=heads[name].identity)
  if update_objective:
   h,r=_head(rows,"objective",seed+2,bill)
-  heads["objective"]=h
+  if h is not None: heads["objective"]=h
   provenance["objective"]=(dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
                            if h is not None else dict(mode="unavailable_no_exact_labels"))
  else:
