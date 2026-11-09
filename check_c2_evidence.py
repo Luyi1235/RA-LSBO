@@ -47,4 +47,4 @@ def check(root,expected):
  return dict(status="REJECTED_ALL_C2_TAMPERING",checks=checks,baseline=baseline,new_math_calls=0,new_gp_fits=0)
 if __name__=="__main__":
  p=argparse.ArgumentParser();p.add_argument("--input",type=Path,required=True);p.add_argument("--expected-sha",required=True)
- print(json.dumps(check(p.parse_args().input,p.parse_args().expected_sha),indent=2))
+ a=p.parse_args();print(json.dumps(check(a.input,a.expected_sha),indent=2))
