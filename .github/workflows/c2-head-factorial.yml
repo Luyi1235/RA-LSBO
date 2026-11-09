@@ -1,0 +1,82 @@
+name: c2-head-factorial
+on:
+  pull_request:
+    paths:
+      - 'c2_*.py'
+      - 'run_c2_online.py'
+      - 'check_c2_evidence.py'
+      - 'tests/test_c2_*.py'
+      - 'docs/PHASE_C2_HEAD_FACTORIAL.txt'
+      - '.github/workflows/c2-head-factorial.yml'
+permissions:
+  contents: read
+jobs:
+  c2-native-integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: code
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: C2 factorial protocol and statistics
+        run: python -S -m unittest discover -s tests -p test_c2_protocol.py -v
+      - name: C2 mocked native composition contracts
+        run: python -S -m unittest discover -s tests -p test_c2_native_composer.py -v
+      - name: Temporary CPU torch
+        run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Pinned model dependencies
+        run: python -m pip install -r requirements-models.txt
+      - name: Real C2 native head composition
+        run: python -m unittest discover -s tests -p test_c2_native_runtime.py -v
+      - name: Unmodified C1 native regression
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile
+        run: python -m compileall -q c2_protocol.py c2_stats.py c2_native.py c2_study.py c2_verify.py c2_analysis.py run_c2_online.py check_c2_evidence.py
+      - name: Safe entrypoint
+        run: python -S run_c2_online.py --help
+      - name: Frozen full plan
+        run: python -S run_c2_online.py --task plan --profile full
+      - name: Real C2 six-arm integration (120 calls)
+        run: python run_c2_online.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/c2-evidence/ci"
+      - name: Model-free C2 verification
+        run: python -S run_c2_online.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci"
+      - name: Eight C2 resealed-copy tamper checks
+        run: python -S run_c2_online.py --task tamper --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c2-head-factorial-${{ matrix.os }}
+          path: ${{ runner.temp }}/c2-evidence
+          if-no-files-found: ignore
+  cross-python-verifier:
+    needs: c2-native-integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: c2-head-factorial-windows-latest
+          path: ${{ runner.temp }}/c2-evidence
+      - name: Verify Windows Python 3.9 evidence on Python 3.13
+        run: python -S run_c2_online.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c2-evidence/ci"
