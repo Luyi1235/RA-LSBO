@@ -6,10 +6,10 @@ from c1_native import Posterior
 from c1_protocol import digest
 from risk_learning.core import features
 from risk_learning.native import training_payload
-from ra_lsbo.experiments.simplified_aircraft import dualview_optimizer as native
-from ra_lsbo.risk_core.observations import OutputObservation
 
 def _head(rows,name,seed,bill):
+ from ra_lsbo.experiments.simplified_aircraft import dualview_optimizer as native
+ from ra_lsbo.risk_core.observations import OutputObservation
  public=deepcopy(rows)
  if name in ("region","resource"):
   subset=training_payload(public,"native_censored")
