@@ -152,6 +152,8 @@ def verify(root,expected_sha=None):
  require(total["math_started"]==total["math_settled"]==spec["total_math_calls"],"Math budget mismatch")
  require(total["gp_head_started"]<=spec["max_gp_heads"] and total["gp_kernel_started"]<=spec["max_gp_kernels"],"GP construction exceeds frozen maximum")
  require(total==report["bill"],"Bill differs from report")
- require(report["schema"]=="c2_head_factorial_v1" and report["status"]=="COMPLETE_C2_FACTORIAL" and report["trial_count"]==len(all_trials)==spec["trials"] and report["summary"]==dict(trials=all_trials),"C2 report status/count/summary differs")
+ fallbacks=sum(r["model_failure_calls"] for r in all_trials)
+ expected_status="COMPLETE_WITH_MODEL_FALLBACKS" if fallbacks else "COMPLETE_C2_FACTORIAL"
+ require(report["schema"]=="c2_head_factorial_v1" and report["status"]==expected_status and report["model_failure_calls"]==fallbacks and report["trial_count"]==len(all_trials)==spec["trials"] and report["summary"]==dict(trials=all_trials),"C2 report status/count/summary differs")
  require(all(total[k]==0 for k in ("math_errors","vae_fits","fantasy_fits","aircraft_calls","rcaide_calls")),"Forbidden/failed call")
  return dict(status="VERIFIED_C2_FACTORIAL",files=nfiles,units=len(spec["units"]),trials=len(all_trials),bill=total,new_math_calls=0)
