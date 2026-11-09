@@ -58,6 +58,7 @@ def audit(root,output):
   for arm in ARMS:
    result=mp["units/%s/r%d/trials/%s/result.json"%(task,rep,arm)]
    stat=byarm[arm];stat["trials"]+=1
+   stat["cold"]+=int(not init_feasible)
    feasible_final=result.get("final_best") is not None
    stat["final_feasible"]+=int(feasible_final);stat["no_solve"]+=int(not feasible_final)
    stat["model_fallbacks"]+=int(result.get("model_failure_calls",0))
