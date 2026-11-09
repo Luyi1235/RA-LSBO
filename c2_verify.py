@@ -141,7 +141,7 @@ def verify(root,expected_sha=None):
  expected_records=[]
  for u in spec["units"]:
   jp=root/"units"/u["task"]/("r%d"%u["repeat"])/"records.jsonl"
-  expected_records.extend([dict(event="record_sealed",ref=x["ref"],record_sha256=digest(x["value"])) for x in lines(jp)])
+  expected_records.extend([dict(event="record_sealed",record_type=x["event_type"],ref=x["ref"],record_sha256=digest(x["value"])) for x in lines(jp)])
  require(record_events==expected_records,"Record seal event sequence/hash differs")
  eval_only=[x for x in ev if x.get("event") in ("evaluation_started","evaluation_settled")]
  expected_eval_only=[]
