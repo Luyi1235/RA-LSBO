@@ -73,8 +73,17 @@ def verify(root,expected_sha=None):
       fit=get(modelref);addbill(fit);rec=fit["receipt"];model_id=rec["model_id"];head_modes=rec["heads"]
       require(rec.get("seed")==u["seed"]+t,"Updated model seed differs")
       require(rec["training_sha256"]==digest(histories[a]),"Fit used wrong arm prefix")
-      for hrec in head_modes.values():
-       if hrec.get("mode")=="updated":require(hrec["training_sha256"]==digest(histories[a]),"Updated head used wrong prefix")
+      for hname,hrec in head_modes.items():
+       if hrec.get("mode")=="updated":
+        require(hrec["training_sha256"]==digest(histories[a]),"Updated head used wrong prefix")
+        diag=hrec.get("diagnostics")
+        require(diag is not None and diag["name"]==hname,"Updated head diagnostics absent/mismatched")
+        grid=diag["candidates"]
+        require([(x["continuous_length"],x["discrete_length"]) for x in grid]==
+          [(x,y) for x in (.05,.15,.4,1.) for y in (.5,1.5)],"Updated head kernel grid changed")
+        good=[x for x in grid if x["status"]=="ok"]
+        require(good and diag["selected"]==max(good,key=lambda x:x["log_evidence"]),
+          "Updated head kernel winner differs")
       if a=="risk_only_updated":
        require(set(head_modes)=={"region","resource"},"Risk-only fit contains objective head")
       else:
@@ -159,3 +168,31 @@ def verify(root,expected_sha=None):
  require(report["schema"]=="c2_head_factorial_v1" and report["status"]==expected_status and report["model_failure_calls"]==fallbacks and report["trial_count"]==len(all_trials)==spec["trials"] and report["summary"]==dict(trials=all_trials),"C2 report status/count/summary differs")
  require(all(total[k]==0 for k in ("math_errors","vae_fits","fantasy_fits","aircraft_calls","rcaide_calls")),"Forbidden/failed call")
  return dict(status="VERIFIED_C2_FACTORIAL",files=nfiles,units=len(spec["units"]),trials=len(all_trials),bill=total,new_math_calls=0)
+
+
+def tamper(root,expected_sha=None):
+ import tempfile,shutil
+ from risk_learning.io import write,seal
+ verify(root,expected_sha)
+ rejected=[]
+ mutations=("source_receipt","plan","proposal")
+ for kind in mutations:
+  with tempfile.TemporaryDirectory() as td:
+   dst=Path(td)/"copy";shutil.copytree(root,dst)
+   if kind=="source_receipt":
+    p=dst/"source_receipt.json";v=read(p);v["phase"]="tampered";p.unlink();write(p,v)
+   elif kind=="plan":
+    p=dst/"plan.json";v=read(p);v["steps"]+=1;p.unlink();write(p,v)
+   else:
+    spec=read(dst/"plan.json");u=spec["units"][0]
+    p=dst/"units"/u["task"]/( "r%d"%u["repeat"] )/"records.jsonl"
+    rows=lines(p)
+    target=next(x for x in rows if x["ref"].endswith("/proposal_000.json"))
+    target["value"]["decision"]["selected_index"]=(target["value"]["decision"]["selected_index"]+1)%spec["pool"]
+    p.write_text("".join(json.dumps(x,sort_keys=True,separators=(",",":"),allow_nan=False)+"\\n" for x in rows),encoding="utf-8")
+   (dst/"manifest.json").unlink();seal(dst)
+   try:verify(dst,expected_sha)
+   except (ValueError,KeyError,AssertionError):rejected.append(kind)
+   else:raise AssertionError("C2 verifier accepted resealed "+kind+" tampering")
+ if len(rejected)!=3:raise AssertionError("Not all C2 tampering classes rejected")
+ return dict(status="REJECTED_ALL_C2_TAMPERING",rejected=rejected,new_math_calls=0,new_gp_fits=0)
