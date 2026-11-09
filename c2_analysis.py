@@ -2,7 +2,7 @@
 from pathlib import Path
 from c2_protocol import ARMS,factorial,TASKS
 from c2_stats import summarize_factorial,holm_factorial
-from risk_learning.io import read,write,seal
+from risk_learning.io import read,write,seal,file_sha
 
 CELLS=("risk_frozen_objective_frozen","risk_updated_objective_frozen",
        "risk_frozen_objective_updated","risk_updated_objective_updated")
@@ -26,12 +26,12 @@ def analyze(root,output,expected_sha):
    rows.append(dict(repeat=u["repeat"],warm=warm,effects=factorial(*ys),outcomes=dict(zip(CELLS,ys)),
     infeasible={a:trials[a]["online_calls"]-(trials[a]["information_curve"][-1]["feasible"]-trials[a]["information_curve"][0]["feasible"]) for a in ARMS},
     exact_objectives={a:trials[a]["information_curve"][-1]["exact_objectives"]-trials[a]["information_curve"][0]["exact_objectives"] for a in ARMS},
-    branch_counts={a:trials[a]["information_curve"][-1]["branches"] for a in ARMS}))
+    branch_counts={a:{b:trials[a]["information_curve"][-1]["branches"][b]-trials[a]["information_curve"][0]["branches"][b] for b in trials[a]["information_curve"][-1]["branches"]} for a in ARMS}))
   warmrows=[r for r in rows if r["warm"]]
   reports[task]=summarize_factorial([dict(repeat=r["repeat"],effects=r["effects"]) for r in warmrows])
   costs[task]=rows
  infer=holm_factorial(reports) if all(reports[t]["effects"][k]["n"] or reports[t]["effects"][k]["missing"] for t in reports for k in ("risk","objective","interaction")) else None
- result=dict(status="COMPLETE_C2_FACTORIAL_ANALYSIS",code_sha=expected_sha,input_manifest_sha=read(root/"manifest.json").get("sha256"),
+ result=dict(status="COMPLETE_C2_FACTORIAL_ANALYSIS",code_sha=expected_sha,input_manifest_sha256=file_sha(root/"manifest.json"),
   task_effects=reports,holm_12=infer,all_task_repeat_costs=costs,
   limits=["Factorial effects are intention-to-treat contrasts over adaptive trajectories.",
    "Missing four-cell feasible outcomes are not imputed.",
