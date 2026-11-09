@@ -108,10 +108,23 @@ def verify(root,expected_sha=None):
   require(order==[x["ref"] for x in rows],"Record order mismatch")
   progress.append(dict(unit=unit,completed_trials=len(all_trials),math_settled=total["math_settled"]))
  require(lines(root/"evaluations.jsonl")==eval_events,"Evaluation ledger mismatch")
- require(len(lines(root/"events.jsonl"))>=len(eval_events),"Event journal incomplete")
+ ev=lines(root/"events.jsonl")
+ record_events=[x for x in ev if x.get("event")=="record_sealed"]
+ expected_records=[]
+ for u in spec["units"]:
+  jp=root/"units"/u["task"]/("r%d"%u["repeat"])/"records.jsonl"
+  expected_records.extend([dict(event="record_sealed",ref=x["ref"],record_sha256=digest(x["value"])) for x in lines(jp)])
+ require(record_events==expected_records,"Record seal event sequence/hash differs")
+ eval_only=[x for x in ev if x.get("event") in ("evaluation_started","evaluation_settled")]
+ expected_eval_only=[]
+ for x in eval_events:
+  if x["event"]=="started":expected_eval_only.append(dict(event="evaluation_started",call_id=x["call_id"]))
+  else:expected_eval_only.append(dict(event="evaluation_settled",call_id=x["call_id"],record_sha256=x["record_sha256"]))
+ require(eval_only==expected_eval_only,"Evaluation event order differs")
  require(lines(root/"progress.jsonl")==progress,"Progress mismatch")
  require(set(read(root/"manifest.json")["files"])==expected_paths,"Evidence file set differs")
  require(total["math_started"]==total["math_settled"]==spec["total_math_calls"],"Math budget mismatch")
  require(total==report["bill"],"Bill differs from report")
+ require(report["schema"]=="c2_head_factorial_v1" and report["status"]=="COMPLETE_C2_FACTORIAL" and report["trial_count"]==len(all_trials)==spec["trials"],"C2 report status/count differs")
  require(all(total[k]==0 for k in ("math_errors","vae_fits","fantasy_fits","aircraft_calls","rcaide_calls")),"Forbidden/failed call")
  return dict(status="VERIFIED_C2_FACTORIAL",files=nfiles,units=len(spec["units"]),trials=len(all_trials),bill=total,new_math_calls=0)
