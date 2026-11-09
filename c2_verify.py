@@ -19,7 +19,7 @@ def verify(root,expected_sha=None):
  spec=read(root/"plan.json");source=read(root/"source_receipt.json");report=read(root/"report.json")
  require(spec==plan(spec["profile"]),"C2 frozen plan changed")
  require(source["code_sha"]==report["code_sha"] and (expected_sha is None or source["code_sha"]==expected_sha),"Code identity mismatch")
- require(source.get("phase")=="C2" and source.get("c2_parent_sha")=="0a532a16e59c0f94e5263ad77a8a7e6f145196d1","C2 parent identity mismatch")
+ require(source.get("phase")=="C2" and source.get("parent_sha")=="0a532a16e59c0f94e5263ad77a8a7e6f145196d1","C2 parent identity mismatch")
  total=empty_bill();all_trials=[];eval_events=[];event_events=[];progress=[];expected_paths={"plan.json","source_receipt.json","environment.json","report.json","events.jsonl","evaluations.jsonl","progress.jsonl"}
  for u in spec["units"]:
   unit="%s/r%d"%(u["task"],u["repeat"]);prefix="units/"+unit;journal=Path(root/(prefix+"/records.jsonl"))
