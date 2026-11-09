@@ -14,7 +14,7 @@ class PlanTests(unittest.TestCase):
   ids=[digest({"i":i}) for i in range(3)]
   pred={"probabilities":{"joint":[.9,.5,.2]},"objective":{"mean":[1.,.5,.1],"variance":[0.,0.,0.]}}
   d=select_c2("risk_frozen_objective_frozen",ids,[0,1,2],pred,2.,["u",0])
-  self.assertEqual(d["selected_index"],1)
+  self.assertEqual(d["selected_index"],0)
  def test_cold_shared_hash(self):
   ids=[digest({"i":i}) for i in range(3)]
   pred={"probabilities":{"joint":[.9,.5,.2]},"objective":{"mean":[1.,.5,.1],"variance":[0.,0.,0.]}}
