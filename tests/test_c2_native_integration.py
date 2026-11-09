@@ -39,10 +39,9 @@ class C2NativeIntegration(unittest.TestCase):
   self.assertEqual(len(p["probabilities"]["joint"]),2)
   self.assertIsNotNone(p["objective"])
  def test_objective_unavailable_is_not_fabricated(self):
-  no_obj=[dict(r,candidate=r["candidate"],candidate_id=r["candidate_id"],objective=dict(kind="missing",reason="test")) for r in []]
   data=copy.deepcopy(self.data)
   for r in data:r["objective"]=dict(kind="missing",reason="controlled_abort")
-  b=bill();risk_only_model,_=fit_all(data,777,b,risk_only=True)
+  b=bill()
   model,receipt=fit_composite(data,778,b,update_risk=True,update_objective=True,frozen=None)
   self.assertNotIn("objective",model.heads)
   self.assertEqual(receipt["heads"]["objective"]["mode"],"unavailable_no_exact_labels")
