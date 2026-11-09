@@ -70,7 +70,7 @@ def verify(root,expected_sha=None):
     else:
      if a=="risk_only_updated" or a!="uniform_hash":
       fit=get(modelref);addbill(fit);rec=fit["receipt"];model_id=rec["model_id"];head_modes=rec["heads"]
-      require(rec.get("seed")==u["seed"]+t,"Updated model seed differs")
+      require(rec.get("seed")==u["seed"],"Updated model seed differs")
       require(rec["training_sha256"]==digest(histories[a]),"Fit used wrong arm prefix")
       for hrec in head_modes.values():
        if hrec.get("mode")=="updated":require(hrec["training_sha256"]==digest(histories[a]),"Updated head used wrong prefix")
