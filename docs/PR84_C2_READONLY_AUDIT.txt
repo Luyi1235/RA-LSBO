@@ -1,0 +1,46 @@
+PR84 — read-only audit of archived PR83 C2 evidence
+
+Input result branch:
+results/phase-c2-head-factorial-20261109
+Input result HEAD:
+ade354de8b35d20a2bb32b469b04bc7da92aa004
+Input code SHA:
+975d96caac53d675ebe1b790a0647479a75a2ed5
+
+Purpose
+1. Independently recompute all six arms' final feasible/no-solve counts, online
+   infeasible observations, exact objective labels, first-feasible position,
+   initial warm/cold counts from the 64 unit journals.
+2. Compare recomputed values against full/report.json, full-analysis,
+   analysis_summary.json, arm_costs.csv and integrity_check.json.
+3. Specifically resolve or explicitly leave unresolved the contradiction:
+   integrity_check.arms_all_final_feasible=false vs published six-arm
+   final_feasible=64 for every arm.
+4. Diagnose model predictions only on policy-selected evaluated candidates:
+   region/resource/joint Brier, log loss, AUROC (null for one-class samples);
+   objective MAE/RMSE/absolute standardized residual on exact objective labels.
+5. Report selected-observation feedback coverage by arm/task/step/branch.
+
+Strict boundaries
+- Read-only. No import of C1/C2 evaluator, no call to truth(), no GP fit,
+  no candidate generation, no new mathematical evaluation.
+- Do not inspect hidden truth for unselected candidates. For selected candidates,
+  truth already stored in the archived observation may be used to score the
+  archived prediction.
+- Metrics are policy-selected-sample diagnostics, not unbiased full-pool
+  calibration, not a causal mediation analysis.
+- Region interval is a known infeasible label under the archived observation
+  contract; objective missing is not imputed.
+- Final feasible incumbent and online infeasible-call count are separate
+  outcomes and must not be conflated.
+- Do not remove failures, repeats, tasks or inconvenient rows.
+- No code/result modification to PR83.
+
+CLI
+python -S pr84_c2_audit.py --input <PR83-result-root> --output <new-audit-dir>
+  --expected-result-head ade354de8b35d20a2bb32b469b04bc7da92aa004
+
+Output
+audit_report.json, per_trial.csv, selected_feedback.csv.
+The input full manifest is verified before reading any trial records.
+Existing output path is a hard error; no overwrite/re-run.
