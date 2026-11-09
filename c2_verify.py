@@ -4,6 +4,9 @@ from pathlib import Path
 from c2_protocol import plan,ARMS,digest,select_c2
 from c2_protocol import bill as empty_bill
 from c1_protocol import candidates,canonical,best,information,trial_result
+FACTOR_FLAGS={"risk_frozen_objective_frozen":[False,False],"risk_updated_objective_frozen":[True,False],
+ "risk_frozen_objective_updated":[False,True],"risk_updated_objective_updated":[True,True],
+ "risk_only_updated":[True,False],"uniform_hash":[False,False]}
 from risk_learning.io import read,check_manifest
 from risk_learning.core import observed
 
@@ -77,6 +80,9 @@ def verify(root,expected_sha=None):
        ur,uo={"risk_frozen_objective_frozen":(False,False),"risk_updated_objective_frozen":(True,False),
         "risk_frozen_objective_updated":(False,True),"risk_updated_objective_updated":(True,True)}[a]
        require(rec.get("update_risk") is ur and rec.get("update_objective") is uo,"Receipt factor flags differ")
+       identity_heads={k:v["identity"] for k,v in head_modes.items() if v.get("mode") in ("updated","frozen")}
+       expected_model_id=digest(dict(training_sha256=digest(histories[a]),seed=u["seed"]+t,update_risk=ur,update_objective=uo,heads=identity_heads))
+       require(model_id==expected_model_id,"Composite model identity differs")
        for h in ("region","resource"):
         require(head_modes[h]["mode"]==("updated" if ur else "frozen"),"Risk factor mismatch")
         if not ur: require(head_modes[h]["identity"]==initial_ids[h],"Frozen risk identity changed")
@@ -108,7 +114,7 @@ def verify(root,expected_sha=None):
     propref=prefix+"/trials/"+a+"/proposal_%03d.json"%t;proposal=get(propref)
     require(proposal["history_sha256"]==digest(histories[a]) and proposal["history_information"]==information(histories[a]),"Proposal prefix mismatch")
     require(proposal["pool_ref"]==poolref and proposal["pool_sha256"]==digest(pool) and proposal["available_indices"]==available and proposal["prediction_ref"]==predref,"Proposal pool/prediction binding differs")
-    require(proposal["update_factors"]==list(FLAGS[a]) if a in FLAGS else proposal["update_factors"]==[False,False],"Proposal update factor differs")
+    require(proposal["update_factors"]==FACTOR_FLAGS[a],"Proposal update factor differs")
     require(proposal["model_id"]==model_id and proposal["head_modes"]==head_modes,"Proposal head composition mismatch")
     require(proposal["decision"]==decision,"Selected action/score mismatch")
     trial_props[a].append(proposal)
