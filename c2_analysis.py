@@ -30,7 +30,9 @@ def analyze(root,output,expected_sha):
   warmrows=[r for r in rows if r["warm"]]
   reports[task]=summarize_factorial([dict(repeat=r["repeat"],effects=r["effects"]) for r in warmrows])
   costs[task]=rows
- infer=holm_factorial(reports) if all(reports[t]["effects"][k]["n"] or reports[t]["effects"][k]["missing"] for t in reports for k in ("risk","objective","interaction")) else None
+ infer=(holm_factorial(reports) if spec["profile"]=="full" and len(spec["tasks"])==4
+        and all(reports[t]["effects"][k]["n"] or reports[t]["effects"][k]["missing"]
+                for t in reports for k in ("risk","objective","interaction")) else None)
  result=dict(status="COMPLETE_C2_FACTORIAL_ANALYSIS",code_sha=expected_sha,input_manifest_sha256=file_sha(root/"manifest.json"),
   task_effects=reports,holm_12=infer,all_task_repeat_costs=costs,
   limits=["Factorial effects are intention-to-treat contrasts over adaptive trajectories.",
