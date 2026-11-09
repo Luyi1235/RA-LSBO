@@ -74,3 +74,9 @@ def select_c2(arm,ids,available,prediction,incumbent,salt):
  tie=[digest(["c2_outcome_blind_tie_v1",salt,i]) for i in ids]
  j=min(available,key=lambda i:(-scores[i],tie[i],ids[i]))
  return dict(mode=mode,scores=scores,selected_index=j,selected_candidate_id=ids[j],incumbent=incumbent)
+
+def bill():
+ return {k:0 for k in ("math_started","math_settled","math_errors","gp_head_started",
+ "gp_head_completed","gp_head_errors","gp_kernel_started","gp_kernel_completed",
+ "gp_kernel_errors","kernel_candidates_rejected","prediction_started",
+ "prediction_completed","prediction_errors","vae_fits","fantasy_fits","aircraft_calls","rcaide_calls")}
