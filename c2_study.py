@@ -33,7 +33,7 @@ def run(root,profile,source):
  def save(rel,value,event):
   journal=root/"/".join(rel.split("/")[:3])/"records.jsonl"
   journal.parent.mkdir(parents=True,exist_ok=True)
-  append(journal,dict(ref=rel,value=value));append(events,dict(event=event,ref=rel,record_sha256=digest(value)))
+  append(journal,dict(ref=rel,value=value,event_type=event));append(events,dict(event="record_sealed",record_type=event,ref=rel,record_sha256=digest(value)))
  def evaluate(task,c,call):
   c=canonical(c);cid=digest(c);append(evaluations,dict(event="started",call_id=call,task=task,candidate_id=cid,candidate=c))
   append(events,dict(event="evaluation_started",call_id=call));b["math_started"]+=1
