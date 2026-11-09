@@ -1,0 +1,86 @@
+name: online-confirmation
+on:
+  pull_request:
+    paths:
+      - 'online_confirm*.py'
+      - 'run_online_confirmation.py'
+      - 'tests/test_online_confirm_core.py'
+      - 'docs/C1R_REPLICATION_PROTOCOL.txt'
+      - '.github/workflows/online-confirmation.yml'
+permissions:
+  contents: read
+jobs:
+  verified-replication:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: code
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: b3ebfec2c7771eef57919a0a96eb7a0223a266ed
+          fetch-depth: 1
+          path: evidence
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Protocol, exact paired statistics, disjoint seeds and unchanged optimizer
+        run: python -S -m unittest discover -s tests -p test_online_confirm_core.py -v
+      - name: Verify original PR80 full; independently summarize paired costs and outcomes
+        run: python -S run_online_confirmation.py --task review-pilot --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/confirmation-evidence/pilot-review"
+      - name: Temporary CI dependencies only
+        run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Existing pinned model dependencies
+        run: python -m pip install -r requirements-models.txt
+      - name: Original unmodified native model tests
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile
+        run: python -m compileall -q online_confirm.py online_confirm_stats.py run_online_confirmation.py
+      - name: Safe entrypoint
+        run: python -S run_online_confirmation.py --help
+      - name: Frozen full plan (no evaluation)
+        run: python -S run_online_confirmation.py --task plan --profile full
+      - name: Fresh-seed real integration (120 calls, not pilot/full rerun)
+        run: python run_online_confirmation.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/confirmation-evidence/ci"
+      - name: Model-free evidence verification
+        run: python -S run_online_confirmation.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/confirmation-evidence/ci"
+      - name: Ten resealed tampering checks on temporary copies
+        run: python -S run_online_confirmation.py --task tamper --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/confirmation-evidence/ci"
+      - name: Paired analysis without fitting
+        run: python -S run_online_confirmation.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/confirmation-evidence/ci" --output "${{ runner.temp }}/confirmation-evidence/ci-analysis"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: online-confirmation-${{ matrix.os }}
+          path: ${{ runner.temp }}/confirmation-evidence
+          if-no-files-found: ignore
+  cross-python-verifier:
+    needs: verified-replication
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: online-confirmation-windows-latest
+          path: ${{ runner.temp }}/confirmation-evidence
+      - name: Read Windows3.9 evidence on Python3.13 without model libraries
+        run: python -S run_online_confirmation.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/confirmation-evidence/ci"
