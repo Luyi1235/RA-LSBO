@@ -1,0 +1,78 @@
+name: c1-online-learning
+on:
+  pull_request:
+    paths:
+      - 'c1_*.py'
+      - 'run_c1_online.py'
+      - 'check_c1_evidence.py'
+      - 'tests/test_c1_*.py'
+      - 'docs/PHASE_C1_ONLINE_LEARNING.txt'
+      - '.github/workflows/c1-online-learning.yml'
+permissions:
+  contents: read
+jobs:
+  native-online:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Pure core and historical-source protection
+        run: |
+          python -S -m unittest discover -s tests -p test_c1_core.py -v
+          python -S -c "import subprocess; assert not subprocess.check_output(['git','diff','--name-only','27e9724150961b44268bd6672dc41abe32b8455b','HEAD','--','ra_lsbo','risk_learning','b1_core.py','b1_native.py','b1_study.py','b1_verify.py']).strip()"
+      - name: Temporary CI dependencies only
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Real native fits, frozen-prediction equivalence and error accounting
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile and safe plan
+        run: |
+          python -m compileall -q c1_protocol.py c1_native.py c1_study.py c1_verify.py run_c1_online.py check_c1_evidence.py
+          python -S run_c1_online.py --help
+          python -S run_c1_online.py --task plan --profile full
+      - name: Actual six-arm online integration (120 mathematical calls)
+        run: python run_c1_online.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/c1-evidence/ci"
+      - name: Reconstruct all prefixes and reject resealed tampering without models
+        run: |
+          python -S run_c1_online.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c1-evidence/ci"
+          python -S check_c1_evidence.py --input "${{ runner.temp }}/c1-evidence/ci"
+      - name: Preserve evidence and failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c1-online-${{ matrix.os }}
+          path: ${{ runner.temp }}/c1-evidence
+          if-no-files-found: ignore
+  cross-python-verifier:
+    needs: native-online
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: c1-online-windows-latest
+          path: ${{ runner.temp }}/c1-cross
+      - name: Python 3.13 reads Windows 3.9 causal evidence without model dependencies
+        run: |
+          python -S run_c1_online.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/c1-cross/ci"
+          python -S check_c1_evidence.py --input "${{ runner.temp }}/c1-cross/ci"
