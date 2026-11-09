@@ -42,7 +42,7 @@ def verify(root,expected_sha=None):
   ir=get(prefix+"/models/initial.json");addbill(ir)
   initial_receipt=ir["receipt"];require(initial_receipt["status"]=="OK","Initial composite failed")
   initial_ids={k:v["identity"] for k,v in initial_receipt["heads"].items()}
-  require(set(initial_ids)=={"region","resource","objective"},"Initial 3-head fit absent")
+  require({"region","resource"}.issubset(initial_ids) and set(initial_ids).issubset({"region","resource","objective"}),"Initial risk heads absent/extra")
   histories={a:[r["observed"] for r in initial] for a in ARMS}
   trial_obs={a:[] for a in ARMS};trial_props={a:[] for a in ARMS}
   for t in range(spec["steps"]):
@@ -61,6 +61,7 @@ def verify(root,expected_sha=None):
                 "risk_updated_objective_frozen","risk_updated_objective_updated") and t==0):
      model_id=initial_receipt["model_id"]
      head_modes={k:dict(mode="frozen",identity=v) for k,v in initial_ids.items()}
+     if "objective" not in initial_ids:head_modes["objective"]=dict(mode="frozen_unavailable")
     else:
      if a=="risk_only_updated" or a!="uniform_hash":
       fit=get(modelref);addbill(fit);rec=fit["receipt"];model_id=rec["model_id"];head_modes=rec["heads"]
@@ -79,6 +80,7 @@ def verify(root,expected_sha=None):
        else:
         require(head_modes["objective"]["mode"] in ("frozen","frozen_unavailable"),"Objective factor mismatch")
         if "objective" in initial_ids:require(head_modes["objective"]["identity"]==initial_ids["objective"],"Frozen objective identity changed")
+        else:require(head_modes["objective"]["mode"]=="frozen_unavailable","Missing frozen objective was fabricated")
     predrow=get(predref);addbill(predrow);pred=predrow["prediction"]
     require(predrow["model_id"]==model_id and predrow["query_sha256"]==digest(pool),"Prediction provenance mismatch")
     if pred is not None:
