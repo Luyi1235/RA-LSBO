@@ -1,4 +1,4 @@
-import unittest
+import unittest,json
 from c2_protocol import plan,factorial,TASKS,ARMS,select_c2,digest
 from c2_stats import summarize_factorial,holm_factorial
 class PlanTests(unittest.TestCase):
@@ -6,6 +6,9 @@ class PlanTests(unittest.TestCase):
   p=plan("full");self.assertEqual((len(p["units"]),p["trials"],p["total_math_calls"]),(64,384,12288))
   self.assertEqual((p["initial_calls"],p["online_calls"]),(3072,9216))
  def test_smoke_budget(self): self.assertEqual(plan("smoke")["total_math_calls"],264)
+ def test_plan_json_roundtrip(self):
+  for profile in ("ci","smoke","full"):
+   self.assertEqual(json.loads(json.dumps(plan(profile))),plan(profile))
  def test_ci_budget(self): self.assertEqual(plan("ci")["total_math_calls"],120)
  def test_six_arms(self): self.assertEqual(len(ARMS),6)
  def test_full_gp_budget(self):
