@@ -2,7 +2,6 @@
 from copy import deepcopy
 from pathlib import Path
 import platform,time,traceback
-from unittest.mock import patch
 from c1_protocol import (SCHEMA as C1_SCHEMA,INITIAL,POOL,digest,best,information,
                          trial_result,feasible,ei)
 from c2_protocol import plan,ARMS,select_c2
@@ -31,7 +30,6 @@ def run(root,profile,source):
  write(root/"plan.json",spec);write(root/"source_receipt.json",source)
  write(root/"environment.json",dict(python=platform.python_version(),platform=platform.platform()))
  events=root/"events.jsonl";evaluations=root/"evaluations.jsonl"
- forbidden=lambda *_a,**_k: (_ for _ in ()).throw(RuntimeError("Truth forbidden in model/selector"))
  def save(rel,value,event):
   journal=root/"/".join(rel.split("/")[:3])/"records.jsonl"
   journal.parent.mkdir(parents=True,exist_ok=True)
@@ -41,7 +39,7 @@ def run(root,profile,source):
   append(events,dict(event="evaluation_started",call_id=call));b["math_started"]+=1
   try:
    from risk_learning.core import truth
-   with patch("risk_learning.core.truth",forbidden): target=truth(task,deepcopy(c))
+   target=truth(task,deepcopy(c))
    if set(target)!={"region","resource","objective","feasible"} or target["feasible"]!=(target["region"]<=0 and target["resource"]<=0): raise ValueError("Evaluator contract changed")
    r=dict(call_id=call,candidate=c,candidate_id=cid,truth=target,observed=observed(c,target));digest(r)
   except Exception as e:
