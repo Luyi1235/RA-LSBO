@@ -8,7 +8,7 @@ FACTOR_FLAGS={"risk_frozen_objective_frozen":[False,False],"risk_updated_objecti
  "risk_frozen_objective_updated":[False,True],"risk_updated_objective_updated":[True,True],
  "risk_only_updated":[True,False],"uniform_hash":[False,False]}
 from risk_learning.io import read,check_manifest
-from risk_learning.core import observed
+from risk_learning.core import observed,truth
 
 def require(x,m):
  if not x: raise ValueError(m)
@@ -39,6 +39,7 @@ def verify(root,expected_sha=None):
   for i,r in enumerate(initial):
    c=candidates(u["seed"],48)[i]
    require(r["candidate"]==canonical(c) and r["candidate_id"]==digest(c),"Initial candidate changed")
+   require(r["truth"]==truth(u["task"],c),"Initial mathematical truth differs")
    require(r["observed"]==observed(c,r["truth"]),"Initial observation changed")
    eval_events.extend([dict(event="started",call_id=r["call_id"],task=u["task"],candidate_id=r["candidate_id"],candidate=r["candidate"]),dict(event="settled",call_id=r["call_id"],record_sha256=digest(r))])
    total["math_started"]+=1;total["math_settled"]+=1
@@ -121,6 +122,7 @@ def verify(root,expected_sha=None):
     obsref=prefix+"/trials/"+a+"/observation_%03d.json"%t;obs=get(obsref)
     c=pool[decision["selected_index"]]
     require(obs["candidate"]==canonical(c) and obs["candidate_id"]==digest(c),"Unevaluated/wrong candidate selected")
+    require(obs["truth"]==truth(u["task"],c),"Online mathematical truth differs")
     require(obs["observed"]==observed(c,obs["truth"]),"Observation differs from truth")
     eval_events.extend([dict(event="started",call_id=obs["call_id"],task=u["task"],candidate_id=obs["candidate_id"],candidate=obs["candidate"]),dict(event="settled",call_id=obs["call_id"],record_sha256=digest(obs))])
     total["math_started"]+=1;total["math_settled"]+=1
