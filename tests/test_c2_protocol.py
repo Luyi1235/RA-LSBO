@@ -6,7 +6,7 @@ class PlanTests(unittest.TestCase):
   p=plan("full");self.assertEqual((len(p["units"]),p["trials"],p["total_math_calls"]),(64,384,12288))
   self.assertEqual((p["initial_calls"],p["online_calls"]),(3072,9216))
  def test_smoke_budget(self): self.assertEqual(plan("smoke")["total_math_calls"],264)
- def test_ci_budget(self): self.assertEqual(plan("ci")["total_math_calls"],168)
+ def test_ci_budget(self): self.assertEqual(plan("ci")["total_math_calls"],120)
  def test_six_arms(self): self.assertEqual(len(ARMS),6)
  def test_seed_disjoint_from_c1r(self):
   from online_confirm import plan as old
