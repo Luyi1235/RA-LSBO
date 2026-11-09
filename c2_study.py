@@ -124,8 +124,9 @@ def run(root,profile,source):
    append(root/"progress.jsonl",dict(unit=name,completed_trials=len(trials),math_settled=b["math_settled"]))
   if b["math_started"]!=spec["total_math_calls"] or b["math_settled"]!=spec["total_math_calls"] or b["math_errors"]:
    raise ValueError("C2 evaluation bill does not close")
+  fallbacks=sum(r["model_failure_calls"] for r in trials)
   report=dict(schema="c2_head_factorial_v1",code_sha=source["code_sha"],profile=profile,
-   status="COMPLETE_C2_FACTORIAL",bill=b,trial_count=len(trials),summary=dict(trials=trials),
+   status="COMPLETE_WITH_MODEL_FALLBACKS" if fallbacks else "COMPLETE_C2_FACTORIAL",bill=b,trial_count=len(trials),model_failure_calls=fallbacks,summary=dict(trials=trials),
    elapsed_seconds=time.perf_counter()-start,
    limits=["Known tasks, not held-out generalization.","Each arm uses only its own settled feedback.",
     "Frozen heads are initial posterior objects; live incumbent still updates.",
