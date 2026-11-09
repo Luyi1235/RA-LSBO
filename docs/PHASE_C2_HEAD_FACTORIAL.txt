@@ -1,0 +1,51 @@
+C2: independent risk-head and objective-head online update attribution
+
+Parent: 0a532a16e59c0f94e5263ad77a8a7e6f145196d1
+Pilot: b3ebfec2c7771eef57919a0a96eb7a0223a266ed
+Design issue: https://github.com/Luyi1235/RA-LSBO/issues/82
+
+Scientific question
+The C1/C1R risk-EI updated arm improved objective outcomes directionally but also
+increased infeasible evaluations and reduced exact objective labels. C2 separates
+the two online learning channels under the same risk-EI acquisition and call budget.
+
+Four factorial cells:
+00 risk frozen, objective frozen
+10 risk updated, objective frozen
+01 risk frozen, objective updated
+11 risk updated, objective updated
+References: risk_only_updated and uniform_hash.
+
+The native composer is an isolated component. It reuses the unchanged C1
+StableGroupedHead implementation and C1 Posterior prediction implementation.
+For updated risk heads, region/resource are fit on this arm's observable prefix
+using the native censored likelihood. For updated objective, only exact,
+observable objective rows are used. Frozen heads are the exact initial fitted
+objects and their identities are recorded. No hidden truth, task labels, other
+arm data, or imputed objective is accepted.
+
+Factor effects, lower objective better:
+risk = 0.5*((y10-y00)+(y11-y01))
+objective = 0.5*((y01-y00)+(y11-y10))
+interaction = (y11-y10)-(y01-y00)
+If any cell has no feasible incumbent, all objective factorial effects for that
+unit are missing. No zero imputation. Report complete/missing four-cell units.
+Apply exact two-sided sign tests to each effect within each task and Holm across
+the 12 tests (3 effects x 4 tasks), alpha .05. Report objective, failures,
+exact objective labels, branch coverage and GP cost separately.
+
+Budget:
+CI: 2 tasks x 1 repeat x (48 + 6*2) = 168 math calls.
+Smoke: 4 tasks x 1 repeat x (48 + 6*3) = 264.
+Full: 4 tasks x 16 repeats x (48 + 6*24) = 12,288.
+Seeds: CI 940000 block, smoke 950000, full 960000; task index stride 1000,
+repeat stride 32. Disjoint from C1R 910000/920000/930000 blocks.
+Six arms, initial shared once; online calls charged per arm, no unselected pool
+evaluation, no label resampling. VAE/fantasy/aircraft/RCAIDE zero.
+
+Current implementation status
+This commit introduces only the factorial protocol, standard-library effect
+statistics, and an independently testable native head composer. It is NOT yet
+a runnable experiment: C2 runner, causal journal, model-free verifier,
+full integration/tamper tests, and cross-platform CI remain to be implemented.
+Do not run smoke/full or hand this commit to the workstation as an experiment.
