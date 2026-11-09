@@ -3,12 +3,12 @@ import json,math
 from pathlib import Path
 from c2_protocol import plan,ARMS,digest,select_c2
 from c2_protocol import bill as empty_bill
-from c1_protocol import candidates,canonical,best,information,trial_result
+from c1_protocol import best,information,trial_result
 FACTOR_FLAGS={"risk_frozen_objective_frozen":[False,False],"risk_updated_objective_frozen":[True,False],
  "risk_frozen_objective_updated":[False,True],"risk_updated_objective_updated":[True,True],
  "risk_only_updated":[True,False],"uniform_hash":[False,False]}
 from risk_learning.io import read,check_manifest
-from risk_learning.core import observed,truth
+from risk_learning.core import candidates,canonical,observed,truth
 
 def require(x,m):
  if not x: raise ValueError(m)
