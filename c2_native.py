@@ -67,7 +67,7 @@ def fit_composite(rows,seed,bill,*,update_risk,update_objective,frozen=None):
  if update_objective:
   h,r=_head(rows,"objective",seed+2,bill)
   if h is not None: heads["objective"]=h
-  provenance["objective"]=(dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"])
+  provenance["objective"]=(dict(mode="updated",training_sha256=r["training_sha256"],identity=r["head"]["identity"],diagnostics=r["head"])
                            if h is not None else dict(mode="unavailable_no_exact_labels"))
  else:
   if frozen is None: raise ValueError("Missing frozen objective state")
