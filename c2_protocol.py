@@ -28,7 +28,7 @@ def plan(profile):
   trials=n*len(ARMS),training_shared_once=True,same_design_across_arms_charged_per_arm=True,
   no_label_resampling=True,no_unselected_evaluation=True,new_vae_fits=0,new_fantasy_fits=0,
   aircraft_calls=0,rcaide_calls=0,seed_block=p["block"],
-  primary=dict(cells=CELLS,endpoint="final best feasible objective",stratum="initial_warm",
+  primary=dict(cells=list(CELLS),endpoint="final best feasible objective",stratum="initial_warm",
    effects=["risk_main","objective_main","risk_objective_interaction"],
    sign_tests_per_task=3,holm_family=12,alpha=.05),
   limits=["Known-task mechanism attribution, not held-out-task generalization.",
