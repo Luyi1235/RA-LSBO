@@ -26,7 +26,9 @@ class ComposerTests(unittest.TestCase):
   self.assertIs(model.heads["resource"],self.frozen.heads["resource"])
   self.assertEqual(fit.call_count,1)
  def test_unavailable_objective_not_fabricated(self):
-  def no_objective(*a,**k):return None,dict(status="NO_EXACT_OBJECTIVE")
+  def no_objective(rows,name,seed,bill):
+   if name=="objective":return None,dict(status="NO_EXACT_OBJECTIVE")
+   return Head(name),dict(training_sha256="prefix",head={"identity":"new-"+name})
   with patch("c2_native._head",side_effect=no_objective):
    model,receipt=fit_composite(self.rows,10,self.bill,update_risk=True,update_objective=True,frozen=None)
   self.assertNotIn("objective",model.heads)
