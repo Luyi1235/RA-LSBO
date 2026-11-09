@@ -24,6 +24,9 @@ def auc(labels,probs):
  if not pos or not neg:return None
  return sum((a>b)+.5*(a==b) for a in pos for b in neg)/(len(pos)*len(neg))
 def binary(labels,probs):
+ if len(labels)!=len(probs):raise ValueError("Label/probability length mismatch")
+ if any(type(y) is not bool for y in labels):raise ValueError("Boolean labels required")
+ if any(not math.isfinite(p) or not 0<=p<=1 for p in probs):raise ValueError("Invalid probability")
  if not labels:return dict(n=0,positives=0,negatives=0,brier=None,log_loss=None,auroc=None)
  eps=1e-15
  return dict(n=len(labels),positives=sum(labels),negatives=len(labels)-sum(labels),
@@ -45,7 +48,7 @@ def audit(root,output):
   branches={str(b):0 for b in range(4)},risk_labels={"region":[],"resource":[],"joint":[]},
   risk_probs={"region":[],"resource":[],"joint":[]},objective_abs_error=[],objective_sq_error=[],objective_z_abs=[],
   objective_predictions=0,objective_exact=0,model_fallbacks=0) for a in ARMS}
- per_trial=[];per_task={t:{a:[] for a in ARMS} for t in TASKS};online_rows=[]
+ per_trial=[];per_task={t:{a:[] for a in ARMS} for t in TASKS};online_rows=[];recomputed_results={}
  warm=cold=0;first_feasible=[]
  for u in plan["units"]:
   task,rep=u["task"],u["repeat"];unit=full/"units"/task/("r%d"%rep)
@@ -57,6 +60,7 @@ def audit(root,output):
   warm+=int(init_feasible);cold+=int(not init_feasible)
   for arm in ARMS:
    result=mp["units/%s/r%d/trials/%s/result.json"%(task,rep,arm)]
+   recomputed_results[(task,rep,arm)]=result
    stat=byarm[arm];stat["trials"]+=1
    stat["cold"]+=int(not init_feasible)
    feasible_final=result.get("final_best") is not None
@@ -101,6 +105,12 @@ def audit(root,output):
    per_trial.append(dict(task=task,repeat=rep,arm=arm,initial_warm=init_feasible,final_feasible=feasible_final,
       no_solve=not feasible_final,online_failures=online,exact_objective_labels=exact,
       first_feasible_call=result.get("first_feasible_call"),reported_final_best=result.get("final_best")))
+ # Compare every trial result to the report-level summary, then arm aggregates.
+ published_trials=report.get("summary",{}).get("trials",[])
+ require(len(published_trials)==len(recomputed_results)==384,"Report trial summary count mismatch")
+ for row in published_trials:
+  key=(row["task"],row["repeat"],row["arm"])
+  require(key in recomputed_results and row==recomputed_results[key],"Report-level trial differs from unit journal: "+str(key))
  # Compare independent recomputation to all published summaries.
  published=summary["arms"]
  comparisons={}
