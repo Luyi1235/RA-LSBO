@@ -45,3 +45,32 @@ def factorial(y00,y10,y01,y11):
   risk=.5*((y10-y00)+(y11-y01)),
   objective=.5*((y01-y00)+(y11-y10)),
   interaction=(y11-y10)-(y01-y00))
+
+def ei(mean,variance,incumbent):
+ import math
+ if any(type(x) not in (int,float) or not math.isfinite(x) for x in (mean,variance,incumbent)) or variance<0:
+  raise ValueError("Invalid EI moments")
+ d=incumbent-mean
+ if variance==0:return max(0.,d)
+ sd=math.sqrt(variance);z=d/sd
+ return max(0.,d*.5*math.erfc(-z/math.sqrt(2.))+sd*math.exp(-.5*z*z)/math.sqrt(2.*math.pi))
+
+def select_c2(arm,ids,available,prediction,incumbent,salt):
+ if arm not in ARMS or not ids or len(ids)!=len(set(ids)) or not available:
+  raise ValueError("Invalid C2 selection request")
+ if any(type(i)is not int or not 0<=i<len(ids) for i in available) or len(set(available))!=len(available):
+  raise ValueError("Invalid available indices")
+ scores=[0.]*len(ids);mode="uniform_hash"
+ if arm!="uniform_hash":
+  if prediction is None:mode="model_failure_hash"
+  elif arm=="risk_only_updated":
+   scores=list(prediction["probabilities"]["joint"]);mode="risk_only"
+  elif incumbent is None or prediction.get("objective") is None:
+   mode="cold_shared_hash" if incumbent is None else "no_objective_model_hash"
+  else:
+   o=prediction["objective"]
+   scores=[ei(m,v,incumbent)*q for m,v,q in zip(o["mean"],o["variance"],prediction["probabilities"]["joint"])]
+   mode="risk_ei"
+ tie=[digest(["c2_outcome_blind_tie_v1",salt,i]) for i in ids]
+ j=min(available,key=lambda i:(-scores[i],tie[i],ids[i]))
+ return dict(mode=mode,scores=scores,selected_index=j,selected_candidate_id=ids[j],incumbent=incumbent)
