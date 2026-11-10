@@ -30,7 +30,12 @@ class ProtocolTests(unittest.TestCase):
   pool=candidates(1234,192);rows=[observed(x,truth("tradeoff_s0",x)) for x in pool]
   a,_=sample_orders(pool,rows,99)
   labels=[all(rows[i][h]["kind"]=="exact" and rows[i][h]["value"]<=0 for h in ("region","resource")) for i in a["class_balanced"]]
-  self.assertLessEqual(abs(sum(labels[:48])-24),1)
+  total_true=sum(labels)
+  total_false=len(labels)-total_true
+  # Without replacement, perfect 24/24 balance is impossible if the
+  # minority class has fewer than 24 examples in the fixed pool.
+  expected_true=min(max(24,48-total_false),min(48,total_true))
+  self.assertEqual(sum(labels[:48]),expected_true)
  def test_coverage_design_deterministic_and_label_blind(self):
   pool=candidates(4321,192);rows=[observed(x,truth("tradeoff_s1",x)) for x in pool]
   a,_=sample_orders(pool,rows,7)
