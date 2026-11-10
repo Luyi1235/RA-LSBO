@@ -1,0 +1,78 @@
+name: pr86-cold-start-learnability
+on:
+  pull_request:
+    paths:
+      - 'pr86_*.py'
+      - 'run_pr86.py'
+      - 'tests/test_pr86_*.py'
+      - 'docs/PR86_A_COLD_START_LEARNABILITY.txt'
+      - 'README_PR86_DRAFT.md'
+      - '.github/workflows/pr86-cold-start.yml'
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Pure protocol and metric tests
+        run: |
+          python -S -m unittest discover -s tests -p test_pr86_protocol.py -v
+          python -S -m unittest discover -s tests -p test_pr86_metrics.py -v
+      - name: Temporary CPU model dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Native historical GP tests
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile, help and frozen full plan
+        run: |
+          python -m compileall -q pr86_protocol.py pr86_metrics.py pr86_study.py pr86_verify.py pr86_analysis.py run_pr86.py
+          python -S run_pr86.py --help
+          python -S run_pr86.py --task plan --profile full
+      - name: PR86 actual offline integration (512 mathematical calls)
+        run: python run_pr86.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr86-evidence/ci"
+      - name: Independent verification and learning-curve analysis
+        run: |
+          python -S run_pr86.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86-evidence/ci"
+          python -S run_pr86.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86-evidence/ci" --output "${{ runner.temp }}/pr86-evidence/analysis"
+      - name: Preserve raw evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr86-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr86-evidence
+          if-no-files-found: ignore
+  cross-python:
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: pr86-windows-latest
+          path: ${{ runner.temp }}/pr86-cross
+      - name: Python 3.13 verifies Windows Python 3.9 evidence without model dependencies
+        run: |
+          python -S run_pr86.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86-cross/ci"
+          python -S run_pr86.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86-cross/ci" --output "${{ runner.temp }}/pr86-cross/analysis-python313"
