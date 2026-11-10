@@ -48,6 +48,19 @@ def feature_coverage(records):
         nearest_neighbor_distance=dict(mean=sum(nearest)/len(nearest),
             median=ordered[len(ordered)//2],maximum=max(nearest)))
 
+def check_fit_receipt(receipt, training_n, query_ids):
+    req(receipt["method"]=="native_censored" and receipt["training_rows"]==training_n
+        and receipt["query_ids"]==query_ids and receipt["objective_labels_used"] is False,
+        "Native GP fit receipt is not bound to the expected observable prefix/query pool")
+    req("test_truth" not in receipt and "heldout_truth" not in receipt,
+        "Held-out truth leaked into native GP receipt")
+    req(set(receipt.get("heads",{}))=={"region","resource"},
+        "Native GP receipt missing constraint heads")
+    for diag in receipt["heads"].values():
+        req(len(diag["candidates"])==8 and diag["selected"]["status"]=="ok"
+            and all(row["status"]=="ok" for row in diag["candidates"]),
+            "Native GP grouped-head diagnostic failure/rejection")
+
 def verify(root, expected_sha=None):
     root=Path(root).resolve()
     file_count=check_manifest(root)
@@ -135,11 +148,7 @@ def verify(root, expected_sha=None):
                     "Proposal contains an outcome or privileged label")
                 fit=proposal["fit_receipt"]
                 expected_queries=[digest(x) for x in available]+[r["candidate_id"] for r in test]
-                req(fit["method"]=="native_censored" and fit["training_rows"]==len(history)
-                    and fit["query_ids"]==expected_queries and fit["objective_labels_used"] is False,
-                    "Fit receipt is not bound to the observable prefix and unlabeled query pool")
-                req("test_truth" not in fit and "heldout_truth" not in fit,
-                    "Held-out truth leaked into fit receipt")
+                check_fit_receipt(fit,len(history),expected_queries)
                 forecast={"gaussian":proposal["forecast_gaussian"],
                           "probabilities":proposal["forecast_probabilities"]}
                 idx,receipt=choose(method,available,[r["candidate"] for r in history],forecast,
@@ -172,6 +181,10 @@ def verify(root, expected_sha=None):
                 req(len(calibration_available)==0,"Reserved calibration-anchor pool not fully used")
             else:
                 req(len(calibration_available)==len(calibration_pool),"Non-VOI arm consumed calibration-only candidates")
+            final_prefix_ids={r["candidate_id"] for r in history}
+            final_available=[c for c in pool if digest(c) not in final_prefix_ids]
+            check_fit_receipt(trial["final_fit_receipt"],len(history),
+                [digest(c) for c in final_available]+[r["candidate_id"] for r in test])
             req(trial["final_n"]==spec["total_observations_per_method"]
                 and trial["online_calls"]==spec["online_per_method"],"Final budget mismatch")
             req(trial["selected_branch_counts"]=={str(b):sum(r["candidate"]["branch"]==b for r in history)
@@ -210,10 +223,7 @@ def verify(root, expected_sha=None):
                 cpfit=cp["fit_receipt"]
                 prefix_ids={r["candidate_id"] for r in history[:n]}
                 cp_available=[c for c in pool if digest(c) not in prefix_ids]
-                req(cpfit["method"]=="native_censored" and cpfit["training_rows"]==n
-                    and cpfit["objective_labels_used"] is False
-                    and cpfit["query_ids"]==[digest(c) for c in cp_available]+[r["candidate_id"] for r in test],
-                    "Checkpoint fit receipt mismatch")
+                check_fit_receipt(cpfit,n,[digest(c) for c in cp_available]+[r["candidate_id"] for r in test])
                 raw=cp["test_probabilities_raw"];cal=cp["test_probabilities_anchor_calibrated"]
                 recomputed,shifts=calibrate_prediction({"probabilities":raw},calibration_rates)
                 req(metric_equal(cal,recomputed) and all(close(cp["calibration_logit_shifts"][h],shifts[h])
@@ -237,8 +247,9 @@ def verify(root, expected_sha=None):
         and report["bill"]["math_settled"]==spec["total_math_calls"],"Report math bill mismatch")
     req(report["bill"]["gp_head_errors"]==0 and report["bill"]["gp_kernel_errors"]==0
         and report["bill"]["kernel_candidates_rejected"]==0,"Native GP error/rejection in run")
-    req(report["bill"]["gp_head_completed"]==spec["expected_gp_heads"]
-        and report["bill"]["gp_kernel_completed"]==spec["expected_gp_kernel_constructions"],
+    req(report["model_refits"]==spec["expected_model_refits"]
+        and report["bill"]["gp_head_started"]==report["bill"]["gp_head_completed"]==spec["expected_gp_heads"]
+        and report["bill"]["gp_kernel_started"]==report["bill"]["gp_kernel_completed"]==spec["expected_gp_kernel_constructions"],
         "GP/kernel construction count mismatch")
     return dict(status="VERIFIED_PR86B_SEQUENTIAL_RISK_INFORMATION",files=file_count,
         trials=trials_seen,math_calls=len(started),new_math_calls=0,new_gp_fits=0,
