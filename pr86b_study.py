@@ -99,7 +99,7 @@ def run(output, profile, source):
                 for step in range(online_limit + 1):
                     observed_rows = [deepcopy(r["observed"]) for r in history]
                     query_candidates = available + [r["candidate"] for r in test_rows]
-                    fit_seed = arm_seed + len(history)
+                    fit_seed = unit["pool_seed"] + 1009 * len(history)
                     forecast, receipt = native_predict(observed_rows, query_candidates,
                                                        "native_censored", fit_seed, bill)
                     last_fit_receipt = receipt
