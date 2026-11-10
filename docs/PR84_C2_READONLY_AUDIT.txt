@@ -1,0 +1,61 @@
+PR84 research task / actual GitHub PR #85: C2 archive audit, revision 2
+
+Input result HEAD: ade354de8b35d20a2bb32b469b04bc7da92aa004
+Archived experiment code SHA: 975d96caac53d675ebe1b790a0647479a75a2ed5
+Evidence root argument is the detached Git worktree ROOT. The program appends:
+results/phase-c2-head-factorial-20261109
+Never guess a workstation directory, never search for a ZIP patch.
+
+Scope and guardrails
+- Pure standard library, python -S. No evaluator, optimizer, candidate generator,
+  model fitting, VAE, aircraft or RCAIDE imports/calls.
+- Every archive file is checked against its committed Git blob. The outer
+  SHA256 manifest and pinned profile manifest must match. Both worktrees must
+  have the expected HEAD and be clean. Input bytes are rechecked after audit.
+- Rebuild best feasible curves and first feasible calls from observed packets.
+  Online failure means either constraint fails, not merely region abort.
+  A returned exact objective does NOT imply all constraints are feasible.
+- Replay candidate IDs, model/head/prefix receipts, predictions, EI*p selection,
+  journal order, the combined event stream, calls and computation bills.
+  Prediction values are archived values, not independently refitted GP outputs.
+- Recompute C2 factorial effects and the original 12-test Holm family unchanged.
+  Missing outcomes stay missing; initial-warm is the original primary stratum.
+- Summaries are compared, not blindly trusted. A summary/boolean discrepancy
+  is a finding, not an instruction to overwrite the input or rerun C2.
+  Unknown source-generation logic remains UNRESOLVED; do not invent a cause.
+- Metrics use observable labels of selected evaluated candidates only.
+  Stored truth is used only as part of file/record hashes, never for metrics.
+  No hidden objective is imputed and no unselected candidate receives truth.
+- Brier/log loss/AUROC and fixed ten-bin reliability are descriptive, conditional
+  on policy-selected data. Objective error and residual coverage are conditional
+  on exact objective feedback. Zero predictive variance is explicitly counted.
+  Diagnostics are NOT independent full-domain calibration or causal mediation.
+- Preserve arm, task, step, branch and six-step-block stratification. Do not
+  average incomparable task objective errors into a scientific claim.
+
+CLI
+python -S run_pr84_c2_audit.py --task plan --profile full
+python -S run_pr84_c2_audit.py --task run --profile smoke --expected-sha AUDIT_SHA --evidence-root EVIDENCE_WORKTREE --output NEW_SMOKE_AUDIT
+python -S run_pr84_c2_audit.py --task verify --profile smoke --expected-sha AUDIT_SHA --evidence-root EVIDENCE_WORKTREE --output SAME_SMOKE_AUDIT
+Then the same run/verify commands with profile full and a fresh full audit output.
+Here smoke/full select EXISTING archives, not new optimization runs.
+
+Output (each profile)
+audit_report.json; diagnostics.json; discrepancies.json;
+factorial_recomputed.json; per_trial.csv; selected_feedback.csv; manifest.json.
+Output must be outside both worktrees and must not already exist. Logs outside
+these sealed directories. verify recomputes outputs and checks the saved hashes.
+
+Status
+COMPLETE_PR84_AUDIT: replay complete, compared summaries agree.
+COMPLETE_WITH_REPORTING_DISCREPANCIES: replay complete, descriptive discrepancies
+are preserved. This is a valid audit completion, not a numerical model failure.
+VERIFIED_PR84_AUDIT: sealed output and full recomputation agree.
+Any nonzero exit means stop, keep logs/partial files, do not change inputs or
+code, do not retry in another directory. Existing complete same-identity outputs
+must be reused; no duplicate audit attempt without explicit authorization.
+
+CI runs synthetic contracts on Windows/Ubuntu x Python3.9/3.13, then the actual
+sealed smoke AND full archives on Windows3.9 and Ubuntu3.13. These are read-only
+analyses of historical evaluations; all new evaluator/model-call counts are 0.
+Do not rerun CI on the workstation or install new dependencies. Do not merge PR.
