@@ -18,7 +18,7 @@ def plan(profile):
         for repeat in range(cfg["repeats"]):
             seed = cfg["block"] + 1000 * TASKS.index(task) + 32 * repeat
             units.append(dict(task=task, repeat=repeat, anchor_seed=seed + 11,
-                              pool_seed=seed + 23, test_seed=seed + 37))
+                              pool_seed=seed + 23, test_seed=seed + 37, calibration_seed=seed + 41))
     n = len(units)
     online = cfg["total"] - ANCHORS
     calls_per_unit = ANCHORS + len(METHODS) * online + cfg["test"]
@@ -27,7 +27,7 @@ def plan(profile):
         schema="pr86b_sequential_risk_information_v1", profile=profile,
         units=units, tasks=list(cfg["tasks"]), methods=list(METHODS), anchor_count=ANCHORS,
         total_observations_per_method=cfg["total"], online_per_method=online,
-        candidate_pool=cfg["pool"], test_count=cfg["test"],
+        candidate_pool=cfg["pool"], calibration_anchor_count=(cfg["total"]-ANCHORS)//4, test_count=cfg["test"],
         checkpoints=list(cfg["checkpoints"]), calls_per_unit=calls_per_unit,
         total_math_calls=n*calls_per_unit, shared_anchor_calls=n*ANCHORS,
         arm_online_calls=n*len(METHODS)*online, heldout_test_calls=n*cfg["test"],
