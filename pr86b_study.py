@@ -77,18 +77,21 @@ def run(output, profile, source):
                                  unit_name, output, bill)
                        for i,c in enumerate(candidates(unit["anchor_seed"], spec["anchor_count"]))]
             pool = candidates(unit["pool_seed"], spec["candidate_pool"])
+            calibration_pool = candidates(unit["calibration_seed"], spec["calibration_anchor_count"])
             test_rows = [_evaluate(task, c, unit_name+"/test/%04d" % i, "test",
                                    unit_name, output, bill)
                          for i,c in enumerate(candidates(unit["test_seed"], spec["test_count"]))]
             ids = [r["candidate_id"] for r in anchors + test_rows]
-            if len(set(ids)) != len(ids) or set(ids) & {digest(c) for c in pool}:
-                raise ValueError("Anchor/pool/test candidate identity overlap")
+            all_candidate_ids = ids + [digest(c) for c in pool] + [digest(c) for c in calibration_pool]
+            if len(set(all_candidate_ids)) != len(all_candidate_ids):
+                raise ValueError("Anchor/acquisition/calibration/test candidate identity overlap")
             rates = anchor_prevalence([r["observed"] for r in anchors])
             baseline_brier = _baseline_briers(test_rows, rates)
             unit_trials = []
             for method_index, method in enumerate(METHODS):
                 history = list(anchors)
                 available = list(pool)
+                calibration_available = list(calibration_pool)
                 proposals, observations, checkpoints = [], [], []
                 last_fit_receipt = None
                 arm_seed = unit["pool_seed"] + 1009*method_index
@@ -140,10 +143,20 @@ def run(output, profile, source):
                         break
                     index, decision = choose(method, available,
                         [r["candidate"] for r in history], candidate_forecast,
-                        arm_seed, step)
-                    selected = available[index]
+                        arm_seed, step, calibration_candidates=calibration_available)
+                    if decision["selected_from"] == "calibration_anchor_pool":
+                        selected = calibration_available[index]
+                        del calibration_available[index]
+                        selected_pool = "calibration_anchor_pool"
+                    else:
+                        selected = available[index]
+                        del available[index]
+                        selected_pool = "acquisition_pool"
                     decision.update(fit_receipt=receipt, candidate_pool_sha256=digest(pool),
+                                    calibration_pool_sha256=digest(calibration_pool),
                                     available_pool_sha256=digest(available),
+                                    calibration_available_pool_sha256=digest(calibration_available),
+                                    selected_pool=selected_pool,
                                     history_sha256=digest([r["observed"] for r in history]),
                                     forecast_gaussian=candidate_forecast["gaussian"],
                                     forecast_probabilities=candidate_forecast["probabilities"],
@@ -155,7 +168,6 @@ def run(output, profile, source):
                     observations.append(dict(step=step, candidate_id=record["candidate_id"],
                                               record=record))
                     history.append(record)
-                    del available[index]
                 trial = dict(task=task, repeat=repeat, method=method, seed=arm_seed,
                     anchor_ids=[r["candidate_id"] for r in anchors],
                     online_observations=observations, proposals=proposals,
@@ -170,7 +182,7 @@ def run(output, profile, source):
                 append(output/"progress.jsonl", dict(task=task, repeat=repeat, method=method,
                     online_calls=len(observations), final_n=len(history)))
             write(output/"units"/unit_name/ "unit.json", dict(task=task, repeat=repeat,
-                anchors=anchors, test_rows=test_rows, pool=pool, anchor_rates=rates,
+                anchors=anchors, test_rows=test_rows, pool=pool, calibration_pool=calibration_pool, anchor_rates=rates,
                 anchor_baseline_brier=baseline_brier, trials=unit_trials))
         if bill["math_started"] != spec["total_math_calls"] or bill["math_settled"] != spec["total_math_calls"]:
             raise ValueError("PR86-B math evaluation bill mismatch")
