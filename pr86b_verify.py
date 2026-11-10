@@ -1,7 +1,7 @@
 """Independent PR86-B verifier; no evaluator calls or GP fitting."""
 import json, math
 from pathlib import Path
-from risk_learning.core import TASKS, candidates, truth, observed, digest
+from risk_learning.core import TASKS, candidates, truth, observed, digest, features
 from risk_learning.io import read, check_manifest
 from pr86b_protocol import plan, METHODS
 from pr86b_acquisition import choose, anchor_prevalence, calibrate_prediction, metrics
@@ -34,6 +34,16 @@ def metric_equal(a,b):
     if isinstance(a,float):
         return close(a,b)
     return a==b
+
+def feature_coverage(records):
+    counts={str(b):sum(r["candidate"]["branch"]==b for r in records) for b in range(4)}
+    vectors=[features(r["candidate"]) for r in records]
+    nearest=[min(sum((a-b)**2 for a,b in zip(x,y))**0.5
+                 for j,y in enumerate(vectors) if i!=j) for i,x in enumerate(vectors)]
+    ordered=sorted(nearest)
+    return dict(branch_counts=counts,branches_covered=sum(v>0 for v in counts.values()),
+        nearest_neighbor_distance=dict(mean=sum(nearest)/len(nearest),
+            median=ordered[len(ordered)//2],maximum=max(nearest)))
 
 def verify(root, expected_sha=None):
     root=Path(root).resolve()
@@ -112,6 +122,13 @@ def verify(root, expected_sha=None):
                     and proposal["available_pool_sha256"]==digest(available),"Proposal history/pool binding mismatch")
                 req(not any(k in proposal for k in ("truth","label","objective","heldout_truth")),
                     "Proposal contains an outcome or privileged label")
+                fit=proposal["fit_receipt"]
+                expected_queries=[digest(x) for x in available]+[r["candidate_id"] for r in test]
+                req(fit["method"]=="native_censored" and fit["training_rows"]==len(history)
+                    and fit["query_ids"]==expected_queries and fit["objective_labels_used"] is False,
+                    "Fit receipt is not bound to the observable prefix and unlabeled query pool")
+                req("test_truth" not in fit and "heldout_truth" not in fit,
+                    "Held-out truth leaked into fit receipt")
                 forecast={"gaussian":proposal["forecast_gaussian"],
                           "probabilities":proposal["forecast_probabilities"]}
                 idx,receipt=choose(method,available,[r["candidate"] for r in history],forecast,
@@ -134,6 +151,12 @@ def verify(root, expected_sha=None):
                 and trial["online_calls"]==spec["online_per_method"],"Final budget mismatch")
             req(trial["selected_branch_counts"]=={str(b):sum(r["candidate"]["branch"]==b for r in history)
                 for b in range(4)},"Branch count mismatch")
+            req(metric_equal(trial["feature_coverage"],feature_coverage(history)),
+                "Hierarchical feature-space coverage mismatch")
+            req(close(trial["gp_fit_seconds"],
+                sum(p["fit_receipt"]["elapsed_seconds"] for p in trial["proposals"])
+                +trial["final_fit_receipt"]["elapsed_seconds"]),
+                "Per-trial GP fit-time accounting mismatch")
             req(len(trial["checkpoints"])==len(spec["checkpoints"]),"Checkpoint count mismatch")
             for cp in trial["checkpoints"]:
                 n=cp["n"]
@@ -143,6 +166,13 @@ def verify(root, expected_sha=None):
                     "Checkpoint training prefix mismatch")
                 req(cp["test_candidate_ids"]==[r["candidate_id"] for r in test]
                     and cp["anchor_rates"]==rates,"Checkpoint test/anchor identity mismatch")
+                cpfit=cp["fit_receipt"]
+                prefix_ids={r["candidate_id"] for r in history[:n]}
+                cp_available=[c for c in pool if digest(c) not in prefix_ids]
+                req(cpfit["method"]=="native_censored" and cpfit["training_rows"]==n
+                    and cpfit["objective_labels_used"] is False
+                    and cpfit["query_ids"]==[digest(c) for c in cp_available]+[r["candidate_id"] for r in test],
+                    "Checkpoint fit receipt mismatch")
                 raw=cp["test_probabilities_raw"];cal=cp["test_probabilities_anchor_calibrated"]
                 recomputed,shifts=calibrate_prediction({"probabilities":raw},rates)
                 req(metric_equal(cal,recomputed) and all(close(cp["calibration_logit_shifts"][h],shifts[h])
