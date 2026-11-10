@@ -1,0 +1,62 @@
+PR86-A 冷启动风险可学习性实验
+
+任务身份
+- 仓库：https://github.com/Luyi1235/RA-LSBO
+- PR：87
+- 分支：research/phase-pr86-cold-start-learnability-20261110
+- 固定 SHA：a5d5f20a4854de30939b590cb69126d1d5690ed5
+- CI：42769280750
+- 结果分支：results/phase-pr86-cold-start-learnability-20261110
+- 入口：run_pr86.py
+- 协议：docs/PR86_A_COLD_START_LEARNABILITY.txt
+
+执行前
+1. 检查本机和 GitHub 是否已有同一 SHA、同一 profile 的完整、失败或未结算结果；已有完整结果只核验，不重复执行。
+2. 新建 detached worktree，核对 HEAD 和 git status --porcelain。
+3. 使用现有 Rcaide_vsp / Python 3.9.25，不安装、不升级依赖。
+4. 结果目录、日志目录独立于源码 worktree。
+
+预检（逐条保存 stdout/stderr 和退出码）
+python -S -m unittest discover -s tests -p test_pr86_protocol.py -v
+python -S -m unittest discover -s tests -p test_pr86_metrics.py -v
+python -m unittest discover -s tests -p test_c1_native.py -v
+python -m compileall -q pr86_protocol.py pr86_metrics.py pr86_study.py pr86_verify.py pr86_analysis.py run_pr86.py
+python -S run_pr86.py --help
+python -S run_pr86.py --task plan --profile full
+
+Smoke（授权）
+python run_pr86.py --task run --profile smoke --expected-sha a5d5f20a4854de30939b590cb69126d1d5690ed5 --output <smoke>
+python -S run_pr86.py --task verify --expected-sha <sha> --input <smoke>
+python -S run_pr86.py --task analyze --expected-sha <sha> --input <smoke> --output <smoke-analysis>
+
+Full 放行门槛
+- report.status = COMPLETE_PR86_LEARNABILITY
+- failed_model_rows = 0
+- bill.math_started = bill.math_settled = 1920
+- gp_head_errors = gp_kernel_errors = kernel_candidates_rejected = 0
+- verify.status = VERIFIED_PR86_LEARNABILITY
+- analysis.status = COMPLETE_PR86_ANALYSIS
+- 六任务全部完成、144 个模型记录、训练/测试隔离、账本闭合、无未知/未结算
+
+Full（通过后授权）
+python run_pr86.py --task run --profile full --expected-sha <sha> --output <full>
+python -S run_pr86.py --task verify --expected-sha <sha> --input <full>
+python -S run_pr86.py --task analyze --expected-sha <sha> --input <full> --output <full-analysis>
+
+固定预算
+- smoke：6 任务 ×1 重复 ×(192 训练 +128 测试)=1,920；144 模型行；288 GP heads；2,304 kernels。
+- full：6 任务 ×3 重复 ×(192+512)=12,672；720 模型行；1,440 GP heads；11,520 kernels。
+- CI 两平台各 512 次单独记账，不计入工作机。
+
+禁止
+- 修改种子、样本量、任务、评价预算；
+- 根据 smoke 表现调参或改变设计；
+- 用测试标签训练、归一化、选核或停止；
+- 把 privileged_exact 当作可部署方法；
+- 在线优化、VAE、幻想、飞机/RCAIDE；
+- 重跑 PR83/PR84。
+
+上传
+results/phase-pr86-cold-start-learnability-20261110
+smoke/、full/、smoke-analysis/、full-analysis/、logs/、README.md、environment.json、artifact_sha256.txt。
+上传后重新 fetch，核对 HEAD、字节和 SHA256；不推送代码分支、不 force push、不合并 PR87、不修改历史。

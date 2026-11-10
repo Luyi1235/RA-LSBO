@@ -1,0 +1,50 @@
+{
+  "identity": {
+    "code_sha": "a5d5f20a4854de30939b590cb69126d1d5690ed5",
+    "schema": "pr86_cold_start_learnability_v1",
+    "branch": "research/phase-pr86-cold-start-learnability-20261110"
+  },
+  "counts": {
+    "smoke_calls": 1920,
+    "full_calls": 12672,
+    "smoke_rows": 144,
+    "full_rows": 720,
+    "smoke_heads": 288,
+    "full_heads": 1440,
+    "smoke_kernels": 2304,
+    "full_kernels": 11520
+  },
+  "key_results": {
+    "native_n192_all_policies": "joint Brier ~0.0313, AUROC ~0.971, ECE ~0.0446; all four policies identical by construction",
+    "native_n12": {
+      "iid_uniform": {
+        "joint_brier": 0.117264,
+        "joint_auroc": 0.652061,
+        "joint_ece": 0.154825
+      },
+      "class_balanced": {
+        "joint_brier": 0.186443,
+        "joint_auroc": 0.839336,
+        "joint_ece": 0.338169
+      },
+      "branch_stratified": {
+        "joint_brier": 0.111297,
+        "joint_auroc": 0.644141,
+        "joint_ece": 0.146859
+      },
+      "coverage_maximin": {
+        "joint_brier": 0.091117,
+        "joint_auroc": 0.614271,
+        "joint_ece": 0.084755
+      }
+    },
+    "privileged_n192": "joint Brier ~0.0069, AUROC ~0.999, ECE ~0.0149",
+    "class_balanced": "best AUROC but worst Brier/ECE at n12-48; label-informed, not deployable",
+    "coverage_maximin": "best Brier/ECE at n12-48 but worst AUROC; coverage not sufficient",
+    "conclusion": "cold-start sample size dominates; class balance trades calibration for ranking; privileged is upper bound only"
+  },
+  "files": {
+    "learning_curves": "full-analysis/learning_curves.json",
+    "case_table": "case_table.csv"
+  }
+}
