@@ -1,5 +1,6 @@
 import unittest
 from pr86_metrics import metrics
+from pr86_study import _score
 class MetricTests(unittest.TestCase):
  def test_single_class_auc_null(self):
   x=metrics([True,True],[.8,.4]);self.assertIsNone(x["auroc"]);self.assertIsNotNone(x["auprc"])
