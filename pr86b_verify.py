@@ -161,6 +161,10 @@ def verify(root, expected_sha=None):
                 req(rec["call_id"]==call and call in settled and started[call]["candidate"]==selected
                     and settled[call]["record_sha256"]==digest(rec),"Online ledger mismatch")
                 history.append(rec)
+            if method=="calibration_aware_voi":
+                req(len(calibration_available)==0,"Reserved calibration-anchor pool not fully used")
+            else:
+                req(len(calibration_available)==len(calibration_pool),"Non-VOI arm consumed calibration-only candidates")
             req(trial["final_n"]==spec["total_observations_per_method"]
                 and trial["online_calls"]==spec["online_per_method"],"Final budget mismatch")
             req(trial["selected_branch_counts"]=={str(b):sum(r["candidate"]["branch"]==b for r in history)
