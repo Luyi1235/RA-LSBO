@@ -11,14 +11,17 @@ from pr86_metrics import metrics
 
 def _score(test,pred):
  out={}
- for head in ("region","resource"):
+ for head in ("region","resource","joint"):
   labels=[(r["truth"]["region"]<=0 and r["truth"]["resource"]<=0) if head=="joint" else r["truth"][head]<=0 for r in test]
   probs=pred["probabilities"][head]
   out[head]=metrics(labels,probs)
-  margin=pred.get("margin_mean",{}).get(head)
-  if margin is not None:
-   truth_values=[r["truth"][head] for r in test]
-   out[head]["margin_rmse"]=(sum((a-b)**2 for a,b in zip(margin,truth_values))/len(test))**.5
+  # A joint probability is available, but there is no single joint margin.
+  # Therefore margin RMSE is defined only for the two native constraint heads.
+  if head in ("region","resource"):
+   margin=pred.get("margin_mean",{}).get(head)
+   if margin is not None:
+    truth_values=[r["truth"][head] for r in test]
+    out[head]["margin_rmse"]=(sum((a-b)**2 for a,b in zip(margin,truth_values))/len(test))**.5
  return out
 
 def run(root,profile,source,predictor=None):
