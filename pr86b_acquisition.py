@@ -91,7 +91,7 @@ def calibrate_prediction(prediction, anchor_rates):
     calibrated["joint"] = [a*b for a,b in zip(calibrated["region"], calibrated["resource"])]
     return calibrated, shifts
 
-def choose(method, candidates, evaluated, forecast, seed, step, anchor_fraction=0.25):
+def choose(method, candidates, evaluated, forecast, seed, step, anchor_fraction=0.25, calibration_candidates=None):
     """Return (index, receipt); forecast arrays align with candidates."""
     if method not in METHODS or not candidates:
         raise ValueError("Unknown method or empty candidate pool")
@@ -121,9 +121,17 @@ def choose(method, candidates, evaluated, forecast, seed, step, anchor_fraction=
         else:
             period = round(1.0/anchor_fraction)
             if (step+1) % period == 0:
+                anchor_pool = calibration_candidates if calibration_candidates is not None else candidates
+                if not anchor_pool:
+                    raise ValueError("Independent random calibration-anchor pool exhausted")
                 rng = random.Random(seed + 104729*step)
-                scores = [rng.random() for _ in candidates]
-                rule = "reserved_random_calibration_anchor"
+                scores = [rng.random() for _ in anchor_pool]
+                index = max(range(len(anchor_pool)), key=lambda i: (float(scores[i]), digest(anchor_pool[i])))
+                return index, {"method": method, "rule": "reserved_random_calibration_anchor",
+                    "step": step, "selected_index": index,
+                    "selected_candidate_sha256": digest(anchor_pool[index]),
+                    "scores": [float(x) for x in scores], "selected_from": "calibration_anchor_pool",
+                    "anchor_fraction": anchor_fraction}
             else:
                 scores = []
                 for i in range(n):
@@ -139,7 +147,7 @@ def choose(method, candidates, evaluated, forecast, seed, step, anchor_fraction=
     index = max(range(n), key=lambda i: (float(scores[i]), digest(candidates[i])))
     return index, {"method": method, "rule": rule, "step": step, "selected_index": index,
                    "selected_candidate_sha256": digest(candidates[index]),
-                   "scores": [float(x) for x in scores],
+                   "scores": [float(x) for x in scores], "selected_from": "acquisition_pool",
                    "anchor_fraction": anchor_fraction if method == "calibration_aware_voi" else None}
 
 def metrics(labels, probabilities):
