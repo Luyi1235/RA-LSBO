@@ -141,6 +141,8 @@ def run(output, profile, source):
                             fit_receipt=receipt))
                     if nobs >= spec["total_observations_per_method"]:
                         break
+                    available_before_sha = digest(available)
+                    calibration_available_before_sha = digest(calibration_available)
                     index, decision = choose(method, available,
                         [r["candidate"] for r in history], candidate_forecast,
                         arm_seed, step, calibration_candidates=calibration_available)
@@ -154,8 +156,8 @@ def run(output, profile, source):
                         selected_pool = "acquisition_pool"
                     decision.update(fit_receipt=receipt, candidate_pool_sha256=digest(pool),
                                     calibration_pool_sha256=digest(calibration_pool),
-                                    available_pool_sha256=digest(available),
-                                    calibration_available_pool_sha256=digest(calibration_available),
+                                    available_pool_sha256=available_before_sha,
+                                    calibration_available_pool_sha256=calibration_available_before_sha,
                                     selected_pool=selected_pool,
                                     history_sha256=digest([r["observed"] for r in history]),
                                     forecast_gaussian=candidate_forecast["gaussian"],
