@@ -25,7 +25,7 @@ PR86-A 的后验 prevalence-only 复核显示：在当前六任务/当前模型�
 4. `boundary`：联合预测边界不确定性；
 5. `calibration_aware_voi`：保留固定比例随机校准锚点，其余使用 BALD 风格互信息获取。
 
-五臂共享 12 个随机初始锚点；之后每臂独立获取反馈，并在每次真实评价后重新拟合 native-censored GP。Held-out 测试标签只用于评分；未选候选标签不生成、不缓存、不暴露。校准截距只使用随机锚点标签和无标签查询特征。
+五臂共享 12 个随机初始锚点；之后每臂独立获取反馈，并在每次真实评价后重新拟合 native-censored GP。Held-out 测试标签只用于评分；未选候选标签不生成、不缓存、不暴露。校准截距只使用随机锚点标签和无标签查询特征。为避免自适应采集对剩余池的耗竭污染校准样本，VOI 臂的每四次在线评价中有一次从独立 IID 校准候选流抽取；该流与主动搜索池、测试集和初始锚点均不重叠。IID 臂的全部在线评价也可用于其自身的随机样本校准；其他自适应臂只使用共同的12个初始随机锚点。BSS 的比较基线始终固定为共同初始锚点的 Laplace prevalence。
 
 主要指标：region/resource/joint Brier、相对锚点 Laplace prevalence baseline 的 Brier Skill Score、log loss、AUROC、AUPRC、ECE、false-feasible rate、分支与连续空间覆盖，以及 GP/kernel 真实费用。联合可行概率仍是两个边际头的乘积，是独立性近似而非联合依赖模型。
 
@@ -47,7 +47,7 @@ Full 预计 3,330 次 GP refit、6,660 个 GP heads、53,280 次 kernel construc
 - 执行入口：`run_pr86b.py`
 - 冻结协议：`docs/PR86_B_SEQUENTIAL_RISK_INFORMATION.txt`
 
-当前实现包含协议、五类采集规则、anchor-only prevalence/截距校准、序贯 runner、独立 verifier、任务分层分析、测试与 Windows/Ubuntu + Python 3.13 CI。**只有同一最终代码 SHA 的全部 CI 任务通过后，才会下发工作机 smoke 指令。** Smoke 通过独立 verify、analysis、预算闭合和零 GP/kernel 错误门槛后，才允许 Full。
+当前实现包含协议、五类采集规则、独立随机校准锚点池、anchor-only prevalence/截距校准、序贯 runner、独立 verifier、任务分层分析、测试与 Windows/Ubuntu + Python 3.13 CI。**只有同一最终代码 SHA 的全部 CI 任务通过后，才会下发工作机 smoke 指令。** Smoke 通过独立 verify、analysis、预算闭合和零 GP/kernel 错误门槛后，才允许 Full。
 
 计划命令（默认只显示计划，不执行实验）：
 
