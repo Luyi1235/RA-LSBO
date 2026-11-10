@@ -166,6 +166,22 @@ def verify(root, expected_sha=None):
                     "Checkpoint training prefix mismatch")
                 req(cp["test_candidate_ids"]==[r["candidate_id"] for r in test]
                     and cp["anchor_rates"]==rates,"Checkpoint test/anchor identity mismatch")
+                online_n=n-spec["anchor_count"]
+                calibration_rows=list(anchors)
+                calibration_ids=[r["candidate_id"] for r in anchors]
+                if method=="iid_random":
+                    calibration_rows += [o["record"] for o in trial["online_observations"][:online_n]]
+                    calibration_ids += [o["candidate_id"] for o in trial["online_observations"][:online_n]]
+                elif method=="calibration_aware_voi":
+                    for prior,outcome in zip(trial["proposals"][:online_n],
+                                             trial["online_observations"][:online_n]):
+                        if prior["rule"]=="reserved_random_calibration_anchor":
+                            calibration_rows.append(outcome["record"])
+                            calibration_ids.append(outcome["candidate_id"])
+                calibration_rates=anchor_prevalence([r["observed"] for r in calibration_rows])
+                req(cp["calibration_rates"]==calibration_rates
+                    and cp["calibration_anchor_ids"]==calibration_ids,
+                    "Calibration anchor roster mismatch")
                 cpfit=cp["fit_receipt"]
                 prefix_ids={r["candidate_id"] for r in history[:n]}
                 cp_available=[c for c in pool if digest(c) not in prefix_ids]
@@ -174,7 +190,7 @@ def verify(root, expected_sha=None):
                     and cpfit["query_ids"]==[digest(c) for c in cp_available]+[r["candidate_id"] for r in test],
                     "Checkpoint fit receipt mismatch")
                 raw=cp["test_probabilities_raw"];cal=cp["test_probabilities_anchor_calibrated"]
-                recomputed,shifts=calibrate_prediction({"probabilities":raw},rates)
+                recomputed,shifts=calibrate_prediction({"probabilities":raw},calibration_rates)
                 req(metric_equal(cal,recomputed) and all(close(cp["calibration_logit_shifts"][h],shifts[h])
                     for h in shifts),"Anchor calibration mismatch")
                 req(metric_equal(cp["raw_metrics"],metric_pack(test,raw,baseline))
