@@ -50,6 +50,18 @@ def verify(root,expected_sha=None):
      req(row["train_observed_sha256"]==digest(public),"Training observation hash mismatch")
      req(row["test_set_sha256"]==digest(test) and row["test_candidate_ids"]==test_ids,"Test identity mismatch")
      req(row["coverage"]==coverage(public),"Training coverage mismatch")
+     lc=row["train_label_counts"]
+     region_pos=sum(known_label(x,"region") for x in public)
+     resource_pos=sum(known_label(x,"resource") for x in public)
+     joint_pos=sum(all(known_label(x,h) for h in ("region","resource")) for x in public)
+     expected_counts=dict(region_exact=sum(x["region"]["kind"]=="exact" for x in public),
+      region_interval=sum(x["region"]["kind"]=="interval" for x in public),
+      region_feasible=region_pos,region_infeasible=n-region_pos,
+      resource_exact=sum(x["resource"]["kind"]=="exact" for x in public),
+      resource_feasible=resource_pos,resource_infeasible=n-resource_pos,
+      objective_exact=sum(x["objective"]["kind"]=="exact" for x in public),
+      joint_feasible=joint_pos,joint_infeasible=n-joint_pos)
+     req(lc==expected_counts,"Per-constraint training class counts mismatch")
      rec=row["receipt"]
      req(rec["method"]==method and rec["training_rows"]==n and rec["query_ids"]==test_ids,"Fit receipt mismatch")
      req(rec["privileged_training"]==(method=="privileged_exact"),"Supervision contract mismatch")
