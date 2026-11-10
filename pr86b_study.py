@@ -20,7 +20,7 @@ def _evaluate(task, candidate, call_id, role, unit_name, root, bill):
     if role in ("anchor", "online"):
         record["observed"] = observed(candidate, target)
     append(root/"evaluations.jsonl", dict(event="settled", call_id=call_id,
-        record_sha256=digest(record)))
+        record_sha256=digest(record), record=record))
     bill["math_settled"] += 1
     return record
 
@@ -165,10 +165,14 @@ def run(output, profile, source):
                                     selected_candidate=selected,
                                     pre_outcome=True, no_unselected_labels_accessed=True)
                     proposals.append(decision)
+                    append(output/"progress.jsonl", dict(event="proposal", task=task, repeat=repeat,
+                        method=method, step=step, proposal=decision))
                     call_id = unit_name+"/online/"+method+"/%03d" % step
                     record = _evaluate(task, selected, call_id, "online", unit_name, output, bill)
-                    observations.append(dict(step=step, candidate_id=record["candidate_id"],
-                                              record=record))
+                    observation = dict(step=step, candidate_id=record["candidate_id"], record=record)
+                    observations.append(observation)
+                    append(output/"progress.jsonl", dict(event="observation", task=task, repeat=repeat,
+                        method=method, step=step, observation=observation))
                     history.append(record)
                 trial = dict(task=task, repeat=repeat, method=method, seed=arm_seed,
                     anchor_ids=[r["candidate_id"] for r in anchors],
@@ -181,7 +185,7 @@ def run(output, profile, source):
                     online_calls=len(observations), model_refits=len(proposals)+1)
                 unit_trials.append(trial)
                 trials.append(trial)
-                append(output/"progress.jsonl", dict(task=task, repeat=repeat, method=method,
+                append(output/"progress.jsonl", dict(event="trial_complete", task=task, repeat=repeat, method=method,
                     online_calls=len(observations), final_n=len(history)))
             write(output/"units"/unit_name/ "unit.json", dict(task=task, repeat=repeat,
                 anchors=anchors, test_rows=test_rows, pool=pool, calibration_pool=calibration_pool, anchor_rates=rates,
