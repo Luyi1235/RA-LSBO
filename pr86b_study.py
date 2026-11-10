@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import platform, time, traceback
 
-from risk_learning.core import TASKS, candidates, truth, observed, digest
+from risk_learning.core import TASKS, candidates, truth, observed, digest, features
 from risk_learning.io import write, append, seal
 from risk_learning.study import new_bill
 from risk_learning.native import predict as native_predict
@@ -23,6 +23,18 @@ def _evaluate(task, candidate, call_id, role, unit_name, root, bill):
         record_sha256=digest(record)))
     bill["math_settled"] += 1
     return record
+
+def _feature_coverage(records):
+    branches = {str(b): sum(r["candidate"]["branch"] == b for r in records) for b in range(4)}
+    vectors = [features(r["candidate"]) for r in records]
+    nearest = []
+    for i, x in enumerate(vectors):
+        nearest.append(min(sum((a-b)**2 for a,b in zip(x,y))**0.5
+                           for j,y in enumerate(vectors) if i != j))
+    ordered = sorted(nearest)
+    return dict(branch_counts=branches, branches_covered=sum(v>0 for v in branches.values()),
+                nearest_neighbor_distance=dict(mean=sum(nearest)/len(nearest),
+                    median=ordered[len(ordered)//2], maximum=max(nearest)))
 
 def _metric_pack(test_rows, probabilities, baseline):
     result = {}
@@ -78,6 +90,7 @@ def run(output, profile, source):
                 history = list(anchors)
                 available = list(pool)
                 proposals, observations, checkpoints = [], [], []
+                last_fit_receipt = None
                 arm_seed = unit["pool_seed"] + 1009*method_index
                 online_limit = spec["online_per_method"]
                 for step in range(online_limit + 1):
@@ -86,6 +99,7 @@ def run(output, profile, source):
                     fit_seed = arm_seed + len(history)
                     forecast, receipt = native_predict(observed_rows, query_candidates,
                                                        "native_censored", fit_seed, bill)
+                    last_fit_receipt = receipt
                     if forecast is None or receipt.get("status") != "OK":
                         raise RuntimeError("Native GP fit failed; preserve failure evidence and stop: %r" % receipt)
                     nc = len(available)
@@ -115,7 +129,7 @@ def run(output, profile, source):
                         [r["candidate"] for r in history], candidate_forecast,
                         arm_seed, step)
                     selected = available[index]
-                    decision.update(candidate_pool_sha256=digest(pool),
+                    decision.update(fit_receipt=receipt, candidate_pool_sha256=digest(pool),
                                     available_pool_sha256=digest(available),
                                     history_sha256=digest([r["observed"] for r in history]),
                                     forecast_gaussian=candidate_forecast["gaussian"],
@@ -134,6 +148,9 @@ def run(output, profile, source):
                     online_observations=observations, proposals=proposals,
                     checkpoints=checkpoints, final_n=len(history),
                     selected_branch_counts={str(b):sum(r["candidate"]["branch"]==b for r in history) for b in range(4)},
+                    feature_coverage=_feature_coverage(history),
+                    final_fit_receipt=last_fit_receipt,
+                    gp_fit_seconds=sum(p["fit_receipt"]["elapsed_seconds"] for p in proposals) + last_fit_receipt["elapsed_seconds"],
                     online_calls=len(observations), model_refits=len(proposals)+1)
                 unit_trials.append(trial)
                 trials.append(trial)
