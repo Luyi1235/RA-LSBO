@@ -25,7 +25,7 @@ def plan(profile):
     fits_per_unit = len(METHODS) * (online + 1)
     return dict(
         schema="pr86b_sequential_risk_information_v1", profile=profile,
-        units=units, methods=list(METHODS), anchor_count=ANCHORS,
+        units=units, tasks=list(cfg["tasks"]), methods=list(METHODS), anchor_count=ANCHORS,
         total_observations_per_method=cfg["total"], online_per_method=online,
         candidate_pool=cfg["pool"], test_count=cfg["test"],
         checkpoints=list(cfg["checkpoints"]), calls_per_unit=calls_per_unit,
