@@ -119,7 +119,7 @@ def verify(root, expected_sha=None):
                 selected=available[idx]
                 req(idx==proposal["selected_index"] and selected==proposal["selected_candidate"]
                     and proposal["selected_candidate_sha256"]==digest(selected)
-                    and proposal["scores"]==receipt["scores"] and proposal["rule"]==receipt["rule"],
+                    and metric_equal(proposal["scores"],receipt["scores"]) and proposal["rule"]==receipt["rule"],
                     "Acquisition decision cannot be independently replayed")
                 rec=observation["record"]
                 req(observation["step"]==step and rec["candidate"]==selected
