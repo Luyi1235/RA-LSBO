@@ -14,7 +14,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(plan("full")["expected_gp_kernel_constructions"],53280)
     def test_profile_seeds_are_disjoint(self):
         plans=[plan(x) for x in ("ci","smoke","full")]
-        seeds=[(u["anchor_seed"],u["pool_seed"],u["test_seed"]) for p in plans for u in p["units"]]
+        seeds=[(u["anchor_seed"],u["pool_seed"],u["test_seed"],u["calibration_seed"]) for p in plans for u in p["units"]]
         flat=[x for row in seeds for x in row]
         self.assertEqual(len(flat),len(set(flat)))
     def test_bald_information_is_nonnegative_and_bounded(self):
