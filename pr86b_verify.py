@@ -82,9 +82,10 @@ def verify(root, expected_sha=None):
         req([r["candidate"] for r in test]==candidates(unit["test_seed"],spec["test_count"]),
             "Test stream mismatch")
         req(pool==candidates(unit["pool_seed"],spec["candidate_pool"]),"Candidate pool stream mismatch")
-        all_ids=[r["candidate_id"] for r in anchors+test]
-        req(len(set(all_ids))==len(all_ids) and not ({digest(c) for c in pool}&set(all_ids)),
-            "Anchor/pool/test overlap")
+        req(calibration_pool==candidates(unit["calibration_seed"],spec["calibration_anchor_count"]),
+            "Calibration-anchor pool stream mismatch")
+        all_ids=[r["candidate_id"] for r in anchors+test]+[digest(c) for c in pool+calibration_pool]
+        req(len(set(all_ids))==len(all_ids),"Anchor/acquisition/calibration/test overlap")
         for role,rows in (("anchor",anchors),("test",test)):
             for i,row in enumerate(rows):
                 call=name+"/"+role+"/%04d"%i if role=="test" else name+"/anchor/%03d"%i
@@ -111,7 +112,7 @@ def verify(root, expected_sha=None):
             method=trial["method"]
             req(method in METHODS and trial["task"]==task and trial["repeat"]==repeat,"Trial identity mismatch")
             req(trial["anchor_ids"]==[r["candidate_id"] for r in anchors],"Arms do not share common anchors")
-            available=list(pool);history=list(anchors)
+            available=list(pool);calibration_available=list(calibration_pool);history=list(anchors)
             req(len(trial["proposals"])==spec["online_per_method"] and
                 len(trial["online_observations"])==spec["online_per_method"],"Online budget mismatch")
             req(trial["model_refits"]==spec["online_per_method"]+1,"Sequential refit count mismatch")
@@ -119,7 +120,11 @@ def verify(root, expected_sha=None):
                 req(proposal["step"]==step and proposal["method"]==method and proposal["pre_outcome"] is True,
                     "Proposal identity/order mismatch")
                 req(proposal["history_sha256"]==digest([r["observed"] for r in history])
-                    and proposal["available_pool_sha256"]==digest(available),"Proposal history/pool binding mismatch")
+                    and proposal["available_pool_sha256"]==digest(available)
+                    and proposal["calibration_available_pool_sha256"]==digest(calibration_available)
+                    and proposal["candidate_pool_sha256"]==digest(pool)
+                    and proposal["calibration_pool_sha256"]==digest(calibration_pool),
+                    "Proposal history/pool binding mismatch")
                 req(not any(k in proposal for k in ("truth","label","objective","heldout_truth")),
                     "Proposal contains an outcome or privileged label")
                 fit=proposal["fit_receipt"]
@@ -132,10 +137,19 @@ def verify(root, expected_sha=None):
                 forecast={"gaussian":proposal["forecast_gaussian"],
                           "probabilities":proposal["forecast_probabilities"]}
                 idx,receipt=choose(method,available,[r["candidate"] for r in history],forecast,
-                                   trial["seed"],step)
-                selected=available[idx]
+                                   trial["seed"],step,calibration_candidates=calibration_available)
+                if receipt["selected_from"]=="calibration_anchor_pool":
+                    selected=calibration_available[idx]
+                    selected_pool="calibration_anchor_pool"
+                    calibration_available.pop(idx)
+                else:
+                    selected=available[idx]
+                    selected_pool="acquisition_pool"
+                    available.pop(idx)
                 req(idx==proposal["selected_index"] and selected==proposal["selected_candidate"]
+                    and proposal["selected_pool"]==selected_pool
                     and proposal["selected_candidate_sha256"]==digest(selected)
+                    and proposal["selected_from"]==receipt["selected_from"]
                     and metric_equal(proposal["scores"],receipt["scores"]) and proposal["rule"]==receipt["rule"],
                     "Acquisition decision cannot be independently replayed")
                 rec=observation["record"]
@@ -146,7 +160,7 @@ def verify(root, expected_sha=None):
                 call=name+"/online/"+method+"/%03d"%step
                 req(rec["call_id"]==call and call in settled and started[call]["candidate"]==selected
                     and settled[call]["record_sha256"]==digest(rec),"Online ledger mismatch")
-                history.append(rec);available.pop(idx)
+                history.append(rec)
             req(trial["final_n"]==spec["total_observations_per_method"]
                 and trial["online_calls"]==spec["online_per_method"],"Final budget mismatch")
             req(trial["selected_branch_counts"]=={str(b):sum(r["candidate"]["branch"]==b for r in history)
