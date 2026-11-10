@@ -5,6 +5,7 @@ from risk_learning.core import candidates,digest,observed,known_label
 from risk_learning.io import read,check_manifest
 from pr86_protocol import plan,POLICIES,METHODS,sample_orders,coverage
 from pr86_metrics import metrics
+from risk_learning.native import training_payload
 
 def req(x,m):
  if not x:raise ValueError(m)
@@ -52,6 +53,10 @@ def verify(root,expected_sha=None):
      rec=row["receipt"]
      req(rec["method"]==method and rec["training_rows"]==n and rec["query_ids"]==test_ids,"Fit receipt mismatch")
      req(rec["privileged_training"]==(method=="privileged_exact"),"Supervision contract mismatch")
+     privileged=[x["truth"] for x in selected] if method=="privileged_exact" else None
+     expected_payload=training_payload(public,method,privileged)
+     req(rec["training_input_sha256"]==digest(expected_payload) and rec["objective_labels_used"] is False,
+      "Fit input hash or objective-label isolation mismatch")
      req("test_truth" not in rec and "heldout_truth" not in rec,"Test-label leakage in receipt")
      req(row["status"] in ("OK","MODEL_NUMERICAL_FAILURE"),"Unknown model status")
      if row["status"]=="OK":
@@ -67,12 +72,31 @@ def verify(root,expected_sha=None):
         elif isinstance(v,float):req(saved[k] is not None and close(v,saved[k]),"Heldout metric mismatch: "+k)
         else:req(saved[k]==v,"Heldout metric mismatch: "+k)
       req(set(pred["gaussian"])=={"region","resource"},"Gaussian predictive moments missing")
+      noise=1. if method=="native_sign" else 0.
+      for h,mom in pred["gaussian"].items():
+       req(mom["observation_noise_variance"]==noise,"Observation-noise contract mismatch")
+       for mean,var,p in zip(mom["mean"],mom["variance"],pred["probabilities"][h]):
+        expected=.5*math.erfc(mean/math.sqrt(2*(var+noise))) if var+noise>0 else float(mean<=0)
+        req(close(expected,p),"Gaussian probability/moment mismatch")
+      req(all(close(a*b,j) for a,b,j in zip(pred["probabilities"]["region"],
+       pred["probabilities"]["resource"],pred["probabilities"]["joint"])),"Joint probability mismatch")
+      if method=="joint_prevalence":raise AssertionError("Unexpected method")
       for h,mom in pred["gaussian"].items():
        req(len(mom["mean"])==len(test)==len(mom["variance"]),"Gaussian prediction shape mismatch")
        for x,v in zip(mom["mean"],mom["variance"]):req(math.isfinite(x) and math.isfinite(v) and v>=0,"Invalid Gaussian moment")
      else:req(row["predictions"] is None and row["metrics"] is None,"Failed fit has fabricated output")
      for k,v in row["bill_delta"].items():
       req(type(v)is int and v>=0,"Invalid model bill");bill[k]+=v
+     if method in ("native_censored","privileged_exact"):
+      if row["status"]=="OK":
+       req(row["bill_delta"]["gp_head_started"]==2 and row["bill_delta"]["gp_head_completed"]==2
+        and row["bill_delta"]["gp_head_errors"]==0 and row["bill_delta"]["gp_kernel_started"]==16
+        and row["bill_delta"]["gp_kernel_completed"]==16 and row["bill_delta"]["gp_kernel_errors"]==0,
+        "Native GP accounting mismatch")
+      else:
+       req(row["bill_delta"]["gp_head_errors"]>=1 and
+        row["bill_delta"]["gp_head_started"]==row["bill_delta"]["gp_head_completed"]+row["bill_delta"]["gp_head_errors"],
+        "Native model-failure accounting mismatch")
      rows.append(row)
  expected_files.update(("evaluations.jsonl","progress.jsonl"))
  actual_files={p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and p.name!="manifest.json"}
