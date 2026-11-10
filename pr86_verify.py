@@ -71,6 +71,11 @@ def verify(root,expected_sha=None):
           ((x["observed_rate"] is None and y["observed_rate"] is None) or close(x["observed_rate"],y["observed_rate"])) for x,y in zip(v,saved[k])),"Reliability bins mismatch")
         elif isinstance(v,float):req(saved[k] is not None and close(v,saved[k]),"Heldout metric mismatch: "+k)
         else:req(saved[k]==v,"Heldout metric mismatch: "+k)
+       if h in ("region","resource") and h in pred.get("margin_mean",{}):
+        mu=pred["margin_mean"][h];truth_margin=[r["truth"][h] for r in test]
+        rmse=(sum((a-b)**2 for a,b in zip(mu,truth_margin))/len(test))**.5
+        req("margin_rmse" in saved and close(rmse,saved["margin_rmse"]),"Constraint margin RMSE mismatch")
+       if h=="joint":req("margin_rmse" not in saved,"Undefined joint margin RMSE must not be reported")
       req(set(pred["gaussian"])=={"region","resource"},"Gaussian predictive moments missing")
       noise=1. if method=="native_sign" else 0.
       for h,mom in pred["gaussian"].items():
