@@ -113,9 +113,23 @@ def run(output, profile, source):
                     calibrated, shifts = calibrate_prediction(test_forecast, rates)
                     nobs = len(history)
                     if nobs in spec["checkpoints"]:
+                        calibration_records = list(anchors)
+                        calibration_anchor_ids = [r["candidate_id"] for r in anchors]
+                        if method == "iid_random":
+                            calibration_records += [o["record"] for o in observations]
+                            calibration_anchor_ids += [o["candidate_id"] for o in observations]
+                        elif method == "calibration_aware_voi":
+                            for prior, outcome in zip(proposals, observations):
+                                if prior["rule"] == "reserved_random_calibration_anchor":
+                                    calibration_records.append(outcome["record"])
+                                    calibration_anchor_ids.append(outcome["candidate_id"])
+                        calibration_rates = anchor_prevalence([r["observed"] for r in calibration_records])
+                        calibrated, shifts = calibrate_prediction(test_forecast, calibration_rates)
                         checkpoints.append(dict(n=nobs, method=method,
                             training_prefix_sha256=digest([r["observed"] for r in history]),
-                            anchor_rates=rates, anchor_baseline_brier=baseline_brier,
+                            anchor_rates=rates, calibration_rates=calibration_rates,
+                            calibration_anchor_ids=calibration_anchor_ids,
+                            anchor_baseline_brier=baseline_brier,
                             raw_metrics=_metric_pack(test_rows, test_forecast["probabilities"], baseline_brier),
                             anchor_calibrated_metrics=_metric_pack(test_rows, calibrated, baseline_brier),
                             calibration_logit_shifts=shifts,
