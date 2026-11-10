@@ -51,6 +51,18 @@ class ProtocolTests(unittest.TestCase):
             self.assertIn(cs[i],cs)
             self.assertEqual(r["selected_candidate_sha256"],__import__("risk_learning.core",fromlist=["digest"]).digest(cs[i]))
             self.assertEqual(len(r["scores"]),len(cs))
+    def test_reserved_calibration_anchor_uses_independent_pool(self):
+        main=candidates(993,20)
+        anchor_pool=candidates(994,4)
+        f={"probabilities":{"region":[.5]*20,"resource":[.5]*20,"joint":[.25]*20},
+           "gaussian":{"region":{"mean":[0.]*20,"variance":[1.]*20,"observation_noise_variance":1.},
+                       "resource":{"mean":[0.]*20,"variance":[1.]*20,"observation_noise_variance":0.}}}
+        i,receipt=choose("calibration_aware_voi",main,main[:2],f,88,3,
+                         calibration_candidates=anchor_pool)
+        self.assertEqual(receipt["selected_from"],"calibration_anchor_pool")
+        self.assertEqual(receipt["selected_candidate_sha256"],
+                         __import__("risk_learning.core",fromlist=["digest"]).digest(anchor_pool[i]))
+        self.assertNotIn(anchor_pool[i],main)
     def test_random_and_reserved_anchor_are_deterministic(self):
         cs=candidates(992,20)
         f={"probabilities":{"region":[.5]*20,"resource":[.5]*20,"joint":[.25]*20},
