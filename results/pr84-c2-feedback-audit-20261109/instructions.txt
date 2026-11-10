@@ -1,0 +1,32 @@
+# PR84 / PR #85 审计任务指令副本
+
+对已完成的 PR83/C2 归档做只读审计、核验和归档；不运行新的优化实验。
+
+## 固定身份
+
+- 审计代码 SHA：`54a3fd4d578852e846d6769a3f0ff9d72e3a5e85`
+- 输入结果 HEAD：`ade354de8b35d20a2bb32b469b04bc7da92aa004`
+- 输入实验代码 SHA：`975d96caac53d675ebe1b790a0647479a75a2ed5`
+- CI run：`42743617268`
+- 入口：`run_pr84_c2_audit.py`
+- 新结果分支：`results/pr84-c2-feedback-audit-20261109`
+
+## 执行
+
+1. 在固定审计 SHA 创建新 worktree；复用 HEAD 为输入结果 HEAD 的现有 worktree 作为证据根。
+2. 检查两个 worktree 的 HEAD 与 `git status --porcelain`。
+3. 预检：31 项 `test_pr84_c2_audit.py` 测试、compileall、`--help`、`plan --profile full`。
+4. 先审计既有 smoke，再审计既有 full；两者都 verify。
+5. `--evidence-root` 传证据 worktree 根，不是 C2 的 `full/` 目录。
+6. 不新增真值/GP/预测/VAE/幻想/飞机/RCAIDE 调用；不重跑 C2；不修改输入。
+
+## 验收
+
+- smoke：24 trials / 4 units / 72 历史在线观测；full：384 trials / 64 units / 9,216 历史在线观测。
+- 完成状态可以是 `COMPLETE_PR84_AUDIT` 或 `COMPLETE_WITH_REPORTING_DISCREPANCIES`；两者之后都必须 `VERIFIED_PR84_AUDIT`。
+- 每个审计目录 7 个文件：`audit_report.json`、`diagnostics.json`、`discrepancies.json`、`factorial_recomputed.json`、`per_trial.csv`、`selected_feedback.csv`、`manifest.json`。
+- 保留原 12 项因子检验及 Holm；不重新选择终点。
+
+## 上传
+
+只上传新审计目录、日志、身份、说明、外层 SHA256 清单；不复制 646 MB 的 C2 原始归档。证据目录 `* -text`；上传后核对远端 HEAD、tree 和字节/SHA256。不推送代码分支、不合并、不 force push。
