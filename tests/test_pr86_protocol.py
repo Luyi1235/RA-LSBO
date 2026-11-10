@@ -1,6 +1,7 @@
 import json,unittest
 from pr86_protocol import plan,sample_orders,coverage
 from pr86_metrics import metrics
+from pr86_verify import coverage_equal
 from risk_learning.core import candidates,truth,observed
 class ProtocolTests(unittest.TestCase):
  def test_budgets(self):
@@ -43,6 +44,13 @@ class ProtocolTests(unittest.TestCase):
   b,_=sample_orders(pool,altered,7)
   self.assertEqual(a["coverage_maximin"],b["coverage_maximin"])
   self.assertEqual(a["coverage_maximin"],sample_orders(pool,rows,7)[0]["coverage_maximin"])
+ def test_cross_platform_coverage_float_tolerance(self):
+  a=dict(branch_counts={"0":2,"1":2,"2":2,"3":2},branches_covered=4,
+   nearest_neighbor_distance=dict(mean=.123456789,median=.1,maximum=.2))
+  b=dict(a);b["nearest_neighbor_distance"]=dict(mean=.12345678900001,median=.1,maximum=.2)
+  self.assertTrue(coverage_equal(a,b))
+  b["nearest_neighbor_distance"]["mean"]+=1e-5
+  self.assertFalse(coverage_equal(a,b))
  def test_metric_single_class_null(self):
   x=metrics([True,True],[.8,.3]);self.assertIsNone(x["auroc"]);self.assertIsNotNone(x["auprc"])
  def test_metric_perfect(self):
