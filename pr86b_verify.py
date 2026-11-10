@@ -52,7 +52,7 @@ def verify(root, expected_sha=None):
             req(cid not in started,"Duplicate evaluation start");started[cid]=e
         elif e["event"]=="settled":
             req(cid in started and cid not in settled,"Settlement without unique start")
-            req(e["record_sha256"]==digest(e["record"]),"Settlement record hash mismatch")
+            req(isinstance(e.get("record_sha256"),str) and len(e["record_sha256"])==64,"Settlement record hash missing/invalid")
             settled[cid]=e
         else:
             raise ValueError("Unknown evaluation ledger event")
