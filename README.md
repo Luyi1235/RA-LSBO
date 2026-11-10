@@ -27,7 +27,7 @@ PR86-A 的后验 prevalence-only 复核显示：在当前六任务/当前模型�
 
 五臂共享 12 个随机初始锚点；之后每臂独立获取反馈，并在每次真实评价后重新拟合 native-censored GP。Held-out 测试标签只用于评分；未选候选标签不生成、不缓存、不暴露。校准截距只使用随机锚点标签和无标签查询特征。为避免自适应采集对剩余池的耗竭污染校准样本，VOI 臂的每四次在线评价中有一次从独立 IID 校准候选流抽取；该流与主动搜索池、测试集和初始锚点均不重叠。IID 臂的全部在线评价也可用于其自身的随机样本校准；其他自适应臂只使用共同的12个初始随机锚点。BSS 的比较基线始终固定为共同初始锚点的 Laplace prevalence。
 
-主要指标：region/resource/joint Brier、相对锚点 Laplace prevalence baseline 的 Brier Skill Score、log loss、AUROC、AUPRC、ECE、false-feasible rate、分支与连续空间覆盖，以及 GP/kernel 真实费用。联合可行概率仍是两个边际头的乘积，是独立性近似而非联合依赖模型。
+主要指标：region/resource/joint Brier、相对锚点 Laplace prevalence baseline 的 Brier Skill Score、log loss、AUROC、AUPRC、ECE、false-feasible rate、分支与连续空间覆盖，以及 GP/kernel 真实费用。分析还会按任务比较 PR86-B 的 n=48 与 PR86-A 固定结果中的 n=96 IID/maximin 参考；两批测试种子独立，因此只作描述性跨研究对照，不作配对显著性或等效性结论。联合可行概率仍是两个边际头的乘积，是独立性近似而非联合依赖模型。
 
 ### 固定预算
 
