@@ -1,4 +1,5 @@
-import unittest, math
+import unittest, math, csv
+from pathlib import Path
 from pr86b_protocol import plan, METHODS
 from pr86b_acquisition import (bald_binary_information, anchor_prevalence,
     anchor_intercept_calibrate, calibrate_prediction, choose, metrics, brier_skill_score)
@@ -12,6 +13,15 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(plan("full")["expected_model_refits"],3330)
         self.assertEqual(plan("full")["expected_gp_heads"],6660)
         self.assertEqual(plan("full")["expected_gp_kernel_constructions"],53280)
+    def test_pinned_pr86a_n96_reference_roster(self):
+        path=Path(__file__).resolve().parents[1]/"docs"/"PR86A_N96_REFERENCE.csv"
+        lines=[x for x in path.read_text(encoding="utf-8").splitlines()
+               if x.strip() and not x.lstrip().startswith("#")]
+        rows=list(csv.DictReader(lines))
+        self.assertEqual(len(rows),12)
+        self.assertEqual({r["task"] for r in rows},set(plan("full")["tasks"]))
+        self.assertEqual({r["policy"] for r in rows},{"iid_uniform","coverage_maximin"})
+        self.assertTrue(all(r["n"]=="96" and r["method"]=="native_censored" for r in rows))
     def test_profile_seeds_are_disjoint(self):
         plans=[plan(x) for x in ("ci","smoke","full")]
         seeds=[(u["anchor_seed"],u["pool_seed"],u["test_seed"],u["calibration_seed"]) for p in plans for u in p["units"]]
