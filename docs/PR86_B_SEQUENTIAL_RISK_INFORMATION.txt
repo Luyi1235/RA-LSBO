@@ -29,6 +29,9 @@ For every model/checkpoint, report raw GP probabilities and an intercept-only ad
 Metrics
 Report task/method/checkpoint: region/resource/joint Brier, BSS, log loss, AUROC, AUPRC, ECE/reliability bins and false-feasible rate. Also report training class counts, branch counts, feature-space nearest-neighbour distance, first-anchor count, online count, GP head/kernel costs, errors, rejected kernels and elapsed time. Single-class AUROC/AUPRC remain null. Do not pool raw margins or raw objective values across tasks.
 
+Historical n=96 reference
+The exact task-specific PR86-A native-censored n=96 IID and coverage_maximin means are frozen in docs/PR86A_N96_REFERENCE.csv, sourced from result HEAD 38f2f3a469d833c176f1a6bbe2eab8257d59c6c7 and code SHA a5d5f20a4854de30939b590cb69126d1d5690ed5. PR86-B analysis reports task-specific n=48 minus historical n=96 Brier deltas for raw and anchor-calibrated predictions. These use independent held-out seeds and are descriptive cross-study references, not paired tests or evidence of equivalence. The historical reference is not used in model fitting, acquisition, calibration or threshold selection.
+
 Frozen budgets
 CI: 2 tasks x 1 repeat x (12 common anchors + 5 methods x 12 online + 64 test) = 272 math calls; checkpoints 12/24.
 Smoke: 6 tasks x 1 repeat x (12 + 5 x 36 + 128) = 1,920 math calls; checkpoints 12/24/48.
