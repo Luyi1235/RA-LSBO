@@ -24,11 +24,52 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: ${{ matrix.python }}
-      - name: Unit tests
+      - name: Synthetic contracts and import boundary (31 tests)
         run: python -S -m unittest discover -s tests -p test_pr84_c2_audit.py -v
-      - name: Compile and CLI help
+      - name: Compile and safe plan
         run: |
           python -S -m compileall -q pr84_c2_audit.py run_pr84_c2_audit.py
           python -S run_pr84_c2_audit.py --help
-      - name: Static read-only boundary check
-        run: python -S -c "from pathlib import Path; s=Path('pr84_c2_audit.py').read_text(); forbidden=['risk_learning.core import truth','c1_native','c2_native','StableGroupedHead','def truth(']; assert not any(x in s for x in forbidden)"
+          python -S run_pr84_c2_audit.py --task plan --profile full
+  archived-integration:
+    needs: standard-library
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: windows-latest
+            python: '3.9'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: code
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: code
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ade354de8b35d20a2bb32b469b04bc7da92aa004
+          path: evidence
+          sparse-checkout: results/phase-c2-head-factorial-20261109
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Audit already archived smoke (zero new evaluation or fit)
+        run: python -S run_pr84_c2_audit.py --task run --profile smoke --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/pr84-audit/smoke"
+      - name: Verify archived smoke audit
+        run: python -S run_pr84_c2_audit.py --task verify --profile smoke --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/pr84-audit/smoke"
+      - name: Audit already archived full (384 trajectories; no C2 run)
+        run: python -S run_pr84_c2_audit.py --task run --profile full --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/pr84-audit/full"
+      - name: Verify full audit by independent output recomputation
+        run: python -S run_pr84_c2_audit.py --task verify --profile full --expected-sha "${{ github.event.pull_request.head.sha }}" --evidence-root "${{ github.workspace }}/evidence" --output "${{ runner.temp }}/pr84-audit/full"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: pr84-readonly-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr84-audit
+          if-no-files-found: ignore
