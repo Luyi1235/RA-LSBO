@@ -26,14 +26,17 @@ def metric_pack(test_rows, probabilities, baseline):
         out[head] = m
     return out
 
-def metric_equal(a,b):
+def numeric_equal(a,b):
     if isinstance(a,dict):
-        return a.keys()==b.keys() and all(metric_equal(a[k],b[k]) for k in a)
+        return a.keys()==b.keys() and all(numeric_equal(a[k],b[k]) for k in a)
     if isinstance(a,list):
-        return len(a)==len(b) and all(metric_equal(x,y) for x,y in zip(a,b))
-    if isinstance(a,float):
+        return len(a)==len(b) and all(numeric_equal(x,y) for x,y in zip(a,b))
+    if isinstance(a,(int,float)) and not isinstance(a,bool) and isinstance(b,(int,float)) and not isinstance(b,bool):
         return close(a,b)
     return a==b
+
+def metric_equal(a,b):
+    return numeric_equal(a,b)
 
 def feature_coverage(records):
     counts={str(b):sum(r["candidate"]["branch"]==b for r in records) for b in range(4)}
@@ -92,7 +95,7 @@ def verify(root, expected_sha=None):
                 call=name+"/"+role+"/%04d"%i if role=="test" else name+"/anchor/%03d"%i
                 req(row["call_id"]==call and row["candidate_id"]==digest(row["candidate"]),
                     "Dataset call/candidate identity mismatch")
-                req(row["truth"]==truth(task,row["candidate"]),"Dataset truth mismatch")
+                req(numeric_equal(row["truth"],truth(task,row["candidate"])),"Dataset truth mismatch")
                 if role=="anchor":
                     req(row["observed"]==observed(row["candidate"],row["truth"]),"Anchor observation contract mismatch")
                 req(call in settled and started[call]["candidate"]==row["candidate"],"Dataset missing from paid ledger")
@@ -159,7 +162,7 @@ def verify(root, expected_sha=None):
                 req(observation["step"]==step and rec["candidate"]==selected
                     and rec["candidate_id"]==digest(selected)
                     and rec["observed"]==observed(selected,rec["truth"])
-                    and rec["truth"]==truth(task,selected),"Online outcome binding mismatch")
+                    and numeric_equal(rec["truth"],truth(task,selected)),"Online outcome binding mismatch")
                 call=name+"/online/"+method+"/%03d"%step
                 req(rec["call_id"]==call and call in settled and started[call]["candidate"]==selected
                     and settled[call]["record"]==rec
