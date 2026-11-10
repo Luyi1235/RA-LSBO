@@ -47,6 +47,8 @@ jobs:
           python -S run_pr86.py --task plan --profile full
       - name: PR86 actual offline integration (512 mathematical calls)
         run: python run_pr86.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr86-evidence/ci"
+      - name: Reject CI evidence with any model-fit failures
+        run: python -S -c "import json,pathlib; r=json.loads(pathlib.Path(r'${{ runner.temp }}/pr86-evidence/ci/report.json').read_text()); assert r['status']=='COMPLETE_PR86_LEARNABILITY' and r['failed_model_rows']==0 and r['bill']['gp_head_errors']==0 and r['bill']['gp_kernel_errors']==0"
       - name: Independent verification and learning-curve analysis
         run: |
           python -S run_pr86.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86-evidence/ci"
