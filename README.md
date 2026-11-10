@@ -1,54 +1,58 @@
-# RA-LSBO：风险代理学习能力与在线更新机制归因
+# RA-LSBO：从风险可学习性到预算约束的序贯信息获取
 
-> **当前开发阶段：C2 风险头 × 目标头更新的 2×2 因子归因。**
-> PR80/C1 与 PR81/C1R 已完成，禁止重跑；当前 PR83 仍为草稿，CI 验收前不得启动工作机实验。
+> **当前研究阶段：PR86-B — Sequential Risk Information Acquisition。**
+> PR86-A 已完成工作机 full 实验和独立归档；PR86-B 正在独立代码开发与 CI 验收。当前分支不授权工作机执行 smoke/full。
 
-## 为什么转向 C2
+## 研究转向依据
 
-C1/C1R 的 risk-EI + online-update 组合呈现正向目标结果，但同时增加不可行评价、减少精确目标标签。C1R 新种子复现中，四个已知任务的方向均有利于更新臂，但只有两个任务通过四任务 Holm 校正。现有证据不能判断收益来自风险代理更新、目标代理更新，还是两者交互。
+PR83/C2 的 64 个初始组全部为 warm，不能回答风险模型冷启动问题。PR84 对 C2 原始轨迹的只读审计确认了这一覆盖限制，并保留了原始汇总字段与独立重算之间的差异。
 
-C2 因此冻结 risk-EI 选点公式、初始数据、候选流、真实调用预算和 C1 的 GP/删失似然，只独立切换 risk heads (region/resource) 与 objective head 的在线更新状态。
+PR86-A 随后在六个数学任务上完成了离线风险学习曲线：12/24/48/96/192 个训练观测、四种嵌套采样顺序、native-censored 与 privileged-exact 两种监督契约。Full 共 12,672 次数学评价、720 个模型行；全部评价结算，GP/kernel 错误为零。结果归档于：
+- 代码：`research/phase-pr86-cold-start-learnability-20261110`，SHA `a5d5f20a4854de30939b590cb69126d1d5690ed5`
+- 结果：`results/phase-pr86-cold-start-learnability-20261110`，HEAD `38f2f3a469d833c176f1a6bbe2eab8257d59c6c7`
+- 研究 Issue：[#86](https://github.com/Luyi1235/RA-LSBO/issues/86)，代码 PR：[#87](https://github.com/Luyi1235/RA-LSBO/pull/87)
 
-## 2×2 核心因子与参照
+PR86-A 的后验 prevalence-only 复核显示：在当前六任务/当前模型和数据分布下，label-blind IID/branch/coverage 方案的 native GP 到 n=48 尚未明显优于 Laplace 平滑训练先验率；到 n=96 才显示清楚的 Brier skill。该经验阈值不得外推为普遍样本量定律。类别平衡能提高排序但可能损害概率校准；单纯 maximin 覆盖也不能同时保证排序能力。
 
-| Cell | Region / Resource | Objective |
-|---|---|---|
-| 00 | Frozen | Frozen |
-| 10 | Updated | Frozen |
-| 01 | Frozen | Updated |
-| 11 | Updated | Updated |
+## PR86-B：研究问题与实现
 
-参照臂：`risk_only_updated`、`uniform_hash`。六臂共享48条初始评价；每臂24次在线评价。每个更新头只能使用本臂已结算的可观测前缀；冻结头必须复用初始对象身份。无精确目标标签时不构造目标GP、不插补目标值，按协议记录模型不可用并回退哈希选择。
+**核心问题：** 在真实评价预算受限、初始样本稀少且存在删失反馈时，能否通过序贯选择风险信息更有价值的候选，使 held-out 风险概率预测优于随机锚点 prevalence-only 基线？
 
-## 预注册因子效应
+五个配对方法：
+1. `iid_random`：随机评价；
+2. `maximin`：层级特征空间覆盖；
+3. `latent_uncertainty`：GP 潜在方差排序；
+4. `boundary`：联合预测边界不确定性；
+5. `calibration_aware_voi`：保留固定比例随机校准锚点，其余使用 BALD 风格互信息获取。
 
-对四个核心 cell 的最终最佳可行目标 y00/y10/y01/y11（越低越好）：
+五臂共享 12 个随机初始锚点；之后每臂独立获取反馈，并在每次真实评价后重新拟合 native-censored GP。Held-out 测试标签只用于评分；未选候选标签不生成、不缓存、不暴露。校准截距只使用随机锚点标签和无标签查询特征。为避免自适应采集对剩余池的耗竭污染校准样本，VOI 臂的每四次在线评价中有一次从独立 IID 校准候选流抽取；该流与主动搜索池、测试集和初始锚点均不重叠。IID 臂的全部在线评价也可用于其自身的随机样本校准；其他自适应臂只使用共同的12个初始随机锚点。BSS 的比较基线始终固定为共同初始锚点的 Laplace prevalence。
 
-- 风险头边际效应：`0.5*((y10-y00)+(y11-y01))`
-- 目标头边际效应：`0.5*((y01-y00)+(y11-y10))`
-- 交互效应：`(y11-y10)-(y01-y00)`
+主要指标：region/resource/joint Brier、相对锚点 Laplace prevalence baseline 的 Brier Skill Score、log loss、AUROC、AUPRC、ECE、false-feasible rate、分支与连续空间覆盖，以及 GP/kernel 真实费用。分析还会按任务比较 PR86-B 的 n=48 与 PR86-A 固定结果中的 n=96 IID/maximin 参考；两批测试种子独立，因此只作描述性跨研究对照，不作配对显著性或等效性结论。联合可行概率仍是两个边际头的乘积，是独立性近似而非联合依赖模型。
 
-任一 cell 无可行目标时，该重复的三个目标因子效应均缺失，不填零。每任务报告三个效应的双侧精确符号检验；12项（3效应×4任务）统一 Holm 校正。不可行评价、精确目标标签、构型覆盖和GP费用作为独立代价端点，不折算成未经注册的安全惩罚。
+### 固定预算
 
-## 预算
+| Profile | 任务×重复 | 每臂总观测 | 独立测试点 | 总数学评价 |
+|---|---:|---:|---:|---:|
+| CI | 2×1 | 24 | 64 | 272 |
+| Smoke | 6×1 | 48 | 128 | 1,920 |
+| Full | 6×3 | 48 | 512 | 12,672 |
 
-| profile | 任务×重复 | 在线步数 | 初始评价 | 在线评价 | 总数学评价 |
-|---|---:|---:|---:|---:|---:|
-| CI | 2×1 | 2 | 96 | 24 | 120 |
-| smoke | 4×1 | 3 | 192 | 72 | 264 |
-| full | 4×16 | 24 | 3,072 | 9,216 | 12,288 |
+Full 预计 3,330 次 GP refit、6,660 个 GP heads、53,280 次 kernel construction。飞机/RCAIDE/VAE/fantasy/目标优化均为零。本轮是风险学习与反馈获取研究，不是飞行安全或端到端飞机优化证据。
 
-Full 最多11,968个GP头、95,744次核构造；实际账本为准。VAE、幻想、飞机、RCAIDE均为0。在线选中点独立评价；未选候选不评价。共享初始调用只计一次。
+## 当前开发身份
 
-## 研究边界
+- Issue：[ #88 — PR86-B 序贯风险信息获取](https://github.com/Luyi1235/RA-LSBO/issues/88)
+- 开发分支：`research/phase-pr86b-sequential-risk-voi-20261110`
+- 基础代码：PR86-A 固定 SHA `a5d5f20a4854de30939b590cb69126d1d5690ed5`
+- 执行入口：`run_pr86b.py`
+- 冻结协议：`docs/PR86_B_SEQUENTIAL_RISK_INFORMATION.txt`
 
-C2 是四个已知数学任务上的机制归因，不是 held-out task 泛化；不代表工程安全保证。因子效应是自适应轨迹上的 intention-to-treat 对比。若模型数值拟合失败，保留失败现场并停止本次运行；预测阶段已注册数值失败允许哈希回退并单独报告。
+当前实现包含协议、五类采集规则、独立随机校准锚点池、anchor-only prevalence/截距校准、序贯 runner、独立 verifier、任务分层分析、测试与 Windows/Ubuntu + Python 3.13 CI。**只有同一最终代码 SHA 的全部 CI 任务通过后，才会下发工作机 smoke 指令。** Smoke 通过独立 verify、analysis、预算闭合和零 GP/kernel 错误门槛后，才允许 Full。
 
-## 当前实现状态
+计划命令（默认只显示计划，不执行实验）：
 
-PR83 当前已包含 C2 协议、原生 head composer、在线 runner、只读 verifier、因子分析、tamper checker 和 Windows/Ubuntu CI 工作流。**在 PR83 的全部 CI 任务通过并确认代码 SHA 前，仍不得执行 smoke/full。** 代码通过后，唯一执行版本与工作机指令将在 PR83 更新。
+```powershell
+python -S run_pr86b.py --task plan --profile full
+```
 
-- 研究设计：[Issue #82](https://github.com/Luyi1235/RA-LSBO/issues/82)
-- 开发 PR：[PR #83](https://github.com/Luyi1235/RA-LSBO/pull/83)
-- 协议：`docs/PHASE_C2_HEAD_FACTORIAL.txt`
-- 入口：`run_c2_online.py`
+PR86-A、C2、PR74 cold-coverage 及其历史结果均保持原样，不重跑、不覆盖、不合并。

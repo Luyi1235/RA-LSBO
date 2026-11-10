@@ -1,0 +1,81 @@
+name: pr86b-sequential-risk-information
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'pr86b_*.py'
+      - 'run_pr86b.py'
+      - 'tests/test_pr86b.py'
+      - 'docs/PR86_B_SEQUENTIAL_RISK_INFORMATION.txt'
+      - '.github/workflows/pr86b-sequential-risk-information.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr86b-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Pure protocol and acquisition tests
+        run: python -S -m unittest discover -s tests -p test_pr86b.py -v
+      - name: Temporary CPU model dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Native GP regression
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile, help and frozen plan
+        run: |
+          python -m compileall -q pr86b_protocol.py pr86b_acquisition.py pr86b_study.py pr86b_verify.py pr86b_analysis.py run_pr86b.py
+          python -S run_pr86b.py --help
+          python -S run_pr86b.py --task plan --profile full
+      - name: PR86-B native sequential integration
+        run: python run_pr86b.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr86b-evidence/ci"
+      - name: Enforce zero model/kernel errors
+        run: python -S -c "import json,pathlib; r=json.loads(pathlib.Path(r'${{ runner.temp }}/pr86b-evidence/ci/report.json').read_text()); assert r['status']=='COMPLETE_PR86B_SEQUENTIAL_RISK_INFORMATION' and r['bill']['math_started']==272 and r['bill']['math_settled']==272 and r['bill']['gp_head_errors']==0 and r['bill']['gp_kernel_errors']==0 and r['bill']['kernel_candidates_rejected']==0"
+      - name: Independent evidence verification and analysis
+        run: |
+          python -S run_pr86b.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86b-evidence/ci"
+          python -S run_pr86b.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86b-evidence/ci" --output "${{ runner.temp }}/pr86b-evidence/analysis"
+      - name: Preserve raw evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr86b-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr86b-evidence
+          if-no-files-found: ignore
+  cross-python:
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: pr86b-windows-latest
+          path: ${{ runner.temp }}/pr86b-cross
+      - name: Python 3.13 read-only verification and analysis
+        run: |
+          python -S run_pr86b.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86b-cross/ci"
+          python -S run_pr86b.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86b-cross/ci" --output "${{ runner.temp }}/pr86b-cross/analysis-python313"

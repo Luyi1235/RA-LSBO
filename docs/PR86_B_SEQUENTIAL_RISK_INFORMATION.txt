@@ -1,0 +1,49 @@
+PR86-B — budget-realistic sequential risk-information acquisition
+
+Research question
+Can sequentially selected risk feedback improve held-out probability prediction under a fixed evaluation budget, relative to an anchor-only Laplace prevalence predictor? In particular, can a risk model reach useful Brier skill by 48 total observations, rather than requiring the retrospective 96-row learning-curve region observed in PR86-A?
+
+This is a risk-model acquisition study, not objective optimization. It does not evaluate EI, aircraft design, VAE, fantasies, or RCAIDE.
+
+Frozen tasks and data
+Use the same six released analytic tasks as PR86-A: legacy_branin_sparse, legacy_rosenbrock_sparse, tradeoff_s0..s3. Reserved s4..s7 remain untouched. Every task/repeat has:
+- 12 common IID random anchor evaluations shared by all methods;
+- one outcome-blind candidate pool (96 for CI/smoke, 192 for full);
+- one independent held-out test set (64 CI, 128 smoke, 512 full), evaluated once and shared only for scoring.
+Candidate identities across anchors, pool and test must be disjoint. Candidate-pool labels are never generated or cached until that exact candidate is selected by a method. A selected point is evaluated and billed separately for each arm, even if another arm selected the same deterministic design.
+
+Sequential methods
+1. iid_random: uniform sampling without replacement from the common candidate pool.
+2. maximin: maximize minimum distance in the frozen hierarchical feature representation from all already evaluated points.
+3. latent_uncertainty: mean percentile rank of the two native GP latent predictive variances.
+4. boundary: maximize joint predictive p(1-p), with joint probability defined as the product of the two marginal constraint probabilities.
+5. calibration_aware_voi: reserve every fourth online evaluation from a separate, independent IID calibration-anchor candidate stream; on other steps maximize the sum of region/resource BALD-style mutual information for the observed constraint signs. The reserved anchors never come from the residual adaptive-search pool, preventing adaptive depletion from contaminating the calibration sample. BALD uses a fixed probit observation approximation and five-point Gaussian quadrature. It is an information-acquisition proxy, not exact expected Brier reduction.
+
+All methods start from the same 12 random anchors and have the same total number of observations at each checkpoint. After each arm-specific true feedback, the native-censored GP is refit before the next proposal. No test labels, hidden margins, objective values or unselected candidate labels may enter acquisition or fitting.
+
+Calibration and baselines
+The reference predictor is a Laplace-smoothed prevalence-only model estimated from the 12 common random anchors. It is the only probability baseline used for Brier Skill Score:
+BSS = 1 - Brier(model) / Brier(anchor-prevalence baseline).
+For every model/checkpoint, report raw GP probabilities and an intercept-only adjustment that matches each marginal prediction mean over the unlabeled query set to the corresponding Laplace-smoothed prevalence in that method's random-anchor subset. The common 12 initial anchors define the shared prevalence-only Brier baseline; IID uses all of its random online observations for calibration, while calibration_aware_voi uses only its separately sampled reserved anchors plus the common initial anchors. This correction uses only random-anchor labels and unlabeled query covariates. Joint probability remains the product of calibrated marginal probabilities; it is not separately fitted.
+
+Metrics
+Report task/method/checkpoint: region/resource/joint Brier, BSS, log loss, AUROC, AUPRC, ECE/reliability bins and false-feasible rate. Also report training class counts, branch counts, feature-space nearest-neighbour distance, first-anchor count, online count, GP head/kernel costs, errors, rejected kernels and elapsed time. Single-class AUROC/AUPRC remain null. Do not pool raw margins or raw objective values across tasks.
+
+Historical n=96 reference
+The exact task-specific PR86-A native-censored n=96 IID and coverage_maximin means are frozen in docs/PR86A_N96_REFERENCE.csv, sourced from result HEAD 38f2f3a469d833c176f1a6bbe2eab8257d59c6c7 and code SHA a5d5f20a4854de30939b590cb69126d1d5690ed5. PR86-B analysis reports task-specific n=48 minus historical n=96 Brier deltas for raw and anchor-calibrated predictions. These use independent held-out seeds and are descriptive cross-study references, not paired tests or evidence of equivalence. The historical reference is not used in model fitting, acquisition, calibration or threshold selection.
+
+Frozen budgets
+CI: 2 tasks x 1 repeat x (12 common anchors + 5 methods x 12 online + 64 test) = 272 math calls; checkpoints 12/24.
+Smoke: 6 tasks x 1 repeat x (12 + 5 x 36 + 128) = 1,920 math calls; checkpoints 12/24/48.
+Full: 6 tasks x 3 repeats x (12 + 5 x 36 + 512) = 12,672 math calls; checkpoints 12/24/48.
+Full maximum: 3,330 native model refits, 6,660 GP heads and 53,280 kernel constructions. The independent random calibration-anchor pool has 9 candidates per full/smoke unit (3 for CI); only selected candidates are evaluated. The report must reconcile actual counts; any model failure, GP error, kernel error or kernel rejection blocks a clean complete status. CI/smoke/full seed blocks are disjoint from PR86-A and C2.
+
+Run/stop contract
+The CLI defaults to plan only. Workstation must check for existing attempts with the exact code SHA/profile before running. A complete attempt is verified/reused; any failed or unsettled attempt is preserved and reported, never bypassed with a new directory. Run smoke, independent verify and analysis first. Full is permitted only after smoke is complete, verified, analysed, all bills close, and all model/kernel error counters are zero. No tuning on smoke. No retries after unexpected exceptions.
+
+Claim limits
+- BALD is approximate information gain under independent Gaussian heads and the stated probit observation approximation.
+- Anchor-intercept calibration is calibration-in-the-large only; it is not a conditional calibration guarantee.
+- Joint risk is an independence approximation, not a dependence model or safety guarantee.
+- Better Brier/BSS does not by itself prove improved optimization or flight safety.
+- This phase cannot establish aircraft-level effectiveness. It is a gate before PR86-C objective-aware optimization.
