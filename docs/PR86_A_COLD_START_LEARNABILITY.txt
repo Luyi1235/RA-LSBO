@@ -1,0 +1,80 @@
+PR86-A — cold-start risk learnability and training-data coverage
+
+Scientific question
+How do training sample size, observed feasibility class balance, discrete branch
+coverage and continuous-space coverage affect native censored risk-GP learning?
+
+This is an OFFLINE SUPERVISED DIAGNOSTIC, not online optimization. It does not
+select sequential candidates, change EI/risk acquisition, or claim an algorithm
+improvement. PR86-B feedback acquisition is not authorized until A is reviewed.
+
+Fixed tasks
+legacy_branin_sparse, legacy_rosenbrock_sparse, tradeoff_s0..tradeoff_s3.
+Reserved tradeoff_s4..s7 remain held out for future generalization and are not
+used for training, design, normalization, kernel choice or tuning.
+
+Per task/repeat data
+- One fixed 192-candidate training pool, evaluated once.
+- One independent fixed held-out test set, evaluated once (CI 64, smoke 128,
+  full 512).
+- Train/test candidate IDs must be disjoint.
+- The same labelled training pool and test set are shared by all sampling
+  policies and all sample sizes within a task/repeat.
+- Training sizes are nested prefixes: 12, 24, 48, 96, 192 (profile subsets).
+- All pool and test evaluations are charged. The labelled pool is needed to
+  construct the class-balanced diagnostic. This is not a free oracle.
+
+Sampling policies
+1. iid_uniform: random order of the fixed pool.
+2. class_balanced: interleave observed joint feasible/infeasible labels from
+   the already evaluated training pool. This is a label-informed diagnostic,
+   not a deployable acquisition policy.
+3. branch_stratified: interleave four discrete branches, without test labels.
+4. coverage_maximin: deterministic greedy maximin in frozen feature space;
+   its order is independent of all labels and test data.
+All policies use nested prefixes from their full order. Report realized class
+proportion, branch counts, branch coverage and nearest-neighbour distances.
+The four policies change more than one aspect of data distribution; do not
+claim pure causal isolation of class balance vs branch/continuous coverage.
+
+Supervision contracts
+- native_censored: exact existing observation contract. Region-abort rows expose
+  only region>0 interval, objective missing, resource exact.
+- privileged_exact: full region/resource margins for training rows only. This is
+  an information upper-bound diagnostic, never a deployable baseline.
+Held-out truth is only used after prediction for scoring. It must not enter fit,
+sampling, normalization, kernel selection or stopping.
+
+Models and metrics
+Use the existing PR74 StableGroupedHead, unchanged 4x2 kernel grid, two heads
+(region/resource), fixed task/repeat/sample-size seed. Report per task, policy,
+size and supervision method:
+region/resource/joint Brier, log loss, AUROC, AUPRC, ECE/reliability bins;
+margin RMSE where native predictive means are available; observed label counts;
+branch/space coverage; GP head/kernel attempts, errors and elapsed time.
+Single-class AUROC is null. Do not pool raw margin RMSE across tasks.
+
+Frozen budgets
+CI: 2 tasks x 1 repeat x (192 train pool + 64 test) = 512 math calls;
+     2 x 2 sizes x 4 policies x 2 methods = 32 model rows.
+Smoke: 6 tasks x 1 repeat x (192 + 128) = 1,920 math calls;
+       6 x 3 sizes x 4 policies x 2 methods = 144 model rows.
+Full: 6 tasks x 3 repeats x (192 + 512) = 12,672 math calls;
+      18 x 5 sizes x 4 policies x 2 methods = 720 model rows.
+Full max GP heads=1,440 and max 4x2 kernel constructions=11,520.
+All seeds use blocks 1,100,000 / 1,110,000 / 1,120,000 and are disjoint from
+Phase A and C2. No additional test set or pool is permitted.
+
+Interpretation
+The native_censored joint Brier and AUROC learning curves are the primary
+deployment-contract diagnostics, stratified by task. privileged_exact is only
+an information upper bound. All four sampling-policy comparisons are
+descriptive, because class-balanced uses labels in the already-paid pool and
+policies also alter branch/continuous coverage. No cross-task pooled raw
+margin metric. No online optimization, VAE, fantasy fitting, aircraft or RCAIDE.
+
+Gate
+CI must pass on Windows/Ubuntu Python 3.9 native integration and Python 3.13
+cross-version verification before workstation smoke. Full is authorized only
+after smoke run, model-free verify and task-stratified analysis succeed with
+closed bills and no unregistered model failures. Do not tune based on smoke.
