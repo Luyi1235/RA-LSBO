@@ -9,6 +9,9 @@ on:
       - '.github/workflows/pr86b-sequential-risk-information.yml'
 permissions:
   contents: read
+concurrency:
+  group: pr86b-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   native:
     strategy:
