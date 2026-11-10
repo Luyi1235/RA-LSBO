@@ -1,7 +1,7 @@
 """Task-stratified PR86 learning-curve analysis; no fitting or truth calls."""
 import csv,json,statistics
 from pathlib import Path
-from risk_learning.io import read,write,seal,check_manifest
+from risk_learning.io import read,write,seal,check_manifest,file_sha
 from pr86_protocol import plan,POLICIES,METHODS
 
 def analyze(root,output,expected_sha):
@@ -31,7 +31,7 @@ def analyze(root,output,expected_sha):
     train_joint_feasible_counts=[r["train_label_counts"]["joint_feasible"] for r in rows],
     branches_covered=[r["coverage"]["branches_covered"] for r in rows],
     nearest_neighbor_mean=[r["coverage"]["nearest_neighbor_distance"]["mean"] for r in rows]))
- result=dict(status="COMPLETE_PR86_ANALYSIS",code_sha=expected_sha,input_manifest_sha256=read(root/"manifest.json"),
+ result=dict(status="COMPLETE_PR86_ANALYSIS",code_sha=expected_sha,input_manifest_sha256=file_sha(root/"manifest.json"),
   task_stratified_curves=out,limits=["No cross-task raw margin pooling.",
    "native_censored is the deployable observation contract.",
    "privileged_exact is an information upper-bound diagnostic only.",
