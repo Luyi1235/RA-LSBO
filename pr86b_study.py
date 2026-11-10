@@ -110,7 +110,6 @@ def run(output, profile, source):
                                           observation_noise_variance=forecast["gaussian"][h]["observation_noise_variance"])
                                   for h in ("region","resource")})
                     test_forecast = dict(probabilities={h: list(forecast["probabilities"][h][nc:]) for h in ("region","resource","joint")})
-                    calibrated, shifts = calibrate_prediction(test_forecast, rates)
                     nobs = len(history)
                     if nobs in spec["checkpoints"]:
                         calibration_records = list(anchors)
