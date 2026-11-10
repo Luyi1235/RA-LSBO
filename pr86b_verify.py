@@ -62,7 +62,7 @@ def verify(root, expected_sha=None):
             req(cid not in started,"Duplicate evaluation start");started[cid]=e
         elif e["event"]=="settled":
             req(cid in started and cid not in settled,"Settlement without unique start")
-            req(isinstance(e.get("record_sha256"),str) and len(e["record_sha256"])==64,"Settlement record hash missing/invalid")
+            req(e.get("record_sha256")==digest(e.get("record")),"Settlement record hash mismatch")
             settled[cid]=e
         else:
             raise ValueError("Unknown evaluation ledger event")
@@ -70,6 +70,7 @@ def verify(root, expected_sha=None):
     req(len(started)==spec["total_math_calls"],"Mathematical evaluation count mismatch")
     expected_trials=len(spec["units"])*len(METHODS)
     trials_seen=0
+    expected_progress={}
     for unit in spec["units"]:
         task,repeat=unit["task"],unit["repeat"]
         name="%s/r%d"%(task,repeat)
@@ -119,6 +120,8 @@ def verify(root, expected_sha=None):
             for step,(proposal,observation) in enumerate(zip(trial["proposals"],trial["online_observations"])):
                 req(proposal["step"]==step and proposal["method"]==method and proposal["pre_outcome"] is True,
                     "Proposal identity/order mismatch")
+                expected_progress[("proposal",task,repeat,method,step)]=proposal
+                expected_progress[("observation",task,repeat,method,step)]=observation
                 req(proposal["history_sha256"]==digest([r["observed"] for r in history])
                     and proposal["available_pool_sha256"]==digest(available)
                     and proposal["calibration_available_pool_sha256"]==digest(calibration_available)
@@ -159,6 +162,7 @@ def verify(root, expected_sha=None):
                     and rec["truth"]==truth(task,selected),"Online outcome binding mismatch")
                 call=name+"/online/"+method+"/%03d"%step
                 req(rec["call_id"]==call and call in settled and started[call]["candidate"]==selected
+                    and settled[call]["record"]==rec
                     and settled[call]["record_sha256"]==digest(rec),"Online ledger mismatch")
                 history.append(rec)
             if method=="calibration_aware_voi":
@@ -216,6 +220,15 @@ def verify(root, expected_sha=None):
                     "Held-out scoring mismatch")
                 req("test_truth" not in cp["fit_receipt"] and "heldout_truth" not in cp["fit_receipt"],
                     "Held-out labels leaked into fit receipt")
+    progress=[json.loads(s) for s in (root/"progress.jsonl").read_text(encoding="utf-8").splitlines() if s.strip()]
+    observed_progress={}
+    for event in progress:
+        if event["event"] in ("proposal","observation"):
+            key=(event["event"],event["task"],event["repeat"],event["method"],event["step"])
+            req(key not in observed_progress,"Duplicate incremental progress event")
+            payload=event["proposal"] if event["event"]=="proposal" else event["observation"]
+            observed_progress[key]=payload
+    req(observed_progress==expected_progress,"Incremental proposal/observation trace differs from sealed unit records")
     req(trials_seen==expected_trials and report["trials"]==expected_trials,"Trial roster mismatch")
     req(report["bill"]["math_started"]==spec["total_math_calls"]
         and report["bill"]["math_settled"]==spec["total_math_calls"],"Report math bill mismatch")
