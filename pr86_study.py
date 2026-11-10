@@ -69,9 +69,14 @@ def run(root,profile,source,predictor=None):
        test_candidate_ids=[r["candidate_id"] for r in test],
        train_label_counts=dict(region_exact=sum(r["region"]["kind"]=="exact" for r in public),
         region_interval=sum(r["region"]["kind"]=="interval" for r in public),
+        region_feasible=sum(known_label(r,"region") for r in public),
+        region_infeasible=n-sum(known_label(r,"region") for r in public),
         resource_exact=sum(r["resource"]["kind"]=="exact" for r in public),
+        resource_feasible=sum(known_label(r,"resource") for r in public),
+        resource_infeasible=n-sum(known_label(r,"resource") for r in public),
         objective_exact=sum(r["objective"]["kind"]=="exact" for r in public),
-        joint_feasible=sum(all(known_label(r,h) for h in ("region","resource")) for r in public)),
+        joint_feasible=sum(all(known_label(r,h) for h in ("region","resource")) for r in public),
+        joint_infeasible=n-sum(all(known_label(r,h) for h in ("region","resource")) for r in public)),
        coverage=train_cov,pool_info=label_stats,receipt=receipt,predictions=pred,
        status=status,metrics=score,bill_delta={k:bill[k]-before[k] for k in bill})
       write(root/"fits"/name/("n%d"%n)/(policy+"__"+method+".json"),row)
