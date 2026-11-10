@@ -78,7 +78,7 @@ def verify(root, expected_sha=None):
         task,repeat=unit["task"],unit["repeat"]
         name="%s/r%d"%(task,repeat)
         data=read(root/"units"/name/"unit.json")
-        anchors=data["anchors"];test=data["test_rows"];pool=data["pool"]
+        anchors=data["anchors"];test=data["test_rows"];pool=data["pool"];calibration_pool=data["calibration_pool"]
         req(len(anchors)==spec["anchor_count"] and len(test)==spec["test_count"] and len(pool)==spec["candidate_pool"],
             "Unit data count mismatch")
         req([r["candidate"] for r in anchors]==candidates(unit["anchor_seed"],spec["anchor_count"]),
@@ -99,7 +99,7 @@ def verify(root, expected_sha=None):
                 if role=="anchor":
                     req(row["observed"]==observed(row["candidate"],row["truth"]),"Anchor observation contract mismatch")
                 req(call in settled and started[call]["candidate"]==row["candidate"],"Dataset missing from paid ledger")
-                req(settled[call]["record_sha256"]==digest(row),"Dataset settlement mismatch")
+                req(settled[call]["record"]==row and settled[call]["record_sha256"]==digest(row),"Dataset settlement mismatch")
         rates=anchor_prevalence([r["observed"] for r in anchors])
         req(data["anchor_rates"]==rates,"Anchor prevalence mismatch")
         baseline={}
