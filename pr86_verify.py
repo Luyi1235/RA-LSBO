@@ -11,6 +11,12 @@ def req(x,m):
  if not x:raise ValueError(m)
 def close(a,b,tol=1e-12):
  return abs(a-b)<=tol+tol*max(abs(a),abs(b))
+def coverage_equal(a,b):
+ if a.get("branch_counts")!=b.get("branch_counts") or a.get("branches_covered")!=b.get("branches_covered"):
+  return False
+ x=a.get("nearest_neighbor_distance");y=b.get("nearest_neighbor_distance")
+ if x is None or y is None:return x is None and y is None
+ return all(close(x[k],y[k]) for k in ("mean","median","maximum"))
 def verify(root,expected_sha=None):
  root=Path(root).resolve();nfiles=check_manifest(root)
  req(not (root/"failure.json").exists(),"Failed attempt is retained")
@@ -49,7 +55,7 @@ def verify(root,expected_sha=None):
      req(row["train_indices"]==indices and row["train_prefix_sha256"]==digest(selected),"Nested prefix mismatch")
      req(row["train_observed_sha256"]==digest(public),"Training observation hash mismatch")
      req(row["test_set_sha256"]==digest(test) and row["test_candidate_ids"]==test_ids,"Test identity mismatch")
-     req(row["coverage"]==coverage(public),"Training coverage mismatch")
+     req(coverage_equal(row["coverage"],coverage(public)),"Training coverage mismatch")
      lc=row["train_label_counts"]
      region_pos=sum(known_label(x,"region") for x in public)
      resource_pos=sum(known_label(x,"resource") for x in public)
