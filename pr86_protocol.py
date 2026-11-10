@@ -65,8 +65,12 @@ def sample_orders(pool,observed_rows,seed):
   nxt=min(remaining,key=lambda i:(-min_d[i],digest(["pr86-maximin-tie",seed,i])))
   remaining.remove(nxt);maximin.append(nxt)
   for i in remaining:min_d[i]=min(min_d[i],_dist(pool[i],pool[nxt]))
+ region_labels=[known_label(r,"region") for r in observed_rows]
+ resource_labels=[known_label(r,"resource") for r in observed_rows]
  return dict(iid_uniform=iid,class_balanced=balanced,
              branch_stratified=strat,coverage_maximin=maximin),dict(
+              observed_region_feasible=sum(region_labels),observed_region_infeasible=POOL-sum(region_labels),
+              observed_resource_feasible=sum(resource_labels),observed_resource_infeasible=POOL-sum(resource_labels),
               observed_joint_feasible=sum(labels),observed_joint_infeasible=POOL-sum(labels),
               branch_counts={str(b):sum(c["branch"]==b for c in pool) for b in range(4)})
 def coverage(rows):
