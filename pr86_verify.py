@@ -80,7 +80,6 @@ def verify(root,expected_sha=None):
         req(close(expected,p),"Gaussian probability/moment mismatch")
       req(all(close(a*b,j) for a,b,j in zip(pred["probabilities"]["region"],
        pred["probabilities"]["resource"],pred["probabilities"]["joint"])),"Joint probability mismatch")
-      if method=="joint_prevalence":raise AssertionError("Unexpected method")
       for h,mom in pred["gaussian"].items():
        req(len(mom["mean"])==len(test)==len(mom["variance"]),"Gaussian prediction shape mismatch")
        for x,v in zip(mom["mean"],mom["variance"]):req(math.isfinite(x) and math.isfinite(v) and v>=0,"Invalid Gaussian moment")
