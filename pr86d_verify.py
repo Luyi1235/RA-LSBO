@@ -126,6 +126,7 @@ def verify(root,expected_sha=None):
 
     trials_seen=0
     expected_progress={}
+    objective_success_count=0
     objective_receipts_ok=0
     for unit in spec["units"]:
         task,repeat=unit["task"],unit["repeat"]
@@ -232,6 +233,7 @@ def verify(root,expected_sha=None):
                         "step":step,"candidate_id":record["candidate_id"],
                         "call_id":call,"observed":record["observed"]}
 
+                objective_success_count += sum(p["method_fit_objective"]["status"]=="OK" for p in proposals)
                 final_current=[r["observed"] for r in history]
                 final_available=list(available)
                 final_state=outcome_state(final_current)
@@ -241,8 +243,10 @@ def verify(root,expected_sha=None):
                 check_fit(final_current,final_available,tests,
                           trial["final_risk_fit_receipt"],
                           trial["final_objective_fit_receipt"])
-                if trial["final_objective_fit_receipt"]["status"]=="OK" and first_objective_fit is None:
-                    first_objective_fit=len(history)
+                if trial["final_objective_fit_receipt"]["status"]=="OK":
+                    objective_success_count += 1
+                    if first_objective_fit is None:
+                        first_objective_fit=len(history)
                 need(trial["first_objective_gp_fit_n"]==first_objective_fit and
                      trial["first_feasible_n"]==first_feasible,
                      "First objective-GP/feasible discovery timing mismatch")
@@ -252,19 +256,41 @@ def verify(root,expected_sha=None):
                 for cp in trial["checkpoints"]:
                     n=cp["n"]
                     prefix=history[:n]
-                    state=outcome_state([r["observed"] for r in prefix])
-                    need(cp["observed_prefix_sha256"]==digest([r["observed"] for r in prefix]) and
+                    prefix_observed=[r["observed"] for r in prefix]
+                    state=outcome_state(prefix_observed)
+                    need(cp["observed_prefix_sha256"]==digest(prefix_observed) and
                          cp["outcome"]==state,"Checkpoint prefix/outcome mismatch")
-                    need(cp["initial_outcome"]==initial_state and
-                         cp["first_objective_gp_fit_n"] is None or
-                         cp["first_objective_gp_fit_n"]<=n,
-                         "Checkpoint warm-start timing mismatch")
+                    need(cp["initial_outcome"]==initial_state,
+                         "Checkpoint initial state mismatch")
+                    online_prefix=n-anchor_size
+                    available_cp=list(pool)
+                    for prior in trial["online_observations"][:online_prefix]:
+                        cid=prior["candidate_id"]
+                        selected_idx=next((i for i,x in enumerate(available_cp)
+                                           if digest(x)==cid),None)
+                        need(selected_idx is not None,"Checkpoint selected point not in pool")
+                        available_cp.pop(selected_idx)
+                    check_fit(prefix_observed,available_cp,tests,
+                              cp["risk_fit_receipt"],cp["objective_fit_receipt"])
+                    cp_fit_sizes=[anchor_size+p["step"] for p in proposals
+                                  if anchor_size+p["step"]<=n and
+                                  p["method_fit_objective"]["status"]=="OK"]
+                    if cp["objective_fit_receipt"]["status"]=="OK":
+                        cp_fit_sizes.append(n)
+                    expected_first_fit=min(cp_fit_sizes) if cp_fit_sizes else None
+                    feasible_sizes=[m for m in range(anchor_size,n+1)
+                        if outcome_state([r["observed"] for r in history[:m]])["feasible_found"]]
+                    expected_first_feasible=min(feasible_sizes) if feasible_sizes else None
+                    need(cp["first_objective_gp_fit_n"]==expected_first_fit and
+                         cp["first_feasible_n"]==expected_first_feasible,
+                         "Checkpoint warm-start/feasible timing mismatch")
                     need(cp["test_candidate_ids"]==[r["candidate_id"] for r in tests] and
                          cp["anchor_prevalence"]==rates and
                          cp["anchor_baseline_brier"]==baseline,
                          "Checkpoint test/anchor baseline mismatch")
-                    need(set(cp["risk_metrics"])=={"region","resource","joint"},
-                         "Missing risk diagnostics")
+                    expected_metrics=_test_metrics(tests,cp["test_probabilities_raw"],baseline)
+                    need(same_numbers(cp["risk_metrics"],expected_metrics),
+                         "Heldout risk metrics cannot be recomputed from stored probabilities")
                 trial_count=1
                 trials_seen+=trial_count
                 expected_progress[("trial_complete",task,repeat,anchor_size,method,None)]={
@@ -302,7 +328,8 @@ def verify(root,expected_sha=None):
     need(bill["gp_head_errors"]==bill["gp_kernel_errors"]==
          bill["kernel_candidates_rejected"]==0,
          "Risk GP error/rejection")
-    need(bill["objective_gp_head_started"]==bill["objective_gp_head_completed"] and
+    need(bill["objective_gp_head_started"]==bill["objective_gp_head_completed"]==
+         objective_success_count and
          bill["objective_gp_kernel_started"]==bill["objective_gp_kernel_completed"] and
          bill["objective_gp_kernel_started"]==8*bill["objective_gp_head_started"],
          "Objective GP bill mismatch")
