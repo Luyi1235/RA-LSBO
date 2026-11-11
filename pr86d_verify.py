@@ -219,6 +219,9 @@ def verify(root,expected_sha=None):
                     check_fit(current,available,tests,
                               proposal["method_fit_risk"],
                               proposal["method_fit_objective"])
+                    need((proposal["method_fit_objective"]["status"]=="OK") ==
+                         (proposal["objective_forecast"] is not None),
+                         "Objective posterior availability does not match exact-label threshold")
                     if proposal["method_fit_objective"]["status"]=="OK" and first_objective_fit is None:
                         first_objective_fit=len(history)
                     arm_seed=unit["pool_seed"]+1009*method_index
