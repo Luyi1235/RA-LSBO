@@ -308,10 +308,15 @@ def verify(root,expected_sha=None):
                     need(cp["first_objective_gp_fit_n"]==expected_first_fit and
                          cp["first_feasible_n"]==expected_first_feasible,
                          "Checkpoint warm-start/feasible timing mismatch")
-                    need(cp["test_candidate_ids"]==[r["candidate_id"] for r in tests] and
-                         cp["anchor_prevalence"]==rates and
-                         cp["anchor_baseline_brier"]==baseline,
-                         "Checkpoint test/anchor baseline mismatch")
+                    need(cp["test_candidate_ids"]==[r["candidate_id"] for r in tests],
+                         "Checkpoint heldout candidate ID mismatch")
+                    # Retain exact candidate identity and manifests, but compare
+                    # recomputed aggregate floating metrics numerically across
+                    # Windows 3.9 / Linux 3.13, as for other GP diagnostics.
+                    need(same_numbers(cp["anchor_prevalence"],rates),
+                         "Checkpoint anchor prevalence mismatch")
+                    need(same_numbers(cp["anchor_baseline_brier"],baseline),
+                         "Checkpoint heldout baseline Brier mismatch")
                     expected_metrics=_test_metrics(tests,cp["test_probabilities_raw"],baseline)
                     need(same_numbers(cp["risk_metrics"],expected_metrics),
                          "Heldout risk metrics cannot be recomputed from stored probabilities")
