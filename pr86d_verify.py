@@ -82,13 +82,29 @@ def check_fit(current,available,tests,risk_receipt,objective_receipt):
          (r["candidate_id"],r["objective"]) for r in exact]) and
          objective_receipt["query_ids"]==[digest(c) for c in available],
          "Objective GP query/training identity mismatch")
+    cand=decision["candidate_forecast"]["probabilities"]
+    need(all(len(cand[h])==len(available) for h in ("region","resource","joint")),
+         "Risk candidate forecast length mismatch")
+    need(all(close(a*b,j) for a,b,j in zip(
+         cand["region"],cand["resource"],cand["joint"])),
+         "Joint risk forecast product mismatch")
+    need(decision["forecast_sha256"]==digest(decision["candidate_forecast"]),
+         "Risk candidate forecast digest mismatch")
+    objective=decision["objective_forecast"]
+    if objective is not None:
+        need(len(objective["mean"])==len(available) and
+             len(objective["variance"])==len(available) and
+             all(math.isfinite(float(x)) for x in objective["mean"]+objective["variance"]) and
+             all(float(x)>=0 for x in objective["variance"]),
+             "Objective posterior query length/value mismatch")
     if len(exact)<2:
         need(objective_receipt["status"]=="INSUFFICIENT_EXACT_OBJECTIVES",
              "Objective cold fallback status mismatch")
     else:
         need(objective_receipt["status"]=="OK" and
              objective_receipt["objective_fit_only_exact"] and
-             len(objective_receipt["head"]["candidates"])==8,
+             len(objective_receipt["head"]["candidates"])==8 and
+             all(item["status"]=="ok" for item in objective_receipt["head"]["candidates"]),
              "Objective GP fit diagnostic mismatch")
 
 
