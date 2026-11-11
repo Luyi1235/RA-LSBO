@@ -1,0 +1,83 @@
+PR86-D — INITIAL SAMPLE SIZE / OBJECTIVE-OBSERVABILITY ABLATION
+Decision memo and prospective experiment design
+Parent evidence: PR86-C Full result commit fa6d3c8c99ee8002e16040e76c15e32f316e6149
+Parent code: cfc0db47e2c9161ac6cfac0a4bf7a538e5b0ff5f
+Tracking: Issue #92
+
+1. DECISION: DO NOT BLINDLY APPEND DATA TO PR86-C
+The evidence supports testing a larger initial design, but not changing the default from 12 to 24 without a matched experiment. The bottleneck is objective observability, not simply a shortage of arbitrary input points. Current objective values are exact only when region<=0; resource-infeasible points may still contribute exact objective labels to the objective GP, but are not feasible incumbents. If region>0, objective is missing and must not be imputed.
+
+Read-only counts from PR86-C analysis/objective_learning_curves.csv (30 task-repeat units; same 12 common anchors for every method):
+At n=12, exact objective label count histogram:
+  0 labels: 6/30
+  1 label: 12/30
+  2 labels: 10/30
+  3 labels: 1/30
+  5 labels: 1/30
+Only 12/30 (40%) have >=2 exact objective labels and can activate the current objective GP; 18/30 (60%) are in the no-objective-GP cold state.
+At n=24, after 12 arm-specific online observations (NOT a random n=24 initial design), units with >=2 labels:
+  IID 21/30; Boundary 20/30; Marginal Entropy 22/30;
+  Constrained EI 24/30; Objective-weighted Boundary 21/30.
+At n=48:
+  IID 28/30; Boundary 26/30; Marginal Entropy 30/30;
+  Constrained EI 27/30; Objective-weighted Boundary 26/30.
+The Full report records 4,286 objective-GP fits out of 5,550 possible fit opportunities (77.2%); 1,264 opportunities (22.8%) had fewer than two exact objective labels and used the registered no-objective fallback.
+These facts demonstrate a real cold-start limitation. They do NOT prove that 24 random initial points will be better: at fixed total n=48, doubling anchors halves online opportunities from 36 to 24.
+
+2. RECOMMENDATION
+Run one controlled, prospective initial-sample-size ablation. Do NOT append extra labels to old PR86-C runs, do NOT change their historical training prefixes, and do NOT increase the total observations per arm above 48.
+Compare n0=12 against n0=24, with the same total per-arm budget of 48. This directly tests whether spending 12 additional evaluations before adaptive selection pays for earlier objective-GP availability.
+
+3. FROZEN ABLATION DESIGN (PROPOSED)
+- Tasks: the same 10 released analytic task functions used in PR86-C; three new independent candidate/test seed repeats per task. This is a prospective within-task-family replication, NOT a new unseen task-family generalization claim. Any later generalization claim needs a genuinely new task family or real engineering benchmark.
+- Seed block: 1,190,000, disjoint from PR86-A/B/C.
+- Initial sizes: 12 and 24.
+- Nested anchors: generate 24 IID anchors per task/repeat. n0=12 cohort sees only the first 12; n0=24 cohort sees all 24. The additional 12 outcomes are strictly masked from the n0=12 optimizer. Neither cohort can use hidden anchor labels or unselected candidate labels.
+- Methods (same five as PR86-C): iid_random, boundary, marginal_entropy, constrained_ei, objective_weighted_boundary.
+- Total observations per method/cohort: 48. Online budgets: 36 (n0=12) and 24 (n0=24).
+- Same 192-candidate unlabeled acquisition pool and same 512-point independent held-out test set per task/repeat. Candidate-pool outcomes are generated and charged separately for every arm that selects a point, even if another arm selects the same candidate.
+- The 24 anchor evaluations are shared by the nested cohorts; all five methods within each cohort share their initial prefix. Test labels are scoring-only.
+- Keep the objective GP rule unchanged: fit only with >=2 exact objective labels. Do not add a one-label prior in this ablation; that is a separate model-design factor and would confound sample-size attribution.
+- Keep current observation semantics: objective exact iff region<=0; objective missing iff region>0; exact feasible objective additionally requires resource<=0. Never replace missing with zero or a penalty.
+- Keep the current two risk heads and independent-product joint feasibility approximation. No simulator-completion head, VAE, aircraft or RCAIDE claim.
+
+4. COST
+30 task/repeat units.
+Per unit:
+  24 shared anchor evaluations
+  + 5 methods × (36 + 24) separately charged online evaluations
+  + 512 held-out test evaluations
+  = 836 evaluations.
+Full total = 30 × 836 = 25,080 math evaluations:
+  720 shared anchors + 9,000 arm-specific online calls + 15,360 held-out tests.
+300 trajectories (10 tasks × 3 repeats × 5 methods × 2 anchor sizes).
+Risk GP refits = 30 × 5 × [(36+1)+(24+1)] = 9,300.
+Risk GP heads = 18,600; risk kernel constructions = 148,800.
+Objective GP fits are data-dependent and separately billed. No additional truth calls for analysis.
+
+5. PRIMARY ANALYSES
+A. Cold-start / observability:
+- At n0, count exact objective labels per task/repeat.
+- Fraction with >=2 exact objective labels (objective GP can train).
+- Fraction with an exact feasible incumbent (both constraints <=0).
+- First total-observation n at which objective GP becomes trainable and first n with a feasible incumbent.
+- Count objective-GP fallback opportunities separately from successful fits.
+
+B. Fixed-budget outcomes:
+- At common total-observation checkpoints n=24, 36, 48 compare best observed exact feasible objective (null if absent), feasible discovery, exact objective count and exact feasible count.
+- n=12 is available only to the n0=12 cohort.
+- Within each task/repeat/method, compare n0=12 vs n0=24 using the same nested anchors, same candidate pool and same test set.
+- Compare the five methods within each anchor-size cohort. Pairing order: feasible discovery first; if both feasible, smaller exact objective wins; if neither, tie. Never impute missing objective.
+- Secondary risk diagnostics: Brier/BSS, AUROC/AUPRC, ECE, false-feasible AND feasible recall. Lower false-feasible without recall must not be called safer.
+- Report task-stratified results. Do not pool raw objective magnitudes across different task scales.
+
+6. DECISION RULE
+- If n0=24 materially increases initial objective-GP trainability and improves fixed-budget feasible objective/discovery without unacceptable loss of online learning, consider 24 as a better initialization.
+- If n0=24 increases model availability but reduces final objective performance or feasible discovery, retain n0=12 and investigate a prior-regularized one-label objective GP or a decision rule explicitly targeting objective-observable regions.
+- If differences are small/inconsistent, do not claim an initial-sample advantage; retain 12 as the cheaper default.
+- Do not tune the >=2 threshold, weights, or seeds after seeing Full outcomes. A one-label objective prior must be a separate preregistered experiment.
+
+7. SCIENTIFIC LIMITS
+This study tests initialization allocation under a fixed evaluation budget, not whether more total evaluations always improve BO. The 10 task functions are previously seen; only the seed/candidate/test blocks are new. Three repeats do not establish universal sample-size laws. Mathematical task results do not establish aircraft-level performance or simulator-completion risk.
+
+Status: protocol, runner, independent verifier, analysis and regression tests are implemented in this branch. Cross-platform CI is in progress. No PR86-D Full experiment has been run or authorized yet.
