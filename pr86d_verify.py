@@ -55,7 +55,7 @@ def check_row(row,task,call,has_observation,started,settled):
          settled[call]["record_sha256"]==digest(row),"Settled record mismatch")
 
 
-def check_fit(current,available,tests,risk_receipt,objective_receipt):
+def check_fit(current,available,tests,risk_receipt,objective_receipt,decision=None):
     need(risk_receipt["status"]=="OK" and
          not risk_receipt["objective_labels_used"] and
          not risk_receipt["privileged_training"],
@@ -82,21 +82,22 @@ def check_fit(current,available,tests,risk_receipt,objective_receipt):
          (r["candidate_id"],r["objective"]) for r in exact]) and
          objective_receipt["query_ids"]==[digest(c) for c in available],
          "Objective GP query/training identity mismatch")
-    cand=decision["candidate_forecast"]["probabilities"]
-    need(all(len(cand[h])==len(available) for h in ("region","resource","joint")),
-         "Risk candidate forecast length mismatch")
-    need(all(close(a*b,j) for a,b,j in zip(
-         cand["region"],cand["resource"],cand["joint"])),
-         "Joint risk forecast product mismatch")
-    need(decision["forecast_sha256"]==digest(decision["candidate_forecast"]),
-         "Risk candidate forecast digest mismatch")
-    objective=decision["objective_forecast"]
-    if objective is not None:
-        need(len(objective["mean"])==len(available) and
-             len(objective["variance"])==len(available) and
-             all(math.isfinite(float(x)) for x in objective["mean"]+objective["variance"]) and
-             all(float(x)>=0 for x in objective["variance"]),
-             "Objective posterior query length/value mismatch")
+    if decision is not None:
+        cand=decision["candidate_forecast"]["probabilities"]
+        need(all(len(cand[h])==len(available) for h in ("region","resource","joint")),
+             "Risk candidate forecast length mismatch")
+        need(all(close(a*b,j) for a,b,j in zip(
+             cand["region"],cand["resource"],cand["joint"])),
+             "Joint risk forecast product mismatch")
+        need(decision["forecast_sha256"]==digest(decision["candidate_forecast"]),
+             "Risk candidate forecast digest mismatch")
+        objective=decision["objective_forecast"]
+        if objective is not None:
+            need(len(objective["mean"])==len(available) and
+                 len(objective["variance"])==len(available) and
+                 all(math.isfinite(float(x)) for x in objective["mean"]+objective["variance"]) and
+                 all(float(x)>=0 for x in objective["variance"]),
+                 "Objective posterior query length/value mismatch")
     if len(exact)<2:
         need(objective_receipt["status"]=="INSUFFICIENT_EXACT_OBJECTIVES",
              "Objective cold fallback status mismatch")
@@ -218,7 +219,7 @@ def verify(root,expected_sha=None):
                          "Candidate forecast digest mismatch")
                     check_fit(current,available,tests,
                               proposal["method_fit_risk"],
-                              proposal["method_fit_objective"])
+                              proposal["method_fit_objective"],proposal)
                     need((proposal["method_fit_objective"]["status"]=="OK") ==
                          (proposal["objective_forecast"] is not None),
                          "Objective posterior availability does not match exact-label threshold")
