@@ -1,0 +1,67 @@
+PR86-C — PROSPECTIVE OBJECTIVE-AWARE RISK ACQUISITION
+Frozen scientific specification; do not tune or change based on PR86-C FULL outcomes.
+Issue: https://github.com/Luyi1235/RA-LSBO/issues/90
+Parent code: research/phase-pr86b-sequential-risk-voi-20261110 @ 94af4af56b4f45cc72e4ba58f7e73abdd063aa51
+Historical negative result: PR86-B results c9d27901ae962f98d72aeda26fbe45d2cffb706e (immutable)
+
+1. PRIMARY SCIENTIFIC QUESTION
+Does acquisition weighted toward objective opportunity AND local feasibility uncertainty improve the first observed exact feasible objective, compared to:
+IID, joint feasibility boundary sampling, marginal constraint entropy, and standard constrained EI?
+Do NOT call this an exact global VOI, full knowledge gradient, or valid safety guarantee.
+
+2. FROZEN MATHEMATICAL EVALUATION CONTRACT
+Mixed candidate: branch=0..3, x/y in [0,1], trim=0.5 when branch0, else trim in [0,1].
+Native mixed-structure features, not a newly trained VAE.
+Two constraints: region<=0 AND resource<=0; joint probability is marginal product approximation.
+Observed region: numeric exact when region<=0, else only strict g_region>0 interval.
+Observed resource: numeric exact every evaluation.
+Observed objective: exact only if region<=0, else missing due to controlled region abort.
+Objective GP fits ONLY exact objective observations, INCLUDING resource-infeasible but region-valid objective values (not privileged).
+A design counts as an exact feasible objective only when both observed constraints <=0 AND objective has an exact value.
+Simulator-completion risk is not separately modeled. Every analytic truth evaluation settles without simulated numerical crash.
+
+3. SAME-BUDGET COMPARISON
+Methods:
+ (A) iid_random: random unseen pool point.
+ (B) boundary: maximize p_joint*(1-p_joint).
+ (C) marginal_entropy: maximize H(p_region)+H(p_resource) WITHOUT 25% random calibration reservation; isolates PR86-B's marginal entropy score from the reservation confound.
+ (D) constrained_ei: maximize p_joint*EI(f_best) for minimization, provided there is an exact feasible incumbent and trained objective GP.
+ (E) objective_weighted_boundary: rank score = 0.65*percentile_rank(p_joint*EI)+0.35*percentile_rank(EI*H(p_joint)); ranks average ties. Candidate is a local objective-relevance heuristic NOT true expected VOI.
+
+In the absence of a known exact feasible incumbent OR trained objective GP, set EI=1 for the two objective methods. That means D chooses highest p_joint, and E uses 0.65 rank(p_joint)+0.35 rank(H(p_joint)).
+No model-based calibration for any arm; all online acquisition decisions use raw GP probabilities.
+All arms share same 12 random initial observations. Each chooses 36 additional paid observations from same independent candidate pool, without replacement. GP fits after every actual outcome (plus final checkpoint). Heldout truth must NEVER be exposed to the optimizer or objective GP.
+
+4. REGISTERED PROFILES
+CI: 2 historical/released tasks x 1 repeat, 24 observations/method, 64 heldout tests/task-repeat; 272 math evaluations. NO reserved tasks.
+SMOKE (optional, not mandatory): 6 released tasks x 1 repeat, 48 observations/method, 128 tests; 1,920 math evaluations. NO reserved tasks.
+FULL: 10 tasks (6 released + previously reserved tradeoff_s4..s7) x 3 repeats, 48 observations/method, 512 heldout tests/unit. NEW fixed seed block 1,180,000; 21,120 total math evaluations:
+ 360 shared random anchors + 5,400 method-specific online evaluations + 15,360 independent heldout-test evaluations.
+ 5,550 risk model refits, 11,100 risk GP head fits, 88,800 risk kernel constructions.
+ Additional objective-head fitting only after >=2 exact objective labels; dynamically billed separately.
+ 0 VAE/RCAIDE/aircraft/simulator-completion calls.
+
+5. PRIMARY OUTCOMES (OBSERVED ONLY)
+At n=12,24,48: feasible-discovery indicator, best OBSERVED exact feasible objective or JSON null, exact feasible count, exact objective count, missing objective count.
+Pairing within same task/repeat:
+ - if both arms have no feasible exact value -> tie.
+ - if one has a feasible exact value -> it wins over no feasible.
+ - if both have a feasible exact value -> smaller objective wins.
+ - no fabricated objective penalty for absent feasible outcomes.
+Pairwise trials must be reported BY TASK; conditional objective differences only when both have feasible values.
+Avoid aggregating raw objective values across tasks as if they share a scale.
+Secondary: raw joint and separate constraint-head Brier/BSS/AUROC/AUPRC/ECE, false-feasible at threshold p>=0.5 AND feasible recall, model errors and expense.
+Analysis of PR86-B stored heldout data is exploratory, never used to tune or certify PR86-C.
+
+6. EXPERIMENTAL INTEGRITY
+Exactly named source SHA, clean worktree, no changes under original ra_lsbo model tree.
+Started/settled journal, exact observation and selected-objective provenance, candidate/anchor/test IDs, GP receipts, serialized pre-outcome acquisition scores, metric checkpoints and manifests.
+Independent verifier uses zero new paid evaluator calls, zero surrogate training; deterministic replay of EVERY online score and objective-incumbent state from stored observable prefixes. Results write-once.
+Do not overwrite PR86-A/B or rerun FULL for favorable new random seeds.
+Never use s4..s7 in CI, SMOKE, visual model selection, or tuning.
+
+7. RELEASE PROCESS
+Development branch remains draft. CI Ubuntu+Windows native + cross-Python independent replay must succeed at EXACT final SHA. If green, per user instruction no additional mandatory SMOKE: directly authorize one prospectively frozen workstation FULL. Upload all raw records, analysis, SHA and complete logs to a distinct GitHub RESULTS branch; no ZIP request. Scientific outcome reported whether negative or positive.
+
+8. KNOWN LIMITATIONS
+Objective GP extrapolation into sparsely observed domains may be poor. The 0.65/0.35 weighting is a fixed exploratory prior, not a proven optimum. The held-out task extensions s4..s7 still come from the same synthetic task family; stronger non-synthetic and aircraft validation remains separate. No statistical power or general safety claim is established by 3 repeats.
