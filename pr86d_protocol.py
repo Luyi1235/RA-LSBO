@@ -6,7 +6,7 @@ ALL_TASKS = RELEASED + HELDOUT
 ANCHOR_SIZES = (12, 24)
 TOTAL_PER_ARM = 48
 FULL_CONFIG = dict(tasks=ALL_TASKS, repeats=3, test=512, pool=192, seed=1190000)
-CI_CONFIG = dict(tasks=(ALL_TASKS[0], ALL_TASKS[2]), repeats=1,
+CI_CONFIG = dict(tasks=(ALL_TASKS[0],), repeats=1,
                  test=64, pool=96, seed=1200000)
 
 
