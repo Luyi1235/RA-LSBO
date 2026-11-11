@@ -99,29 +99,32 @@ def analyze(root,output,expected_sha):
     initial_summary=[]
     for n0 in ANCHOR_SIZES:
         rows=[r for r in initial_rows if r["anchor_size"]==n0]
-        initial_summary.append(dict(anchor_size=n0,units=len(rows),
-            objective_gp_trainable_units=sum(r["objective_gp_trainable"] for r in rows),
+        unique={(r["task"],r["repeat"]):r for r in rows}
+        unit_rows=list(unique.values())
+        initial_summary.append(dict(anchor_size=n0,units=len(unit_rows),
+            objective_gp_trainable_units=sum(r["objective_gp_trainable"] for r in unit_rows),
             objective_gp_trainable_fraction=_mean(
-                [r["objective_gp_trainable"] for r in rows]),
-            exact_feasible_incumbent_units=sum(r["feasible_found"] for r in rows),
+                [r["objective_gp_trainable"] for r in unit_rows]),
+            exact_feasible_incumbent_units=sum(r["feasible_found"] for r in unit_rows),
             exact_objective_labels_mean=_mean(
-                [r["exact_objective_count"] for r in rows]),
+                [r["exact_objective_count"] for r in unit_rows]),
             exact_feasible_count_mean=_mean(
-                [r["exact_feasible_count"] for r in rows])))
+                [r["exact_feasible_count"] for r in unit_rows])))
 
     paired_summary=[]
-    for method in METHODS:
-        rows=[r for r in paired_sizes if r["method"]==method]
-        both=[r["objective_delta_24_minus_12_if_both_feasible"] for r in rows
-              if r["objective_delta_24_minus_12_if_both_feasible"] is not None]
-        paired_summary.append(dict(method=method,pairs=len(rows),
-            n0_24_wins=sum(r["comparison"]==1 for r in rows),
-            n0_24_losses=sum(r["comparison"]==-1 for r in rows),
-            ties=sum(r["comparison"]==0 for r in rows),
-            mean_exact_objective_count_delta=_mean(
-                [r["exact_objective_count_delta"] for r in rows]),
-            mean_objective_delta_24_minus_12_if_both_feasible=_mean(both),
-            both_feasible_pairs=len(both)))
+    for task in sorted({r["task"] for r in paired_sizes}):
+        for method in METHODS:
+            rows=[r for r in paired_sizes if r["task"]==task and r["method"]==method]
+            both=[r["objective_delta_24_minus_12_if_both_feasible"] for r in rows
+                  if r["objective_delta_24_minus_12_if_both_feasible"] is not None]
+            paired_summary.append(dict(task=task,method=method,pairs=len(rows),
+                n0_24_wins=sum(r["comparison"]==1 for r in rows),
+                n0_24_losses=sum(r["comparison"]==-1 for r in rows),
+                ties=sum(r["comparison"]==0 for r in rows),
+                mean_exact_objective_count_delta=_mean(
+                    [r["exact_objective_count_delta"] for r in rows]),
+                mean_objective_delta_24_minus_12_if_both_feasible=_mean(both),
+                both_feasible_pairs=len(both)))
 
     checkpoint_summary=[]
     for n0 in ANCHOR_SIZES:
