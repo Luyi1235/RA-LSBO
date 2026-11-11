@@ -182,8 +182,13 @@ def verify(root,expected_sha=None):
                 index,replay=choose(method,available,
                     proposal["candidate_forecast"],proposal["objective_forecast"],
                     state["best_exact_feasible"],arm_seed,step)
+                need(digest(proposal["scores"])==proposal["score_digest"],
+                     "Stored score vector SHA256 mismatch")
+                # IEEE libm/math.erf can differ in last bits across OS/Python.
+                # Replay uses numeric tolerance while preserving the EXACT
+                # stored vector hash, selected index and candidate identity.
                 for k in ("method","rule","step","selected_index",
-                          "selected_candidate_sha256","score_digest","scores",
+                          "selected_candidate_sha256","scores",
                           "cold_fallback","incumbent"):
                     need(same_numbers(replay[k],proposal[k]),
                          "Acquisition replay mismatch: "+k)
