@@ -1,0 +1,79 @@
+name: pr86d-initial-sample-ablation
+on:
+  pull_request:
+    paths:
+      - 'pr86d_*.py'
+      - 'run_pr86d.py'
+      - 'tests/test_pr86d.py'
+      - 'docs/PR86_D_INITIAL_SAMPLE_ABLATION.txt'
+      - '.github/workflows/pr86d-initial-sample-ablation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr86d-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Protocol, nested-anchor and objective-censoring tests
+        run: python -S -m unittest discover -s tests -p test_pr86d.py -v
+      - name: CPU model dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-models.txt
+      - name: Native GP regression
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile and frozen Full plan
+        run: |
+          python -m compileall -q pr86d_protocol.py pr86d_study.py pr86d_verify.py pr86d_analysis.py run_pr86d.py
+          python -S run_pr86d.py --task plan --profile full
+      - name: PR86-D nested allocation integration
+        run: python run_pr86d.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr86d-evidence/ci"
+      - name: Enforce math and model bills
+        run: python -S -c "import json,pathlib; r=json.loads(pathlib.Path(r'${{ runner.temp }}/pr86d-evidence/ci/report.json').read_text()); b=r['bill']; assert r['status']=='COMPLETE_PR86D_INITIAL_SAMPLE_ABLATION' and b['math_started']==776 and b['math_settled']==776 and b['gp_head_started']==1240 and b['gp_head_completed']==1240 and b['gp_kernel_started']==9920 and b['gp_kernel_completed']==9920 and b['gp_head_errors']==0 and b['gp_kernel_errors']==0 and b['objective_gp_head_errors']==0 and b['objective_gp_kernel_errors']==0"
+      - name: Independent nested-mask replay and analysis
+        run: |
+          python -S run_pr86d.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86d-evidence/ci"
+          python -S run_pr86d.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86d-evidence/ci" --output "${{ runner.temp }}/pr86d-evidence/analysis"
+      - name: Preserve integration evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr86d-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr86d-evidence
+          if-no-files-found: ignore
+  cross-python:
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: pr86d-windows-latest
+          path: ${{ runner.temp }}/pr86d-cross
+      - name: Python 3.13 independent verification and analysis
+        run: |
+          python -S run_pr86d.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86d-cross/ci"
+          python -S run_pr86d.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86d-cross/ci" --output "${{ runner.temp }}/pr86d-cross/analysis-py313"
