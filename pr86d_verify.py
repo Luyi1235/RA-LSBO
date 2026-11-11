@@ -194,8 +194,12 @@ def verify(root,expected_sha=None):
                          "Objective incumbent is stale or privileged")
                     need(proposal["pre_outcome"] and
                          proposal["no_test_truth_accessed"] and
-                         proposal["no_unselected_truth_accessed"],
-                         "Proposal provenance flags invalid")
+                         proposal["no_unselected_truth_accessed"] and
+                         not any(k in proposal for k in
+                             ("truth","label","heldout_truth","test_truth","masked_anchor_labels")),
+                         "Proposal provenance/label-isolation flags invalid")
+                    need(proposal["forecast_sha256"]==digest(proposal["candidate_forecast"]),
+                         "Candidate forecast digest mismatch")
                     check_fit(current,available,tests,
                               proposal["method_fit_risk"],
                               proposal["method_fit_objective"])
@@ -316,8 +320,10 @@ def verify(root,expected_sha=None):
     need(actual_progress==expected_progress,
          "Incremental progress trace differs from sealed unit records")
     expected_trials=len(spec["units"])*len(METHODS)*len(ANCHOR_SIZES)
-    need(trials_seen==expected_trials and report["trials"]==expected_trials,
-         "Trial roster mismatch")
+    need(trials_seen==expected_trials and report["trials"]==expected_trials and
+         report["units"]==len(spec["units"]) and
+         report["risk_refits"]==spec["expected_risk_refits"],
+         "Trial/unit/refit roster mismatch")
     bill=report["bill"]
     need(bill["math_started"]==len(started)==bill["math_settled"],
          "Math bill differs from ledger")
