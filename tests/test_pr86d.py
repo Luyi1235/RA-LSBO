@@ -115,5 +115,39 @@ class AcquisitionAndPairingTests(unittest.TestCase):
                          (1,-1.0))
 
 
+class VerifierContractTests(unittest.TestCase):
+    def test_cold_verifier_accepts_final_and_checkpoint_receipts(self):
+        """Prevent NameError when a stored fit has no acquisition proposal."""
+        from risk_learning.core import digest
+        from risk_learning.native import training_payload
+        from pr86d_verify import check_fit
+
+        cs=candidates(12005,3)
+        current=[observed(c,dict(region=1.0,resource=-.2,
+             objective=-100.,feasible=False)) for c in cs[:2]]
+        available=[cs[2]]
+        test=[]
+        diag={"candidates":[{"status":"ok"} for _ in range(8)]}
+        risk_receipt=dict(status="OK",objective_labels_used=False,
+            privileged_training=False,training_rows=2,
+            training_input_sha256=digest(training_payload(current,"native_censored")),
+            query_ids=[digest(cs[2])],heads={"region":diag,"resource":diag})
+        objective_receipt=dict(status="INSUFFICIENT_EXACT_OBJECTIVES",
+            training_rows=2,exact_training_rows=0,
+            privileged_training=False,missing_labels_imputed=False,
+            training_input_sha256=digest([]),query_ids=[digest(cs[2])])
+        # Independent checkpoints and the final fit have no decision object.
+        check_fit(current,available,test,risk_receipt,objective_receipt)
+        probabilities={"region":[.5],"resource":[.8],"joint":[.4]}
+        forecast={"probabilities":probabilities}
+        proposal=dict(candidate_forecast=forecast,
+                      forecast_sha256=digest(forecast),objective_forecast=None)
+        check_fit(current,available,test,risk_receipt,objective_receipt,proposal)
+        bad=dict(proposal,candidate_forecast={
+            "probabilities":{"region":[.5],"resource":[.8],"joint":[.2]}})
+        with self.assertRaisesRegex(ValueError,"Joint risk"):
+            check_fit(current,available,test,risk_receipt,objective_receipt,bad)
+
+
 if __name__=="__main__":
     unittest.main()
