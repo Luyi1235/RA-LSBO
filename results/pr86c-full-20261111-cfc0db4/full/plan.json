@@ -1,0 +1,276 @@
+{
+  "acquisition_rule": {
+    "boundary": "p_joint*(1-p_joint)",
+    "constrained_ei": "p_joint*EI_min; if no exact feasible incumbent use p_joint",
+    "iid_random": "uniform without replacement",
+    "marginal_entropy": "H(p_region)+H(p_resource), no reserved calibration",
+    "objective_weighted_boundary": "0.65 rank(p_joint*EI_min)+0.35 rank(EI_min*H(p_joint)); if no exact feasible incumbent use EI_min=1 for both terms"
+  },
+  "aircraft_calls": 0,
+  "all_methods_same_online_budget": true,
+  "anchor_count": 12,
+  "arm_online_calls": 5400,
+  "calibration_policy": "No on-policy calibration for any arm. Raw GP probabilities drive every decision.",
+  "candidate_pool": 192,
+  "checkpoints": [
+    12,
+    24,
+    48
+  ],
+  "expected_risk_heads": 11100,
+  "expected_risk_kernel_constructions": 88800,
+  "expected_risk_refits": 5550,
+  "fantasy_fits": 0,
+  "feasibility_rule": "Exact feasible iff region and resource are known <=0 and objective is exact.",
+  "heldout_test_calls": 15360,
+  "information_weight": 0.35,
+  "interpretation_limits": [
+    "These are analytic mixed-design tasks; no VAE, aircraft, RCAIDE or flight controls.",
+    "Current two GP risk heads concern constraint violation, not simulator completion.",
+    "The objective GP only fits exact observed objective labels; missing never becomes zero.",
+    "Risk-only entropy is NOT a global VOI or expected Brier reduction.",
+    "Joint feasibility uses marginal independence approximation, not a safety guarantee.",
+    "All arms share exactly 12 random anchors and pay for 36 individually selected online outcomes.",
+    "Independent heldout truth is never passed to candidate selection or model fitting.",
+    "Previously withheld tradeoff_s4..s7 are first released by prospective FULL, not CI/smoke.",
+    "All candidate scores and weights frozen before FULL; no seed or metric tuning."
+  ],
+  "methods": [
+    "iid_random",
+    "boundary",
+    "marginal_entropy",
+    "constrained_ei",
+    "objective_weighted_boundary"
+  ],
+  "objective_direction": "minimize",
+  "objective_head_attempts_data_dependent": true,
+  "objective_observation_rule": "Exact only if observed region<=0; otherwise missing. Never impute.",
+  "objective_weight": 0.65,
+  "online_per_method": 36,
+  "primary_endpoints": [
+    "best_observed_exact_feasible_objective_or_null_at_n12_n24_n48",
+    "exact_feasible_discovery_at_n12_n24_n48",
+    "paired_lexicographic_win_loss_tie_at_n48_no_imputation"
+  ],
+  "profile": "full",
+  "rcaide_calls": 0,
+  "schema": "pr86c_objective_aware_prospective_v1",
+  "shared_anchor_calls": 360,
+  "test_count": 512,
+  "test_labels_fit_isolated": true,
+  "total_math_calls": 21120,
+  "total_observations_per_method": 48,
+  "units": [
+    {
+      "anchor_seed": 1180011,
+      "pool_seed": 1180023,
+      "repeat": 0,
+      "task": "legacy_branin_sparse",
+      "test_seed": 1180037
+    },
+    {
+      "anchor_seed": 1180043,
+      "pool_seed": 1180055,
+      "repeat": 1,
+      "task": "legacy_branin_sparse",
+      "test_seed": 1180069
+    },
+    {
+      "anchor_seed": 1180075,
+      "pool_seed": 1180087,
+      "repeat": 2,
+      "task": "legacy_branin_sparse",
+      "test_seed": 1180101
+    },
+    {
+      "anchor_seed": 1181011,
+      "pool_seed": 1181023,
+      "repeat": 0,
+      "task": "legacy_rosenbrock_sparse",
+      "test_seed": 1181037
+    },
+    {
+      "anchor_seed": 1181043,
+      "pool_seed": 1181055,
+      "repeat": 1,
+      "task": "legacy_rosenbrock_sparse",
+      "test_seed": 1181069
+    },
+    {
+      "anchor_seed": 1181075,
+      "pool_seed": 1181087,
+      "repeat": 2,
+      "task": "legacy_rosenbrock_sparse",
+      "test_seed": 1181101
+    },
+    {
+      "anchor_seed": 1182011,
+      "pool_seed": 1182023,
+      "repeat": 0,
+      "task": "tradeoff_s0",
+      "test_seed": 1182037
+    },
+    {
+      "anchor_seed": 1182043,
+      "pool_seed": 1182055,
+      "repeat": 1,
+      "task": "tradeoff_s0",
+      "test_seed": 1182069
+    },
+    {
+      "anchor_seed": 1182075,
+      "pool_seed": 1182087,
+      "repeat": 2,
+      "task": "tradeoff_s0",
+      "test_seed": 1182101
+    },
+    {
+      "anchor_seed": 1183011,
+      "pool_seed": 1183023,
+      "repeat": 0,
+      "task": "tradeoff_s1",
+      "test_seed": 1183037
+    },
+    {
+      "anchor_seed": 1183043,
+      "pool_seed": 1183055,
+      "repeat": 1,
+      "task": "tradeoff_s1",
+      "test_seed": 1183069
+    },
+    {
+      "anchor_seed": 1183075,
+      "pool_seed": 1183087,
+      "repeat": 2,
+      "task": "tradeoff_s1",
+      "test_seed": 1183101
+    },
+    {
+      "anchor_seed": 1184011,
+      "pool_seed": 1184023,
+      "repeat": 0,
+      "task": "tradeoff_s2",
+      "test_seed": 1184037
+    },
+    {
+      "anchor_seed": 1184043,
+      "pool_seed": 1184055,
+      "repeat": 1,
+      "task": "tradeoff_s2",
+      "test_seed": 1184069
+    },
+    {
+      "anchor_seed": 1184075,
+      "pool_seed": 1184087,
+      "repeat": 2,
+      "task": "tradeoff_s2",
+      "test_seed": 1184101
+    },
+    {
+      "anchor_seed": 1185011,
+      "pool_seed": 1185023,
+      "repeat": 0,
+      "task": "tradeoff_s3",
+      "test_seed": 1185037
+    },
+    {
+      "anchor_seed": 1185043,
+      "pool_seed": 1185055,
+      "repeat": 1,
+      "task": "tradeoff_s3",
+      "test_seed": 1185069
+    },
+    {
+      "anchor_seed": 1185075,
+      "pool_seed": 1185087,
+      "repeat": 2,
+      "task": "tradeoff_s3",
+      "test_seed": 1185101
+    },
+    {
+      "anchor_seed": 1186011,
+      "pool_seed": 1186023,
+      "repeat": 0,
+      "task": "tradeoff_s4",
+      "test_seed": 1186037
+    },
+    {
+      "anchor_seed": 1186043,
+      "pool_seed": 1186055,
+      "repeat": 1,
+      "task": "tradeoff_s4",
+      "test_seed": 1186069
+    },
+    {
+      "anchor_seed": 1186075,
+      "pool_seed": 1186087,
+      "repeat": 2,
+      "task": "tradeoff_s4",
+      "test_seed": 1186101
+    },
+    {
+      "anchor_seed": 1187011,
+      "pool_seed": 1187023,
+      "repeat": 0,
+      "task": "tradeoff_s5",
+      "test_seed": 1187037
+    },
+    {
+      "anchor_seed": 1187043,
+      "pool_seed": 1187055,
+      "repeat": 1,
+      "task": "tradeoff_s5",
+      "test_seed": 1187069
+    },
+    {
+      "anchor_seed": 1187075,
+      "pool_seed": 1187087,
+      "repeat": 2,
+      "task": "tradeoff_s5",
+      "test_seed": 1187101
+    },
+    {
+      "anchor_seed": 1188011,
+      "pool_seed": 1188023,
+      "repeat": 0,
+      "task": "tradeoff_s6",
+      "test_seed": 1188037
+    },
+    {
+      "anchor_seed": 1188043,
+      "pool_seed": 1188055,
+      "repeat": 1,
+      "task": "tradeoff_s6",
+      "test_seed": 1188069
+    },
+    {
+      "anchor_seed": 1188075,
+      "pool_seed": 1188087,
+      "repeat": 2,
+      "task": "tradeoff_s6",
+      "test_seed": 1188101
+    },
+    {
+      "anchor_seed": 1189011,
+      "pool_seed": 1189023,
+      "repeat": 0,
+      "task": "tradeoff_s7",
+      "test_seed": 1189037
+    },
+    {
+      "anchor_seed": 1189043,
+      "pool_seed": 1189055,
+      "repeat": 1,
+      "task": "tradeoff_s7",
+      "test_seed": 1189069
+    },
+    {
+      "anchor_seed": 1189075,
+      "pool_seed": 1189087,
+      "repeat": 2,
+      "task": "tradeoff_s7",
+      "test_seed": 1189101
+    }
+  ],
+  "vae_fits": 0
+}
