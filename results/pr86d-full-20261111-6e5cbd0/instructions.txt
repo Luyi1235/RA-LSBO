@@ -1,0 +1,22 @@
+PR86-D Full 执行副本
+
+固定代码 SHA：6e5cbd0bafc25cf4e36f9a5675401d6991165416
+分支：research/phase-pr86d-initial-sample-ablation-20261112
+入口：run_pr86d.py
+CI：43011515859（Ubuntu/Windows/Python 3.13 全部成功）
+
+预算
+10 任务 ×3 重复 ×5 方法 ×2 初始样本 cohort = 300 trials。
+n0=12：12 初始 +36 online；n0=24：24 初始 +24 online；每臂总 48。
+25,080 次数学评价 = 720 anchor +9,000 online +15,360 held-out。
+12 点 cohort 只读取共享 24 anchor 的前 12 个标签；13–24 被 mask。
+缺失目标保持 missing；测试真值只用于事后评分。
+
+执行
+python -S run_pr86d.py --task plan --profile full
+python run_pr86d.py --task run --profile full --expected-sha 6e5cbd0... --output <full>
+python -S run_pr86d.py --task verify --expected-sha 6e5cbd0... --input <full>
+python -S run_pr86d.py --task analyze --expected-sha 6e5cbd0... --input <full> --output <analysis>
+
+禁止修改算法、种子、任务、依赖或预算；失败保留现场，不重跑、不覆盖、不删记录。
+结果直接上传 results/pr86d-full-20261111-6e5cbd0，不打包 ZIP。
