@@ -115,6 +115,16 @@ class AcquisitionAndPairingTests(unittest.TestCase):
                          (1,-1.0))
 
 
+class CrossPlatformNumericVerificationTests(unittest.TestCase):
+    def test_tiny_baseline_float_difference_is_accepted(self):
+        from pr86d_verify import same_numbers
+        stored={"joint":0.07812500000000000,"region":0.12999999999999998}
+        recomputed={"joint":0.07812500000000007,"region":0.13}
+        self.assertTrue(same_numbers(stored,recomputed))
+        self.assertFalse(same_numbers(stored,{"joint":0.08,"region":0.13}))
+        self.assertFalse(same_numbers(["immutable-id"],["different-id"]))
+
+
 class VerifierContractTests(unittest.TestCase):
     def test_cold_verifier_accepts_final_and_checkpoint_receipts(self):
         """Prevent NameError when a stored fit has no acquisition proposal."""
