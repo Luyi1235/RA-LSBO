@@ -1,0 +1,18 @@
+PR86-F Full 执行指令副本
+
+固定代码 SHA：cda1aa24c3b87b6c139d967b09966dbf234e5f37
+PR：95
+结果分支：results/pr86f-full-20261112-cda1aa2
+入口：run_pr86f.py
+
+预算：10 个已知任务 ×3 重复 ×3 方法 ×48 观测（24 初始+24 在线），90 条轨迹，18,240 次数学评价（720 anchors+2,160 online+15,360 held-out）。三种方法 constrained_ei、objective_weighted_boundary、direct_weighted_boundary 共享候选池、初始锚点和模型；不含 VAE、幻想、飞机或 RCAIDE。
+
+流程：
+python -S run_pr86f.py --task plan --profile full
+python run_pr86f.py --task run --profile full --expected-sha <SHA> --output <full>
+python -S run_pr86f.py --task verify --expected-sha <SHA> --input <full>
+python -S run_pr86f.py --task analyze --expected-sha <SHA> --input <full> --output <analysis>
+
+核验 report.status=COMPLETE_PR86F、90 trials、18,240 started=settled、0 模型/GP 错误、0 未结算、0 VAE/fantasy/aircraft/RCAIDE；verify COMPLETE/VERIFIED_PR86F；analysis COMPLETE_PR86F_ANALYSIS。
+
+上传：完整 full/、analysis/、logs/、README.md、environment.json、固定 SHA、SHA256SUMS.txt；大型 progress.jsonl 用 Git LFS；不截断、不丢弃原始记录，不修改代码分支或旧结果。
