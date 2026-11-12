@@ -1,0 +1,38 @@
+name: pr86e-readonly-diagnostics
+on:
+  pull_request:
+    paths:
+      - 'pr86e_diagnostics.py'
+      - 'tests/test_pr86e.py'
+      - 'docs/PR86_E_READONLY_DIAGNOSTICS.md'
+      - '.github/workflows/pr86e-readonly-diagnostics.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr86e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  pure:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Require actual frozen reference module
+        run: python -S -c "import pr86c_acquisition; assert pr86c_acquisition.W_OBJECTIVE == 0.65 and pr86c_acquisition.W_INFO == 0.35"
+      - name: Pure synthetic replay and frozen-reference regression
+        run: python -S -m unittest discover -s tests -p test_pr86e.py -v
+      - name: Check CLI syntax
+        run: python -S pr86e_diagnostics.py --help
