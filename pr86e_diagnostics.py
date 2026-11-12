@@ -76,7 +76,10 @@ def ei(mean, variance, incumbent):
         return max(gap, 0.0)
     sd = math.sqrt(v)
     z = gap / sd
-    return max(0.0, gap * 0.5 * math.erfc(-z/math.sqrt(2.0)) + sd * math.exp(-0.5*z*z)/math.sqrt(2*math.pi))
+    # Match frozen operation order: cancellation in tiny EI can alter ranks.
+    cdf = 0.5 * math.erfc(-z/math.sqrt(2.0))
+    pdf = math.exp(-0.5*z*z)/math.sqrt(2.0*math.pi)
+    return max(0.0, gap*cdf + sd*pdf)
 
 
 def rule_vectors(probabilities, objective, incumbent):
