@@ -11,7 +11,7 @@ permissions:
   contents: read
 concurrency:
   group: pr86f-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   native:
     strategy:
@@ -61,6 +61,7 @@ jobs:
   cross-python:
     needs: native
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
