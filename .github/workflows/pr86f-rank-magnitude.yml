@@ -1,0 +1,81 @@
+name: pr86f-rank-magnitude
+on:
+  pull_request:
+    paths:
+      - 'pr86f_*.py'
+      - 'run_pr86f.py'
+      - 'tests/test_pr86f.py'
+      - 'docs/PR86_F_RANK_MAGNITUDE.md'
+      - '.github/workflows/pr86f-rank-magnitude.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr86f-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.9'
+      - name: Require frozen baseline and run pure tests
+        run: python -S -m unittest discover -s tests -p test_pr86f.py -v
+      - name: Install PyTorch CPU
+        run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install frozen model dependencies
+        run: python -m pip install -r requirements-models.txt
+      - name: Frozen GP regression
+        run: python -m unittest discover -s tests -p test_c1_native.py -v
+      - name: Compile
+        run: python -m compileall -q pr86f_protocol.py pr86f_acquisition.py pr86f_experiment.py run_pr86f.py
+      - name: Frozen Full plan
+        run: python -S run_pr86f.py --task plan --profile full
+      - name: Real native three-arm integration
+        run: python run_pr86f.py --task run --profile ci --expected-sha "${{ github.event.pull_request.head.sha }}" --output "${{ runner.temp }}/pr86f-evidence/ci"
+      - name: Independent verify
+        run: python -S run_pr86f.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86f-evidence/ci"
+      - name: Analysis
+        run: python -S run_pr86f.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86f-evidence/ci" --output "${{ runner.temp }}/pr86f-evidence/analysis"
+      - name: Preserve evidence including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr86f-${{ matrix.os }}
+          path: ${{ runner.temp }}/pr86f-evidence
+          if-no-files-found: ignore
+  cross-python:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Pure tests on Python 3.13
+        run: python -S -m unittest discover -s tests -p test_pr86f.py -v
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: pr86f-windows-latest
+          path: ${{ runner.temp }}/pr86f-cross
+      - name: Cross-platform verify
+        run: python -S run_pr86f.py --task verify --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86f-cross/ci"
+      - name: Cross-platform analysis
+        run: python -S run_pr86f.py --task analyze --expected-sha "${{ github.event.pull_request.head.sha }}" --input "${{ runner.temp }}/pr86f-cross/ci" --output "${{ runner.temp }}/pr86f-cross/analysis-py313"
