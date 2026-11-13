@@ -17,12 +17,15 @@ import traceback
 
 from aircraft_risk_energy import energy_pairs, energy_receipt, energy_scores
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
-from aircraft_risk_protocol import ARMS, LOCAL_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan
+from aircraft_risk_protocol import (
+    ARMS, LOCAL_ARMS, LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan,
+)
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
 
 ROOT = Path(__file__).resolve().parent
-ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS}
+ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
+LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
 ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS}
 
 
@@ -83,7 +86,7 @@ def run(profile, expected, output):
 
     from aircraft_risk_acquisition import brier_scores
     from ra_lsbo.experiments.core.protocol import BASE
-    from ra_lsbo.experiments.core.problems import AircraftCase
+    from ra_lsbo.experiments.core.problems import AircraftCase, FlightScenario
     from ra_lsbo.experiments.core.runner import Ledger, append, plain, save
     from ra_lsbo.experiments.simplified_aircraft.corpus_optimizer import encoder_settings
     from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import StableGroupedHead
@@ -107,7 +110,8 @@ def run(profile, expected, output):
     start = time.perf_counter()
     try:
         torch.set_num_threads(1)
-        problem = AircraftCase(BASE, "sparse", integration_step=spec["step_seconds"])
+        scenario = FlightScenario(headwind_m_s=spec.get("headwind_m_s", 0.))
+        problem = AircraftCase(BASE, "sparse", scenario=scenario, integration_step=spec["step_seconds"])
         heads = tuple(name for name in problem.required_constraints
                       if name not in problem.analytical_constraints)
         save(output/"contract.json", {"id": problem.contract_id, "settings": problem.settings,
@@ -141,14 +145,14 @@ def run(profile, expected, output):
             branch_arms = PHASE_ARMS
             if "local_switch" in spec:
                 switch, shared_arm = spec["local_switch"], spec["shared_search_arm"]
-                branch_arms = LOCAL_ARMS
+                branch_arms = set(spec["arms"]) - {shared_arm}
             shared_history, shared_remaining, shared_rows = [], [], []
             shared_objective_features = shared_session = None
-            global_addition = None
+            global_addition = local_addition = None
             for arm in spec["arms"]:
                 rule, uses_latent = ARM_RULES[arm]
                 features = latent if uses_latent and not optimizing else explicit
-                if optimizing and uses_latent and arm not in LOCAL_ARMS:
+                if optimizing and uses_latent and not ("local_switch" in spec and arm in branch_arms):
                     modules, _ = load_base(BASE)
                     session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
                 objective_features = explicit
@@ -162,20 +166,21 @@ def run(profile, expected, output):
                         raise RuntimeError("Shared coverage prefix did not reach the switch")
                     history, remaining = list(shared_history), list(shared_remaining)
                     first_n = switch
-                    if arm in LOCAL_ARMS:
+                    if "local_switch" in spec:
                         objective_features = shared_objective_features
-                        session = shared_session
+                        session = deepcopy(shared_session)
                     for row in shared_rows:
                         append(journal, row)
                 random = Random(seed+11)
                 for n in range(first_n, spec["total"]+1):
                     if n == spec.get("local_switch"):
                         anchor = local_anchor(plain([r.to_dict() for r in history]), checked_label)
-                        local = arm in LOCAL_ARMS and anchor is not None
+                        local = arm in LOCAL_CANDIDATE_ARMS and anchor is not None
                         if global_addition is None:
                             global_addition, _ = candidate_pool(problem, seed+6, spec["augmentation"], seen)
-                        extra = (local_candidates(problem, anchor, seed+7, spec["augmentation"], seen)
-                                 if local else global_addition)
+                        if local and local_addition is None:
+                            local_addition = local_candidates(problem, anchor, seed+7, spec["augmentation"], seen)
+                        extra = local_addition if local else global_addition
                         append(journal, {"event": "augmentation", "n": n,
                                         "mode": "local" if local else "global",
                                         "anchor": digest(anchor) if local else None, "candidates": extra})
@@ -308,6 +313,10 @@ def verify_evidence(output, expected):
             or report["rcaide_mda_calls"] != 0):
         raise ValueError("Run summary does not match the budget or source")
     contract = read(output/"contract.json")
+    if spec.get("local_factorial") and contract["settings"]["scenario"] != {
+            "headwind_m_s": spec["headwind_m_s"], "payload_delta_kg": 0.,
+            "capacity_retention": 1., "initial_soc": .95}:
+        raise ValueError("Aircraft scenario differs from the frozen factorial profile")
     if set(contract["heads"]) != {"stall", "root_bending", "soc", "current", "voltage", "power"}:
         raise ValueError("Wrong engineering constraint roster")
     calls, roles = {}, Counter()
@@ -355,10 +364,10 @@ def verify_evidence(output, expected):
         first_test = min(number for number, _ in tests)
         switch, shared_arm = spec.get("coverage_switch"), spec.get("shared_coverage_arm")
         branch_arms = PHASE_ARMS
-        global_addition = None
+        additions_by_mode = {}
         if "local_switch" in spec:
             switch, shared_arm = spec["local_switch"], spec["shared_search_arm"]
-            branch_arms = LOCAL_ARMS
+            branch_arms = set(spec["arms"]) - {shared_arm}
         shared_journal = ({(row["event"], row["n"]): row for row in
                            map(json.loads, (unit/f"{shared_arm}.jsonl").read_bytes().splitlines())
                            if row["n"] <= switch} if shared_arm else {})
@@ -382,14 +391,13 @@ def verify_evidence(output, expected):
                         switch_design = local_anchor(prefix, checked_label)
                         switch_best = next((r["observation"]["objective"]["value"] for r in prefix
                                             if switch_design is not None and r["candidate"] == switch_design), None)
-                        anchor = switch_design if arm in LOCAL_ARMS else None
+                        anchor = switch_design if arm in LOCAL_CANDIDATE_ARMS else None
                         augmentation_mode = addition["mode"]
                         check_augmentation(addition, n, spec["augmentation"], "local" if anchor else "global",
                                            anchor, set(map(digest, all_rows)))
-                        if arm == shared_arm:
-                            global_addition = addition["candidates"]
-                        elif anchor is None and addition["candidates"] != global_addition:
-                            raise ValueError("No-incumbent arm did not reuse the global augmentation")
+                        previous = additions_by_mode.setdefault(augmentation_mode, addition["candidates"])
+                        if previous != addition["candidates"]:
+                            raise ValueError("Matched scoring arms must use identical augmentation candidates")
                         augmentation_ids = set(map(digest, addition["candidates"]))
                         remaining.extend(addition["candidates"])
                     if n in spec["checkpoints"]:

@@ -55,9 +55,17 @@ def energy_pairs(trajectories):
         ("ei_latent", "ei_explicit"),
     )
     lookup = {(row["seed"], row["arm"]): row for row in trajectories}
-    local_trial = any(row["arm"] == "cei_latent_local" for row in trajectories)
+    arms = {row["arm"] for row in trajectories}
+    local_trial = "cei_latent_local" in arms
     if local_trial:
         comparisons = (("cei_latent_local", "cei_latent"),)
+    if "ei_latent_local" in arms:
+        comparisons = (
+            ("cei_latent_local", "ei_latent_local"),
+            ("cei_latent_local", "cei_latent"),
+            ("cei_latent", "ei_latent_global"),
+            ("ei_latent_local", "ei_latent_global"),
+        )
     rows = []
     for seed in sorted({seed for seed, _ in lookup}):
         for arm, baseline in comparisons:
@@ -79,4 +87,9 @@ def energy_pairs(trajectories):
                                 arm_augmentation_mode=left["augmentation_mode"],
                                 arm_local_evaluations=left["local_augmentation_selected"],
                                 baseline_global_addition_evaluations=right["augmentation_selected"])
+                if "ei_latent_local" in arms:
+                    rows[-1].pop("baseline_global_addition_evaluations")
+                    rows[-1].update(arm_augmentation_evaluations=left["augmentation_selected"],
+                                    baseline_augmentation_mode=right["augmentation_mode"],
+                                    baseline_augmentation_evaluations=right["augmentation_selected"])
     return rows
