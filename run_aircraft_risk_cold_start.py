@@ -448,8 +448,10 @@ def verify_evidence(output, expected):
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
+                    shared = arm in branch_arms and n < switch
+                    charge_arm = shared_arm if shared else arm
                     if arm in ENERGY_ARMS:
-                        rule, latent = ENERGY_ARMS[arm]
+                        rule, latent = ENERGY_ARMS[charge_arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
                         energy_receipt(rule, row["energy"], row["scores"], prefix, updated, checked_label)
                         fallback_calls += row["energy"]["improvement"] is None
@@ -457,10 +459,8 @@ def verify_evidence(output, expected):
                         if representation is not None and not updated and representation != identity:
                             raise ValueError("Objective representation changed outside its schedule")
                         representation = identity
-                    shared = arm in branch_arms and n < switch
                     if shared and row != shared_journal["proposal", n]:
-                        raise ValueError("Coverage proposal differs between matched arms")
-                    charge_arm = shared_arm if shared else arm
+                        raise ValueError("Shared proposal differs between matched arms")
                     number, outcome = record_at(f"{seed}/{charge_arm}/{n}", candidate, "online", shared=shared)
                     if not last_call < number < first_test:
                         raise ValueError("Online evaluation is out of order or after held-out outcomes")
