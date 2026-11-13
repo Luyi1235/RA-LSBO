@@ -63,6 +63,17 @@ class AircraftRiskColdStartTests(unittest.TestCase):
             check_augmentation(row, 36, 1, "local", a, {digest(a)})
         self.assertIsNone(local_anchor([], checked_label))
 
+    def test_local_factorial_crosses_candidate_source_and_score_at_equal_budget(self):
+        nominal, wind = plan("local-factor-nominal"), plan("local-factor-headwind")
+        self.assertEqual(nominal["arms"], [
+            "cei_latent", "cei_latent_local", "ei_latent_global", "ei_latent_local",
+        ])
+        self.assertEqual(nominal["budget"], {"initial": 144, "online": 864, "heldout": 384})
+        self.assertEqual(wind["budget"], nominal["budget"])
+        self.assertEqual(wind["headwind_m_s"], 4.)
+        self.assertFalse(set(wind["seeds"]) & set(nominal["seeds"]))
+        self.assertEqual(sum(plan("local-factor-smoke")["budget"].values()), 30)
+
     def test_sign_information(self):
         z = np.array([0.])
         rho = np.array([[0., .5, -.5, 1., -1.]])

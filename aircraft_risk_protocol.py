@@ -21,9 +21,29 @@ OPT_ARMS = {
 }
 LOCAL_ARMS = {"cei_latent_local": ("cei", True)}
 LOCAL_SEARCH = {"local-check": (10, 8), "local-smoke": (10, 8), "local-pilot": (36, 24)}
+LOCAL_FACTOR_ARMS = {
+    "ei_latent_global": ("ei", True),
+    "ei_latent_local": ("ei", True),
+}
+LOCAL_FACTOR_SCENARIOS = {
+    "local-factor-check": 4.,
+    "local-factor-smoke": 4.,
+    "local-factor-nominal": 0.,
+    "local-factor-headwind": 4.,
+}
+LOCAL_SEARCH.update({
+    "local-factor-check": (10, 8),
+    "local-factor-smoke": (10, 8),
+    "local-factor-nominal": (36, 24),
+    "local-factor-headwind": (36, 24),
+})
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "local-factor-check": (1, 8, 17, 24, 0, 12, 28424610, (8, 10, 16, 17)),
+    "local-factor-smoke": (1, 8, 12, 24, 0, 12, 28424100, (8, 10, 12)),
+    "local-factor-nominal": (12, 12, 48, 128, 0, 32, 28425000, (12, 24, 36, 48)),
+    "local-factor-headwind": (12, 12, 48, 128, 0, 32, 28427000, (12, 24, 36, 48)),
     "local-check": (1, 8, 12, 24, 0, 12, 28420200, (8, 10, 12)),
     "local-smoke": (1, 8, 12, 24, 0, 12, 28420100, (8, 10, 12)),
     "local-pilot": (12, 12, 48, 128, 0, 32, 28421000, (12, 24, 36, 48)),
@@ -51,7 +71,9 @@ def plan(profile):
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
         arms = ["cei_latent", *LOCAL_ARMS]
-        shared = switch-initial
+        if profile in LOCAL_FACTOR_SCENARIOS:
+            arms.extend(LOCAL_FACTOR_ARMS)
+        shared = (len(arms)-1)*(switch-initial)
     spec = dict(schema=SCHEMA, profile=profile, case=CASE, step_seconds=20,
                 arms=arms, seeds=[seed + 100*i for i in range(repeats)],
                 initial=initial, total=total, pool=pool, reference=reference,
@@ -66,6 +88,9 @@ def plan(profile):
     if profile in LOCAL_SEARCH:
         spec["local_switch"], spec["augmentation"] = LOCAL_SEARCH[profile]
         spec["shared_search_arm"] = "cei_latent"
+    if profile in LOCAL_FACTOR_SCENARIOS:
+        spec["headwind_m_s"] = LOCAL_FACTOR_SCENARIOS[profile]
+        spec["local_factorial"] = True
     if profile.startswith("energy-") or profile in LOCAL_SEARCH:
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec
