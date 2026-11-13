@@ -15,6 +15,16 @@ class AircraftRiskColdStartTests(unittest.TestCase):
         self.assertEqual(plan("smoke")["budget"], {"initial": 4, "online": 12, "heldout": 12})
         self.assertEqual(plan("pilot")["budget"], {"initial": 72, "online": 1296, "heldout": 768})
 
+    def test_coverage_phase_budget_and_parent(self):
+        smoke, pilot = plan("phase-smoke"), plan("phase-pilot")
+        self.assertEqual(smoke["budget"], {"initial": 4, "online": 16, "heldout": 12})
+        self.assertEqual(pilot["budget"], {"initial": 144, "online": 2304, "heldout": 1536})
+        self.assertEqual(pilot["coverage_switch"], 24)
+        self.assertEqual(pilot["total"], 48)
+        self.assertLess(pilot["arms"].index(pilot["shared_coverage_arm"]),
+                        pilot["arms"].index("coverage_brier"))
+        self.assertFalse(set(pilot["seeds"]) & set(plan("pilot")["seeds"]))
+
     def test_sign_information(self):
         z = np.array([0.])
         rho = np.array([[0., .5, -.5, 1., -1.]])
