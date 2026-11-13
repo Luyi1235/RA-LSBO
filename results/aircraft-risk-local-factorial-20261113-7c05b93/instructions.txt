@@ -1,0 +1,24 @@
+# PR101 任务指令副本
+
+固定代码 SHA：`7c05b93eca1b5930a1ede49dbd22a394afab0382`
+分支：`research/aircraft-risk-local-factorial-20261113`
+Python：`C:\Users\pc\.conda\envs\Rcaide_vsp\python.exe`
+结果分支：`results/aircraft-risk-local-factorial-20261113-7c05b93`
+
+执行顺序：
+
+1. `python -m unittest discover -s tests -p test_aircraft_risk_cold_start.py -v`
+2. 对 smoke、nominal、headwind 三个 profile 分别：
+   - `python -S run_aircraft_risk_cold_start.py --task plan --profile local-factor-<case>`
+   - `python run_aircraft_risk_cold_start.py --task run --profile local-factor-<case> --expected-sha 7c05b93... --output <out>\<case>`
+   - `python -S run_aircraft_risk_cold_start.py --task verify --expected-sha 7c05b93... --input <out>\<case>`
+   - `python -S run_aircraft_risk_cold_start.py --task analyze --expected-sha 7c05b93... --input <out>\<case> --output <out>\<case>-analysis`
+3. 保存每条命令的 stdout/stderr 和退出码；技术失败时保留账本和日志。
+4. 验收：smoke 30 次；nominal/headwind 各 1,392 次；合计 2,814；RCAIDE/MDA 为 0；两个正式配置 energy_pairs 各 48 条。
+5. 上传以下内容到独立结果分支，使用 `* -text` 保持原始字节：
+   - smoke/、smoke-analysis/
+   - nominal/、nominal-analysis/
+   - headwind/、headwind-analysis/
+   - logs/
+   - fixed_sha、environment、SHA256SUMS、README
+6. 不修改算法代码，不重跑失败配置，不覆盖旧结果；只提交结果，不合并 PR。
