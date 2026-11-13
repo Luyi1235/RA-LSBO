@@ -14,11 +14,12 @@ import sys
 import time
 import traceback
 
-from aircraft_risk_protocol import ARMS, PROFILES, plan
+from aircraft_risk_protocol import ARMS, PHASE_ARMS, PROFILES, plan
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
 
 ROOT = Path(__file__).resolve().parent
+ARM_RULES = {**ARMS, **PHASE_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -120,19 +121,33 @@ def run(profile, expected, output):
             anchors = [ledger.evaluate(problem, row, f"{seed}/initial/{i}", "initial")
                        for i, row in enumerate(initial)]
             explicit = PrefixFeatures(problem, BASE, anchors, seed, latent=False)
-            modules, _ = load_base(BASE)
-            session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
-            session.fit(native_observations(anchors, modules, explicit.space), incremental=False)
-            latent = feature_snapshot(problem, BASE, anchors, session)
-            save(unit/"features.json", {"explicit": explicit.identity, "latent": latent.identity,
-                                       "encoder_state": latent.state_hash, "anchor_count": len(anchors)})
-            for arm, (rule, uses_latent) in ARMS.items():
+            feature_ids = {"explicit": explicit.identity, "anchor_count": len(anchors)}
+            if any(ARM_RULES[arm][1] for arm in spec["arms"]):
+                modules, _ = load_base(BASE)
+                session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
+                session.fit(native_observations(anchors, modules, explicit.space), incremental=False)
+                latent = feature_snapshot(problem, BASE, anchors, session)
+                feature_ids.update(latent=latent.identity, encoder_state=latent.state_hash)
+            save(unit/"features.json", feature_ids)
+            switch = spec.get("coverage_switch")
+            shared_arm = spec.get("shared_coverage_arm")
+            shared_history, shared_remaining, shared_rows = [], [], []
+            for arm in spec["arms"]:
+                rule, uses_latent = ARM_RULES[arm]
                 features = latent if uses_latent else explicit
                 journal = unit/f"{arm}.jsonl"
                 history, remaining = list(anchors), list(pool)
                 ref_x, heldout_x = features.transform(reference), features.transform(heldout)
+                first_n = spec["initial"]
+                if arm in PHASE_ARMS:
+                    if len(shared_history) != switch:
+                        raise RuntimeError("Shared coverage prefix did not reach the switch")
+                    history, remaining = list(shared_history), list(shared_remaining)
+                    first_n = switch
+                    for row in shared_rows:
+                        append(journal, row)
                 random = Random(seed+11)
-                for n in range(spec["initial"], spec["total"]+1):
+                for n in range(first_n, spec["total"]+1):
                     past_x = features.transform([row.candidate for row in history])
                     fitted = {}
                     for name in heads:
@@ -158,8 +173,11 @@ def run(profile, expected, output):
                         return values
 
                     if n in spec["checkpoints"]:
-                        append(journal, {"event": "prediction", "n": n, "models": model_ids,
-                                         "probabilities": probabilities(heldout_x)})
+                        prediction = {"event": "prediction", "n": n, "models": model_ids,
+                                      "probabilities": plain(probabilities(heldout_x))}
+                        append(journal, prediction)
+                        if arm == shared_arm and n < switch:
+                            shared_rows.append(prediction)
                     if n == spec["total"]:
                         break
                     query_x = features.transform(remaining)
@@ -175,10 +193,15 @@ def run(profile, expected, output):
                         scores = brier_scores(fitted, query_x, ref_x).tolist()
                     selected = select(remaining, scores)
                     candidate = remaining.pop(selected)
-                    append(journal, {"event": "proposal", "n": n, "models": model_ids,
-                                     "prefix": digest(plain([r.to_dict() for r in history])),
-                                     "index": selected, "candidate": digest(candidate), "scores": scores})
+                    proposal = {"event": "proposal", "n": n, "models": model_ids,
+                                "prefix": digest(plain([r.to_dict() for r in history])),
+                                "index": selected, "candidate": digest(candidate), "scores": scores}
+                    append(journal, proposal)
                     history.append(ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online"))
+                    if arm == shared_arm and n < switch:
+                        shared_rows.append(proposal)
+                        if n+1 == switch:
+                            shared_history, shared_remaining = list(history), list(remaining)
                 print(f"{seed} {arm} complete", flush=True)
             for i, row in enumerate(heldout):
                 ledger.evaluate(problem, row, f"{seed}/heldout/{i}", "heldout")
@@ -245,9 +268,9 @@ def verify(output, expected):
                 or len(set(map(digest, all_rows))) != len(all_rows)):
             raise ValueError(f"Candidate overlap or missing design at {seed}")
 
-        def record_at(tag, candidate, role):
+        def record_at(tag, candidate, role, *, shared=False):
             number, record, actual_role = calls[tag]
-            if tag in used or record["candidate"] != candidate or actual_role != role:
+            if (tag in used) != shared or record["candidate"] != candidate or actual_role != role:
                 raise ValueError(f"Call does not match frozen roster at {tag}")
             used.add(tag)
             return number, record
@@ -255,6 +278,10 @@ def verify(output, expected):
         anchors = [record_at(f"{seed}/initial/{i}", row, "initial") for i, row in enumerate(initial)]
         tests = [record_at(f"{seed}/heldout/{i}", row, "heldout") for i, row in enumerate(heldout)]
         first_test = min(number for number, _ in tests)
+        switch, shared_arm = spec.get("coverage_switch"), spec.get("shared_coverage_arm")
+        shared_journal = ({(row["event"], row["n"]): row for row in
+                           map(json.loads, (unit/f"{shared_arm}.jsonl").read_bytes().splitlines())
+                           if row["n"] <= switch} if shared_arm else {})
         for arm in spec["arms"]:
             prefix, remaining = [record for _, record in anchors], list(pool)
             last_call = max(number for number, _ in anchors)
@@ -267,6 +294,8 @@ def verify(output, expected):
                         row = json.loads(next(stream))
                         if row["event"] != "prediction" or row["n"] != n:
                             raise ValueError("Checkpoint order mismatch")
+                        if arm in PHASE_ARMS and n <= switch and row != shared_journal["prediction", n]:
+                            raise ValueError("Coverage checkpoint differs between matched arms")
                         models_at_checkpoint = row["models"]
                         if set(models_at_checkpoint) != set(contract["heads"]):
                             raise ValueError("Wrong checkpoint model roster")
@@ -309,7 +338,11 @@ def verify(output, expected):
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
-                    number, outcome = record_at(f"{seed}/{arm}/{n}", candidate, "online")
+                    shared = arm in PHASE_ARMS and n < switch
+                    if shared and row != shared_journal["proposal", n]:
+                        raise ValueError("Coverage proposal differs between matched arms")
+                    charge_arm = shared_arm if shared else arm
+                    number, outcome = record_at(f"{seed}/{charge_arm}/{n}", candidate, "online", shared=shared)
                     if not last_call < number < first_test:
                         raise ValueError("Online evaluation is out of order or after held-out outcomes")
                     last_call = number
@@ -360,12 +393,26 @@ def analyze(source, expected, output):
         ("brier_latent", "brier_explicit"),
         ("boundary_latent", "boundary_explicit"),
     )
+    arms = {arm for _, arm, _ in joint}
+    if "coverage_brier" in arms:
+        comparisons += (
+            ("coverage_brier", "coverage_boundary"),
+            ("coverage_brier", "brier_explicit"),
+            ("coverage_boundary", "boundary_explicit"),
+            ("coverage_brier", "coverage_explicit"),
+            ("coverage_boundary", "coverage_explicit"),
+        )
+    comparisons = tuple((arm, base) for arm, base in comparisons if {arm, base} <= arms)
+    paired_metrics = ("brier", "feasible_recall", "false_feasible_rate") if "coverage_brier" in arms else ("brier",)
     pairs = []
     for seed, n in sorted({(seed, n) for seed, _, n in joint}):
         for arm, baseline in comparisons:
-            left, right = joint[seed, arm, n]["brier"], joint[seed, baseline, n]["brier"]
-            pairs.append({"seed": seed, "n": n, "arm": arm, "baseline": baseline,
-                          "brier_delta": left-right if left is not None and right is not None else None})
+            left, right = joint[seed, arm, n], joint[seed, baseline, n]
+            row = {"seed": seed, "n": n, "arm": arm, "baseline": baseline}
+            for metric in paired_metrics:
+                a, b = left[metric], right[metric]
+                row[f"{metric}_delta"] = a-b if a is not None and b is not None else None
+            pairs.append(row)
     with (output/"joint_pairs.csv").open("x", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(pairs[0]))
         writer.writeheader()
