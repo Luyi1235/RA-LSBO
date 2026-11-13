@@ -55,6 +55,9 @@ def energy_pairs(trajectories):
         ("ei_latent", "ei_explicit"),
     )
     lookup = {(row["seed"], row["arm"]): row for row in trajectories}
+    local_trial = any(row["arm"] == "cei_latent_local" for row in trajectories)
+    if local_trial:
+        comparisons = (("cei_latent_local", "cei_latent"),)
     rows = []
     for seed in sorted({seed for seed, _ in lookup}):
         for arm, baseline in comparisons:
@@ -69,4 +72,11 @@ def energy_pairs(trajectories):
                          "online_feasible_delta": left["online_feasible"]-right["online_feasible"],
                          "online_infeasible_delta": left["online_infeasible"]-right["online_infeasible"],
                          "online_unknown_delta": left["online_unknown"]-right["online_unknown"]})
+            if local_trial:
+                if left["switch_best_feasible_Wh"] != right["switch_best_feasible_Wh"]:
+                    raise ValueError("The local-search arms did not share the switch incumbent")
+                rows[-1].update(switch_best_feasible_Wh=left["switch_best_feasible_Wh"],
+                                arm_augmentation_mode=left["augmentation_mode"],
+                                arm_local_evaluations=left["local_augmentation_selected"],
+                                baseline_global_addition_evaluations=right["augmentation_selected"])
     return rows

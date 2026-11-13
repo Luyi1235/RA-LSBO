@@ -1,6 +1,7 @@
 """Prospective prediction-only experiment on the repository's reduced aircraft."""
 import argparse
 from collections import Counter
+from copy import deepcopy
 import csv
 import hashlib
 from importlib.metadata import version
@@ -15,12 +16,14 @@ import time
 import traceback
 
 from aircraft_risk_energy import energy_pairs, energy_receipt, energy_scores
-from aircraft_risk_protocol import ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan
+from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
+from aircraft_risk_protocol import ARMS, LOCAL_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
 
 ROOT = Path(__file__).resolve().parent
-ARM_RULES = {**ARMS, **PHASE_ARMS, **OPT_ARMS}
+ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -135,11 +138,17 @@ def run(profile, expected, output):
             save(unit/"features.json", feature_ids)
             switch = spec.get("coverage_switch")
             shared_arm = spec.get("shared_coverage_arm")
+            branch_arms = PHASE_ARMS
+            if "local_switch" in spec:
+                switch, shared_arm = spec["local_switch"], spec["shared_search_arm"]
+                branch_arms = LOCAL_ARMS
             shared_history, shared_remaining, shared_rows = [], [], []
+            shared_objective_features = shared_session = None
+            global_addition = None
             for arm in spec["arms"]:
                 rule, uses_latent = ARM_RULES[arm]
                 features = latent if uses_latent and not optimizing else explicit
-                if optimizing and uses_latent:
+                if optimizing and uses_latent and arm not in LOCAL_ARMS:
                     modules, _ = load_base(BASE)
                     session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
                 objective_features = explicit
@@ -148,15 +157,29 @@ def run(profile, expected, output):
                 ref_x = features.transform(reference) if reference else None
                 heldout_x = features.transform(heldout)
                 first_n = spec["initial"]
-                if arm in PHASE_ARMS:
+                if arm in branch_arms:
                     if len(shared_history) != switch:
                         raise RuntimeError("Shared coverage prefix did not reach the switch")
                     history, remaining = list(shared_history), list(shared_remaining)
                     first_n = switch
+                    if arm in LOCAL_ARMS:
+                        objective_features = shared_objective_features
+                        session = shared_session
                     for row in shared_rows:
                         append(journal, row)
                 random = Random(seed+11)
                 for n in range(first_n, spec["total"]+1):
+                    if n == spec.get("local_switch"):
+                        anchor = local_anchor(plain([r.to_dict() for r in history]), checked_label)
+                        local = arm in LOCAL_ARMS and anchor is not None
+                        if global_addition is None:
+                            global_addition, _ = candidate_pool(problem, seed+6, spec["augmentation"], seen)
+                        extra = (local_candidates(problem, anchor, seed+7, spec["augmentation"], seen)
+                                 if local else global_addition)
+                        append(journal, {"event": "augmentation", "n": n,
+                                        "mode": "local" if local else "global",
+                                        "anchor": digest(anchor) if local else None, "candidates": extra})
+                        remaining.extend(extra)
                     past_x = features.transform([row.candidate for row in history])
                     fitted = {}
                     for name in heads:
@@ -246,6 +269,9 @@ def run(profile, expected, output):
                         shared_rows.append(proposal)
                         if n+1 == switch:
                             shared_history, shared_remaining = list(history), list(remaining)
+                            if "local_switch" in spec:
+                                shared_session = deepcopy(session)
+                                shared_objective_features = objective_features
                 print(f"{seed} {arm} complete", flush=True)
             for i, row in enumerate(heldout):
                 ledger.evaluate(problem, row, f"{seed}/heldout/{i}", "heldout")
@@ -328,6 +354,11 @@ def verify_evidence(output, expected):
         tests = [record_at(f"{seed}/heldout/{i}", row, "heldout") for i, row in enumerate(heldout)]
         first_test = min(number for number, _ in tests)
         switch, shared_arm = spec.get("coverage_switch"), spec.get("shared_coverage_arm")
+        branch_arms = PHASE_ARMS
+        global_addition = None
+        if "local_switch" in spec:
+            switch, shared_arm = spec["local_switch"], spec["shared_search_arm"]
+            branch_arms = LOCAL_ARMS
         shared_journal = ({(row["event"], row["n"]): row for row in
                            map(json.loads, (unit/f"{shared_arm}.jsonl").read_bytes().splitlines())
                            if row["n"] <= switch} if shared_arm else {})
@@ -339,14 +370,34 @@ def verify_evidence(output, expected):
             models_at_checkpoint = None
             representation = None
             fallback_calls = 0
+            augmentation_ids = set()
+            local_selection_calls = 0
+            new_candidate_calls = 0
+            switch_best = None
+            augmentation_mode = None
             with (unit/f"{arm}.jsonl").open(encoding="utf-8") as stream:
                 for n in range(spec["initial"], spec["total"]+1):
+                    if n == spec.get("local_switch"):
+                        addition = json.loads(next(stream))
+                        switch_design = local_anchor(prefix, checked_label)
+                        switch_best = next((r["observation"]["objective"]["value"] for r in prefix
+                                            if switch_design is not None and r["candidate"] == switch_design), None)
+                        anchor = switch_design if arm in LOCAL_ARMS else None
+                        augmentation_mode = addition["mode"]
+                        check_augmentation(addition, n, spec["augmentation"], "local" if anchor else "global",
+                                           anchor, set(map(digest, all_rows)))
+                        if arm == shared_arm:
+                            global_addition = addition["candidates"]
+                        elif anchor is None and addition["candidates"] != global_addition:
+                            raise ValueError("No-incumbent arm did not reuse the global augmentation")
+                        augmentation_ids = set(map(digest, addition["candidates"]))
+                        remaining.extend(addition["candidates"])
                     if n in spec["checkpoints"]:
                         row = json.loads(next(stream))
                         if row["event"] != "prediction" or row["n"] != n:
                             raise ValueError("Checkpoint order mismatch")
-                        if arm in PHASE_ARMS and n <= switch and row != shared_journal["prediction", n]:
-                            raise ValueError("Coverage checkpoint differs between matched arms")
+                        if arm in branch_arms and n <= switch and row != shared_journal["prediction", n]:
+                            raise ValueError("Shared checkpoint differs between matched arms")
                         models_at_checkpoint = row["models"]
                         if set(models_at_checkpoint) != set(contract["heads"]):
                             raise ValueError("Wrong checkpoint model roster")
@@ -389,8 +440,8 @@ def verify_evidence(output, expected):
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
-                    if arm in OPT_ARMS:
-                        rule, latent = OPT_ARMS[arm]
+                    if arm in ENERGY_ARMS:
+                        rule, latent = ENERGY_ARMS[arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
                         energy_receipt(rule, row["energy"], row["scores"], prefix, updated, checked_label)
                         fallback_calls += row["energy"]["improvement"] is None
@@ -398,7 +449,7 @@ def verify_evidence(output, expected):
                         if representation is not None and not updated and representation != identity:
                             raise ValueError("Objective representation changed outside its schedule")
                         representation = identity
-                    shared = arm in PHASE_ARMS and n < switch
+                    shared = arm in branch_arms and n < switch
                     if shared and row != shared_journal["proposal", n]:
                         raise ValueError("Coverage proposal differs between matched arms")
                     charge_arm = shared_arm if shared else arm
@@ -407,6 +458,9 @@ def verify_evidence(output, expected):
                         raise ValueError("Online evaluation is out of order or after held-out outcomes")
                     last_call = number
                     prefix.append(outcome)
+                    selected_augmentation = row["candidate"] in augmentation_ids
+                    new_candidate_calls += selected_augmentation
+                    local_selection_calls += selected_augmentation and augmentation_mode == "local"
                     models_at_checkpoint = None
                 if stream.read():
                     raise ValueError("Extra decision evidence")
@@ -428,9 +482,14 @@ def verify_evidence(output, expected):
                                  "online_unknown": sum(label is None for label in online_labels),
                                  "best_feasible_Wh": min(energies, default=None),
                                  "online_terminations": dict(terminations)})
-            if arm in OPT_ARMS:
+            if arm in ENERGY_ARMS:
                 trajectories[-1]["shared_rule_fallback_calls"] = fallback_calls
                 trajectories[-1]["objective_acquisition_calls"] = spec["total"]-spec["initial"]-fallback_calls
+            if "local_switch" in spec:
+                trajectories[-1].update(local_augmentation_selected=local_selection_calls,
+                                        augmentation_selected=new_candidate_calls,
+                                        augmentation_mode=augmentation_mode,
+                                        switch_best_feasible_Wh=switch_best)
     if set(calls) != used:
         raise ValueError("Unexpected ledger calls")
     return report, results, trajectories
@@ -484,7 +543,7 @@ def analyze(source, expected, output):
     with (output/"analysis.json").open("x", encoding="utf-8") as stream:
         packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
-        if arms & OPT_ARMS.keys():
+        if arms & ENERGY_ARMS.keys():
             packet["energy_pairs"] = energy_pairs(trajectories)
             with (output/"energy_pairs.csv").open("x", encoding="utf-8", newline="") as energy_stream:
                 writer = csv.DictWriter(energy_stream, fieldnames=list(packet["energy_pairs"][0]))
