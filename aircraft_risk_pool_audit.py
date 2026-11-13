@@ -3,6 +3,7 @@
 import argparse
 from collections import Counter
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -46,7 +47,7 @@ def load_roster(folder, profile):
     report, _, _ = verify_evidence(run_folder, SOURCE_SHA)
     if read(run_folder/"plan.json")["profile"] != spec["profile"]:
         raise ValueError("Wrong sealed source profile")
-    contract = read(run_folder/"contract.json")["id"]
+    contract = read(run_folder/"contract.json")
     observed = {}
     for event in json_lines(run_folder/"calls.jsonl"):
         if event["event"] == "settled":
@@ -75,9 +76,43 @@ def load_roster(folder, profile):
     if len(pending) != CAPS[profile]:
         raise ValueError("Unseen pool count does not match the frozen call budget")
     audit_plan = {"source_sha": SOURCE_SHA, "result_sha": RESULT_SHA, "profile": profile,
-                  "contract": contract, "source_calls": report["calls"],
+                  "contract": contract["id"], "aircraft_settings": contract["settings"],
+                  "source_calls": report["calls"],
                   "new_calls": len(pending), "rcaide_mda_calls": 0, "pending": pending}
     return audit_plan, units, run_folder
+
+
+def evaluator_binding(problem, audit_plan):
+    """Reconstruct the historical contract, allowing only line-ending differences."""
+    source = ROOT/"ra_lsbo/experiments/core/problems.py"
+    base = ROOT/"ra_lsbo/partial_bo/problems.py"
+    archived = audit_plan["aircraft_settings"]
+    files = {"source": source, "battery_source_sha256": problem.battery_source}
+    expected_settings = dict(problem.settings)
+    for name, path in files.items():
+        if archived[name] not in source_hashes(path):
+            raise ValueError(f"Aircraft evaluator source differs beyond line endings: {name}")
+        expected_settings[name] = archived[name]
+    if digest(expected_settings) != digest(archived):
+        raise ValueError("Aircraft settings differ from the sealed source")
+    schema = [dict(name=v.name, kind=v.kind, default=v.default,
+                   **({"bounds": v.bounds} if v.kind == "continuous" else {"values": v.values}),
+                   **({"active_when": v.active_when} if v.active_when else {}))
+              for v in problem.space.variables]
+    identities = {digest({"schema": schema, "settings": archived, "source_sha256": sha})
+                  for sha in source_hashes(base)}
+    if audit_plan["contract"] not in identities:
+        raise ValueError("Aircraft evaluator contract differs beyond line endings")
+    return {"historical_contract": audit_plan["contract"], "evaluation_contract": problem.contract_id,
+            "contract_match": "exact" if problem.contract_id == audit_plan["contract"]
+            else "line_endings_only", "local_source_hashes": {name: file_hash(path)
+            for name, path in {**files, "partial_bo_source": base}.items()}}
+
+
+def source_hashes(path):
+    raw = path.read_bytes()
+    lf = raw.replace(b"\r\n", b"\n")
+    return {hashlib.sha256(value).hexdigest() for value in (raw, lf, lf.replace(b"\n", b"\r\n"))}
 
 
 def execute(audit_plan, output, expected):
@@ -86,8 +121,7 @@ def execute(audit_plan, output, expected):
     from ra_lsbo.experiments.core.runner import Ledger, save
 
     problem = AircraftCase(BASE, "sparse", integration_step=20.)
-    if problem.contract_id != audit_plan["contract"]:
-        raise ValueError("Local aircraft evaluator differs from the archived evaluator")
+    binding = evaluator_binding(problem, audit_plan)
     if output == ROOT or ROOT in output.parents:
         raise ValueError("Use a fresh evidence directory outside the code worktree")
     output.mkdir(parents=True)
@@ -98,7 +132,8 @@ def execute(audit_plan, output, expected):
             ledger.evaluate(problem, row["candidate"], row["tag"], "pool_audit")
         save(output/"report.json", {"status": STATUS, "source_sha": expected,
              "calls": ledger.count, "settled": sum(ledger.roles.values()),
-             "rcaide_mda_calls": 0, "python": sys.version, "platform": platform.platform()})
+             "rcaide_mda_calls": 0, "evaluator_binding": binding,
+             "python": sys.version, "platform": platform.platform()})
         save(output/"manifest.json", {path.name: file_hash(path) for path in output.iterdir()})
     except Exception:
         save(output/"failure.json", {"started": ledger.count, "settled": sum(ledger.roles.values()),
@@ -117,11 +152,17 @@ def completed_records(audit_plan, output, expected):
             or report["calls"] != audit_plan["new_calls"] or report["settled"] != report["calls"]
             or report["rcaide_mda_calls"] != 0):
         raise ValueError("Pool audit report does not match the budget")
+    binding = report["evaluator_binding"]
+    if binding["historical_contract"] != audit_plan["contract"]:
+        raise ValueError("Wrong historical evaluator binding")
+    evaluation_contract = binding["evaluation_contract"]
+    if binding["contract_match"] != ("exact" if evaluation_contract == audit_plan["contract"] else "line_endings_only"):
+        raise ValueError("Invalid evaluator binding mode")
     records = {}
     events = iter(json_lines(output/"calls.jsonl"))
     for number, row in enumerate(audit_plan["pending"], 1):
         call = {"number": number, "tag": row["tag"], "role": "pool_audit",
-                "candidate": row["candidate"], "contract": audit_plan["contract"],
+                "candidate": row["candidate"], "contract": evaluation_contract,
                 "new_rcaide_mda": False}
         identity = digest(call)
         start, end = next(events), next(events)
@@ -130,7 +171,7 @@ def completed_records(audit_plan, output, expected):
                 or end["event"] != "settled" or end["tag"] != row["tag"] or end["call_id"] != identity
                 or record["candidate"] != row["candidate"]
                 or record["observation"]["design_id"] != row["id"]
-                or record["observation"]["contract_id"] != audit_plan["contract"]
+                or record["observation"]["contract_id"] != evaluation_contract
                 or end["record_digest"] != digest(record)):
             raise ValueError(f"Invalid pool audit record: {row['tag']}")
         records[row["seed"], row["id"]] = (row["tag"], record)
