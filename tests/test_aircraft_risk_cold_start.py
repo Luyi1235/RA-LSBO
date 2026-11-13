@@ -5,6 +5,7 @@ from scipy.special import ndtr
 
 from aircraft_risk_acquisition import posterior_cross_covariance, sign_variance_reduction
 from aircraft_risk_protocol import plan
+from aircraft_risk_local_search import check_augmentation, local_anchor
 from aircraft_risk_energy import energy_scores, energy_pairs
 from ra_lsbo.risk_core.mixed_gp import MixedGPSettings, MixedObservationGP
 from ra_lsbo.risk_core.observations import OutputObservation
@@ -43,6 +44,24 @@ class AircraftRiskColdStartTests(unittest.TestCase):
         first = energy_pairs(rows)[0]
         self.assertEqual(first["outcome"], "win")
         self.assertIsNone(first["delta_Wh"])
+
+    def test_local_search_shares_prefix_budget_and_keeps_pool_sizes_equal(self):
+        p = plan("local-pilot")
+        self.assertEqual(p["budget"], {"initial": 144, "online": 576, "heldout": 384})
+        self.assertEqual(p["local_switch"], 36)
+        self.assertEqual(p["augmentation"], 24)
+        a = {"continuous": {"x": .1}, "discrete": {"a": 1}}
+        b = {"continuous": {"x": .2}, "discrete": {"a": 1}}
+        from ra_lsbo.budget import digest
+        row = {"event": "augmentation", "n": 36, "mode": "local", "anchor": digest(a),
+               "candidates": [b]}
+        check_augmentation(row, 36, 1, "local", a, {digest(a)})
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            check_augmentation(row, 36, 1, "local", a, {digest(b)})
+        row["candidates"] = [{**b, "discrete": {"a": 2}}]
+        with self.assertRaisesRegex(ValueError, "configuration"):
+            check_augmentation(row, 36, 1, "local", a, {digest(a)})
+        self.assertIsNone(local_anchor([], checked_label))
 
     def test_sign_information(self):
         z = np.array([0.])
