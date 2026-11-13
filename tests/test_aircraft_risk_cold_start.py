@@ -5,6 +5,7 @@ from scipy.special import ndtr
 
 from aircraft_risk_acquisition import posterior_cross_covariance, sign_variance_reduction
 from aircraft_risk_protocol import plan
+from aircraft_risk_energy import energy_scores, energy_pairs
 from ra_lsbo.risk_core.mixed_gp import MixedGPSettings, MixedObservationGP
 from ra_lsbo.risk_core.observations import OutputObservation
 from run_aircraft_risk_cold_start import checked_label, select
@@ -24,6 +25,24 @@ class AircraftRiskColdStartTests(unittest.TestCase):
         self.assertLess(pilot["arms"].index(pilot["shared_coverage_arm"]),
                         pilot["arms"].index("coverage_brier"))
         self.assertFalse(set(pilot["seeds"]) & set(plan("pilot")["seeds"]))
+
+    def test_energy_design_uses_matched_budgets_and_rules(self):
+        p = plan("energy-pilot")
+        self.assertEqual(p["budget"], {"initial": 144, "online": 1728, "heldout": 768})
+        self.assertEqual(p["objective_update_every"], 8)
+        self.assertFalse(set(p["seeds"]) & set(plan("phase-pilot")["seeds"]))
+        self.assertEqual(energy_scores("ei", [2., 1.], [.1, .8], None), [2., 1.])
+        self.assertEqual(energy_scores("cei", [2., 1.], [.1, .8], None), [.2, .8])
+        self.assertEqual(energy_scores("cei", None, None, [.4, .1]), [.4, .1])
+
+    def test_energy_pair_keeps_no_solution_and_uses_wh_only_when_both_solve(self):
+        arms = plan("energy-pilot")["arms"]
+        rows = [{"seed": 1, "arm": arm, "best_feasible_Wh": None if arm == "ei_latent" else 1.,
+                 "first_usable_feasible_call": None, "online_feasible": 0, "online_infeasible": 1,
+                 "online_unknown": 0} for arm in arms]
+        first = energy_pairs(rows)[0]
+        self.assertEqual(first["outcome"], "win")
+        self.assertIsNone(first["delta_Wh"])
 
     def test_sign_information(self):
         z = np.array([0.])

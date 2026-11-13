@@ -13,8 +13,18 @@ PHASE_ARMS = {
     "coverage_brier": ("brier", False),
     "coverage_boundary": ("boundary", False),
 }
+OPT_ARMS = {
+    "ei_explicit": ("ei", False),
+    "cei_explicit": ("cei", False),
+    "ei_latent": ("ei", True),
+    "cei_latent": ("cei", True),
+}
+OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "energy-check": (1, 8, 17, 24, 0, 12, 28416000, (8, 16, 17)),
+    "energy-smoke": (1, 8, 11, 24, 0, 12, 28416100, (8, 11)),
+    "energy-pilot": (12, 12, 48, 128, 0, 64, 28417000, (12, 24, 36, 48)),
     "phase-check": (1, 4, 7, 16, 12, 12, 28413000, (4, 5, 7)),
     "phase-smoke": (1, 4, 7, 16, 12, 12, 28413100, (4, 5, 7)),
     "phase-pilot": (12, 12, 48, 128, 96, 128, 28414000, (12, 24, 36, 48)),
@@ -30,6 +40,8 @@ def plan(profile):
     switch = PHASE_SWITCH.get(profile)
     arms = (list(ARMS) if switch is None else
             [name for name, (_, latent) in ARMS.items() if not latent] + list(PHASE_ARMS))
+    if profile.startswith("energy-"):
+        arms = list(OPT_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     spec = dict(schema=SCHEMA, profile=profile, case=CASE, step_seconds=20,
                 arms=arms, seeds=[seed + 100*i for i in range(repeats)],
@@ -42,4 +54,6 @@ def plan(profile):
     if switch is not None:
         spec["coverage_switch"] = switch
         spec["shared_coverage_arm"] = "coverage_explicit"
+    if profile.startswith("energy-"):
+        spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec
