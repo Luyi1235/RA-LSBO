@@ -262,6 +262,11 @@ def run(profile, expected, output):
 
 def verify(output, expected):
     source_commit(expected)
+    return verify_evidence(output, expected)
+
+
+def verify_evidence(output, expected):
+    """Check a sealed run against its recorded source and experiment protocol."""
     manifest = read(output/"manifest.json")
     paths = {path.relative_to(output).as_posix(): file_hash(path)
              for path in output.rglob("*") if path.is_file() and path != output/"manifest.json"}
