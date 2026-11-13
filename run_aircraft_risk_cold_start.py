@@ -291,8 +291,8 @@ def verify(output, expected):
                             ece = (sum(bin_["n"]*abs(bin_["mean_probability"]-bin_["observed_fraction"])
                                        for bin_ in scores["calibration_bins"] if bin_["n"])/len(known)
                                    if known else None)
-                            results.append({"seed": seed, "arm": arm, "n": n, "head": head, **scores,
-                                "unknown": len(heldout)-len(known), "common_anchor_probability": baseline,
+                            results.append({**scores, "seed": seed, "arm": arm, "n": n,
+                                "head": head, "labeled_test_count": scores["n"], "unknown": len(heldout)-len(known), "common_anchor_probability": baseline,
                                 "baseline_brier": baseline_brier, "ece_5_bins": ece,
                                 "feasible_recall": (None if scores["false_infeasible_rate"] is None
                                                     else 1-scores["false_infeasible_rate"]),
@@ -348,7 +348,10 @@ def analyze(source, expected, output):
         writer = csv.DictWriter(stream, fieldnames=sorted({key for row in flat for key in row}))
         writer.writeheader()
         writer.writerows(flat)
-    joint = {(row["seed"], row["arm"], row["n"]): row for row in results if row["head"] == "joint"}
+    joint_rows = [row for row in results if row["head"] == "joint"]
+    joint = {(row["seed"], row["arm"], row["n"]): row for row in joint_rows}
+    if len(joint) != len(joint_rows):
+        raise ValueError("Duplicate joint checkpoint")
     comparisons = (
         ("brier_explicit", "boundary_explicit"),
         ("brier_explicit", "iid_explicit"),
