@@ -14,12 +14,13 @@ import sys
 import time
 import traceback
 
-from aircraft_risk_protocol import ARMS, PHASE_ARMS, PROFILES, plan
+from aircraft_risk_energy import energy_pairs, energy_receipt, energy_scores
+from aircraft_risk_protocol import ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
 
 ROOT = Path(__file__).resolve().parent
-ARM_RULES = {**ARMS, **PHASE_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **OPT_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -87,6 +88,7 @@ def run(profile, expected, output):
     from ra_lsbo.partial_bo.models import PrefixFeatures
     from ra_lsbo.partial_bo.problems import candidate_pool
     from ra_lsbo.risk_core.observations import OutputObservation
+    from ra_lsbo.risk_core.optimizer import expected_improvement
     from ra_lsbo.structure_corpus import CorpusRepresentation, feature_snapshot, native_observations
 
     sha = source_commit(expected, clean=True)
@@ -107,12 +109,14 @@ def run(profile, expected, output):
                       if name not in problem.analytical_constraints)
         save(output/"contract.json", {"id": problem.contract_id, "settings": problem.settings,
                                       "heads": heads, "joint": "product_of_marginal_probabilities"})
+        optimizing = "objective_update_every" in spec
         for seed in spec["seeds"]:
             unit = output/str(seed)
             seen = set()
             roster = {}
             for role in ("initial", "pool", "reference", "heldout"):
-                rows, rejected = candidate_pool(problem, seed+len(roster)+1, spec[role], seen)
+                rows, rejected = (candidate_pool(problem, seed+len(roster)+1, spec[role], seen)
+                                  if spec[role] else ([], 0))
                 roster[role] = {"designs": rows, "screen_rejections": rejected}
                 seen.update(digest(row) for row in rows)
             save(unit/"roster.json", roster)
@@ -122,7 +126,7 @@ def run(profile, expected, output):
                        for i, row in enumerate(initial)]
             explicit = PrefixFeatures(problem, BASE, anchors, seed, latent=False)
             feature_ids = {"explicit": explicit.identity, "anchor_count": len(anchors)}
-            if any(ARM_RULES[arm][1] for arm in spec["arms"]):
+            if not optimizing and any(ARM_RULES[arm][1] for arm in spec["arms"]):
                 modules, _ = load_base(BASE)
                 session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
                 session.fit(native_observations(anchors, modules, explicit.space), incremental=False)
@@ -134,10 +138,15 @@ def run(profile, expected, output):
             shared_history, shared_remaining, shared_rows = [], [], []
             for arm in spec["arms"]:
                 rule, uses_latent = ARM_RULES[arm]
-                features = latent if uses_latent else explicit
+                features = latent if uses_latent and not optimizing else explicit
+                if optimizing and uses_latent:
+                    modules, _ = load_base(BASE)
+                    session = CorpusRepresentation(explicit.space, seed, count=2000, settings=encoder_settings())
+                objective_features = explicit
                 journal = unit/f"{arm}.jsonl"
                 history, remaining = list(anchors), list(pool)
-                ref_x, heldout_x = features.transform(reference), features.transform(heldout)
+                ref_x = features.transform(reference) if reference else None
+                heldout_x = features.transform(heldout)
                 first_n = spec["initial"]
                 if arm in PHASE_ARMS:
                     if len(shared_history) != switch:
@@ -181,7 +190,40 @@ def run(profile, expected, output):
                     if n == spec["total"]:
                         break
                     query_x = features.transform(remaining)
-                    if rule == "iid":
+                    energy = None
+                    if optimizing:
+                        offset = n-spec["initial"]
+                        updated = uses_latent and offset % spec["objective_update_every"] == 0
+                        if updated:
+                            session.fit(native_observations(history, modules, explicit.space),
+                                        incremental=offset > 0)
+                            objective_features = feature_snapshot(problem, BASE, history, session)
+                        exact = [row for row in history if row.observation.status == "completed"
+                                 and not row.diagnostics.get("numerical_failure")
+                                 and row.observation.objective.kind == "exact"]
+                        best = min((row.observation.objective.value for row in exact if row.usable_feasible),
+                                   default=None)
+                        improvement, probability, coverage, model_id = None, None, None, None
+                        if best is not None and len(exact) >= 2:
+                            objective = StableGroupedHead(
+                                objective_features.transform([row.candidate for row in exact]),
+                                [row.observation.objective for row in exact], objective=True,
+                                reference_scale=problem.objective_reference_scale, seed=seed,
+                                continuous_count=len(problem.space.continuous), name="energy")
+                            prediction = objective.predict(objective_features.transform(remaining))
+                            improvement = expected_improvement(
+                                prediction["mean"], prediction["variance"], best).tolist()
+                            probability = probabilities(query_x)["joint"].tolist()
+                            model_id = objective.identity
+                        else:
+                            coverage = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :],
+                                                             axis=2), axis=1).tolist()
+                        scores = energy_scores(rule, improvement, probability, coverage)
+                        energy = {"best": best, "exact_count": len(exact), "objective_model": model_id,
+                                  "representation": objective_features.identity,
+                                  "representation_updated": updated, "improvement": improvement,
+                                  "probability": probability, "coverage": coverage}
+                    elif rule == "iid":
                         scores = [random.random() for _ in remaining]
                     elif rule == "coverage":
                         scores = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :],
@@ -196,6 +238,8 @@ def run(profile, expected, output):
                     proposal = {"event": "proposal", "n": n, "models": model_ids,
                                 "prefix": digest(plain([r.to_dict() for r in history])),
                                 "index": selected, "candidate": digest(candidate), "scores": scores}
+                    if energy is not None:
+                        proposal["energy"] = energy
                     append(journal, proposal)
                     history.append(ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online"))
                     if arm == shared_arm and n < switch:
@@ -288,6 +332,8 @@ def verify(output, expected):
             if last_call >= first_test:
                 raise ValueError("Initial observations follow the independent test panel")
             models_at_checkpoint = None
+            representation = None
+            fallback_calls = 0
             with (unit/f"{arm}.jsonl").open(encoding="utf-8") as stream:
                 for n in range(spec["initial"], spec["total"]+1):
                     if n in spec["checkpoints"]:
@@ -338,6 +384,15 @@ def verify(output, expected):
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
+                    if arm in OPT_ARMS:
+                        rule, latent = OPT_ARMS[arm]
+                        updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
+                        energy_receipt(rule, row["energy"], row["scores"], prefix, updated, checked_label)
+                        fallback_calls += row["energy"]["improvement"] is None
+                        identity = row["energy"]["representation"]
+                        if representation is not None and not updated and representation != identity:
+                            raise ValueError("Objective representation changed outside its schedule")
+                        representation = identity
                     shared = arm in PHASE_ARMS and n < switch
                     if shared and row != shared_journal["proposal", n]:
                         raise ValueError("Coverage proposal differs between matched arms")
@@ -368,6 +423,9 @@ def verify(output, expected):
                                  "online_unknown": sum(label is None for label in online_labels),
                                  "best_feasible_Wh": min(energies, default=None),
                                  "online_terminations": dict(terminations)})
+            if arm in OPT_ARMS:
+                trajectories[-1]["shared_rule_fallback_calls"] = fallback_calls
+                trajectories[-1]["objective_acquisition_calls"] = spec["total"]-spec["initial"]-fallback_calls
     if set(calls) != used:
         raise ValueError("Unexpected ledger calls")
     return report, results, trajectories
@@ -414,12 +472,20 @@ def analyze(source, expected, output):
                 row[f"{metric}_delta"] = a-b if a is not None and b is not None else None
             pairs.append(row)
     with (output/"joint_pairs.csv").open("x", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(pairs[0]))
+        writer = csv.DictWriter(stream, fieldnames=list(pairs[0]) if pairs else
+                                ["seed", "n", "arm", "baseline", "brier_delta"])
         writer.writeheader()
         writer.writerows(pairs)
     with (output/"analysis.json").open("x", encoding="utf-8") as stream:
-        json.dump({"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
-                   "metrics": results, "pairs": pairs, "trajectories": trajectories}, stream, indent=2, allow_nan=False)
+        packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
+                  "metrics": results, "pairs": pairs, "trajectories": trajectories}
+        if arms & OPT_ARMS.keys():
+            packet["energy_pairs"] = energy_pairs(trajectories)
+            with (output/"energy_pairs.csv").open("x", encoding="utf-8", newline="") as energy_stream:
+                writer = csv.DictWriter(energy_stream, fieldnames=list(packet["energy_pairs"][0]))
+                writer.writeheader()
+                writer.writerows(packet["energy_pairs"])
+        json.dump(packet, stream, indent=2, allow_nan=False)
 
 
 def main():
