@@ -15,7 +15,7 @@ def energy_scores(rule, improvement, probability, coverage):
     raise ValueError("Unknown energy acquisition rule")
 
 
-def energy_receipt(rule, receipt, scores, prefix, model_due, checked_label):
+def energy_receipt(rule, receipt, scores, prefix, model_due, checked_label, *, minimum_exact=2):
     """Reproduce the saved rule and validate its eligibility from real feedback."""
     if set(receipt) != {"best", "exact_count", "objective_model", "representation",
                         "representation_updated", "improvement", "probability", "coverage"}:
@@ -30,7 +30,7 @@ def energy_receipt(rule, receipt, scores, prefix, model_due, checked_label):
         raise ValueError("Energy prefix evidence does not support the incumbent or objective fit")
     if receipt["representation_updated"] is not model_due or not receipt["representation"]:
         raise ValueError("Objective representation schedule mismatch")
-    ready = best is not None and len(trusted) >= 2
+    ready = best is not None and len(trusted) >= minimum_exact
     improvement, probability, coverage = (receipt[key] for key in ("improvement", "probability", "coverage"))
     if ready:
         if (not receipt["objective_model"] or coverage is not None

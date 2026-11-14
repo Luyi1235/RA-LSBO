@@ -37,9 +37,25 @@ LOCAL_SEARCH.update({
     "local-factor-nominal": (36, 24),
     "local-factor-headwind": (36, 24),
 })
+DISCOVERY_ARMS = {
+    "discovery_coverage": ("coverage", True),
+    "discovery_constraints": ("constraints", True),
+    "discovery_direct": ("direct", True),
+    "discovery_staged": ("staged", True),
+    "discovery_collapsed": ("collapsed_lookahead", True),
+    "discovery_lookahead": ("staged_lookahead", True),
+}
+DISCOVERY_SCENARIOS = {
+    "discovery-smoke": 4.,
+    "discovery-nominal": 0.,
+    "discovery-headwind": 4.,
+}
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "discovery-smoke": (1, 4, 7, 32, 0, 16, 28429000, (4, 7)),
+    "discovery-nominal": (16, 4, 20, 128, 0, 32, 28430000, (4, 8, 12, 16, 20)),
+    "discovery-headwind": (16, 4, 20, 128, 0, 32, 28430000, (4, 8, 12, 16, 20)),
     "local-factor-check": (1, 8, 17, 24, 0, 12, 28424610, (8, 10, 16, 17)),
     "local-factor-smoke": (1, 8, 12, 24, 0, 12, 28424100, (8, 10, 12)),
     "local-factor-nominal": (12, 12, 48, 128, 0, 32, 28425000, (12, 24, 36, 48)),
@@ -67,6 +83,8 @@ def plan(profile):
             [name for name, (_, latent) in ARMS.items() if not latent] + list(PHASE_ARMS))
     if profile.startswith("energy-"):
         arms = list(OPT_ARMS)
+    if profile in DISCOVERY_SCENARIOS:
+        arms = list(DISCOVERY_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -91,6 +109,8 @@ def plan(profile):
     if profile in LOCAL_FACTOR_SCENARIOS:
         spec["headwind_m_s"] = LOCAL_FACTOR_SCENARIOS[profile]
         spec["local_factorial"] = True
-    if profile.startswith("energy-") or profile in LOCAL_SEARCH:
+    if profile in DISCOVERY_SCENARIOS:
+        spec.update(headwind_m_s=DISCOVERY_SCENARIOS[profile], staged_discovery=True)
+    if profile.startswith("energy-") or profile in LOCAL_SEARCH or profile in DISCOVERY_SCENARIOS:
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec

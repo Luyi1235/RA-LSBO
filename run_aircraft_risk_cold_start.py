@@ -15,10 +15,15 @@ import sys
 import time
 import traceback
 
+from aircraft_risk_discovery import (
+    ROLLOUT_RULES, STAGE_HEADS, discovery_pairs, discovery_scores, fit_stage_heads,
+    label as stage_label, outcome as stage_outcome,
+    rollout_components, shortlist, stage_forecast,
+)
 from aircraft_risk_energy import energy_pairs, energy_receipt, energy_scores
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
-    ARMS, LOCAL_ARMS, LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan,
+    ARMS, DISCOVERY_ARMS, LOCAL_ARMS, LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, plan,
 )
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
@@ -26,7 +31,7 @@ from risk_learning.core import binary_metrics
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -73,6 +78,10 @@ def checked_label(record, head="joint"):
     return True if labels and all(label is True for label in labels) else None
 
 
+def discovery_outcome(record):
+    return stage_outcome(record, checked_label(record))
+
+
 def select(candidates, scores):
     if not candidates or len(candidates) != len(scores):
         raise ValueError("Candidate and score counts differ")
@@ -117,6 +126,8 @@ def run(profile, expected, output):
         save(output/"contract.json", {"id": problem.contract_id, "settings": problem.settings,
                                       "heads": heads, "joint": "product_of_marginal_probabilities"})
         optimizing = "objective_update_every" in spec
+        discovery = spec.get("staged_discovery", False)
+        minimum_exact = 1 if discovery else 2
         for seed in spec["seeds"]:
             unit = output/str(seed)
             seen = set()
@@ -209,16 +220,24 @@ def run(profile, expected, output):
                         values["joint"] = np.prod(list(values.values()), axis=0)
                         return values
 
+                    if discovery:
+                        outcomes = [discovery_outcome(row.to_dict()) for row in history]
+                        stage_heads = fit_stage_heads(history, past_x, outcomes, seed, len(problem.space.continuous))
+                        model_ids.update({name: head.identity for name, head in stage_heads.items()})
+
                     if n in spec["checkpoints"]:
+                        forecast = probabilities(heldout_x)
+                        if discovery:
+                            forecast.update(stage_forecast(stage_heads, heldout_x)[0])
                         prediction = {"event": "prediction", "n": n, "models": model_ids,
-                                      "probabilities": plain(probabilities(heldout_x))}
+                                      "probabilities": plain(forecast)}
                         append(journal, prediction)
                         if arm == shared_arm and n < switch:
                             shared_rows.append(prediction)
                     if n == spec["total"]:
                         break
                     query_x = features.transform(remaining)
-                    energy = None
+                    energy = discovery_receipt = None
                     if optimizing:
                         offset = n-spec["initial"]
                         updated = uses_latent and offset % spec["objective_update_every"] == 0
@@ -229,10 +248,10 @@ def run(profile, expected, output):
                         exact = [row for row in history if row.observation.status == "completed"
                                  and not row.diagnostics.get("numerical_failure")
                                  and row.observation.objective.kind == "exact"]
-                        best = min((row.observation.objective.value for row in exact if row.usable_feasible),
-                                   default=None)
+                        best = min((row.observation.objective.value for row in exact if row.usable_feasible and
+                                    (not discovery or discovery_outcome(row.to_dict()) == "usable")), default=None)
                         improvement, probability, coverage, model_id = None, None, None, None
-                        if best is not None and len(exact) >= 2:
+                        if best is not None and len(exact) >= minimum_exact:
                             objective = StableGroupedHead(
                                 objective_features.transform([row.candidate for row in exact]),
                                 [row.observation.objective for row in exact], objective=True,
@@ -246,7 +265,20 @@ def run(profile, expected, output):
                         else:
                             coverage = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :],
                                                              axis=2), axis=1).tolist()
-                        scores = energy_scores(rule, improvement, probability, coverage)
+                        if discovery and improvement is None:
+                            forecast, moments, z = stage_forecast(stage_heads, query_x)
+                            candidate_ids = list(map(digest, remaining))
+                            remaining_calls = spec["total"]-n
+                            components = []
+                            if rule in ROLLOUT_RULES and remaining_calls >= 2:
+                                indices = shortlist(forecast, candidate_ids)
+                                components = rollout_components(stage_heads, query_x, forecast, moments, z, indices)
+                            forecast.update(joint=probabilities(query_x)["joint"], coverage=coverage)
+                            discovery_receipt = {"probabilities": plain(forecast), "rollout": components,
+                                                 "outcomes": dict(Counter(outcomes))}
+                            scores = discovery_scores(rule, discovery_receipt, candidate_ids, remaining_calls)
+                        else:
+                            scores = energy_scores("cei" if discovery else rule, improvement, probability, coverage)
                         energy = {"best": best, "exact_count": len(exact), "objective_model": model_id,
                                   "representation": objective_features.identity,
                                   "representation_updated": updated, "improvement": improvement,
@@ -268,6 +300,8 @@ def run(profile, expected, output):
                                 "index": selected, "candidate": digest(candidate), "scores": scores}
                     if energy is not None:
                         proposal["energy"] = energy
+                    if discovery_receipt is not None:
+                        proposal["discovery"] = discovery_receipt
                     append(journal, proposal)
                     history.append(ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online"))
                     if arm == shared_arm and n < switch:
@@ -313,12 +347,27 @@ def verify_evidence(output, expected):
             or report["rcaide_mda_calls"] != 0):
         raise ValueError("Run summary does not match the budget or source")
     contract = read(output/"contract.json")
-    if spec.get("local_factorial") and contract["settings"]["scenario"] != {
+    discovery = spec.get("staged_discovery", False)
+    if (spec.get("local_factorial") or discovery) and contract["settings"]["scenario"] != {
             "headwind_m_s": spec["headwind_m_s"], "payload_delta_kg": 0.,
             "capacity_retention": 1., "initial_soc": .95}:
-        raise ValueError("Aircraft scenario differs from the frozen factorial profile")
+        raise ValueError("Aircraft scenario differs from the frozen profile")
     if set(contract["heads"]) != {"stall", "root_bending", "soc", "current", "voltage", "power"}:
         raise ValueError("Wrong engineering constraint roster")
+    stage_models = set(STAGE_HEADS) - {"usable_factored"} if discovery else set()
+    model_names = {*contract["heads"], *stage_models}
+    value_names = {*contract["heads"], "joint", *(STAGE_HEADS if discovery else ())}
+
+    def metric_label(record, head):
+        if head in STAGE_HEADS:
+            return stage_label(discovery_outcome(record), head)
+        return checked_label(record, head)
+
+    def supported_joint(record):
+        if discovery and discovery_outcome(record) != "usable":
+            return None
+        return checked_label(record)
+
     calls, roles = {}, Counter()
     with (output/"calls.jsonl").open(encoding="utf-8") as stream:
         for number, line in enumerate(stream, 1):
@@ -407,10 +456,10 @@ def verify_evidence(output, expected):
                         if arm in branch_arms and n <= switch and row != shared_journal["prediction", n]:
                             raise ValueError("Shared checkpoint differs between matched arms")
                         models_at_checkpoint = row["models"]
-                        if set(models_at_checkpoint) != set(contract["heads"]):
+                        if set(models_at_checkpoint) != model_names:
                             raise ValueError("Wrong checkpoint model roster")
                         values = row["probabilities"]
-                        if set(values) != {*contract["heads"], "joint"} or any(
+                        if set(values) != value_names or any(
                                 len(arr) != len(heldout) or not all(0 <= value <= 1 for value in arr)
                                 for arr in values.values()):
                             raise ValueError("Invalid checkpoint head probabilities or roster size")
@@ -418,11 +467,15 @@ def verify_evidence(output, expected):
                                 values[head][i] for head in contract["heads"]),
                                 rel_tol=1e-12, abs_tol=1e-15) for i in range(len(heldout))):
                             raise ValueError("Joint probabilities do not match the registered product")
+                        if discovery and any(not math.isclose(c*f, p, abs_tol=1e-13)
+                                             for c, f, p in zip(values["mission"], values["feasible_given_mission"],
+                                                                values["usable_factored"])):
+                            raise ValueError("Checkpoint usable probability differs from its conditional product")
                         for head, probabilities in values.items():
-                            labels = [checked_label(item, head) for _, item in tests]
+                            labels = [metric_label(item, head) for _, item in tests]
                             known = [(y, p) for y, p in zip(labels, probabilities) if y is not None]
                             scores = binary_metrics([y for y, _ in known], [p for _, p in known])
-                            anchor_labels = [checked_label(item, head) for _, item in anchors]
+                            anchor_labels = [metric_label(item, head) for _, item in anchors]
                             anchor_known = [label for label in anchor_labels if label is not None]
                             baseline = (sum(anchor_known)+1)/(len(anchor_known)+2)
                             baseline_brier = (sum((y-baseline)**2 for y, _ in known)/len(known)
@@ -441,19 +494,34 @@ def verify_evidence(output, expected):
                     row = json.loads(next(stream))
                     if not all(math.isfinite(value) for value in row["scores"]):
                         raise ValueError("Nonfinite proposal scores")
+                    candidate_ids = list(map(digest, remaining)) if discovery else None
                     i = select(remaining, row["scores"])
                     candidate = remaining.pop(i)
                     if (row["event"] != "proposal" or row["n"] != n or row["prefix"] != digest(prefix)
-                            or set(row["models"]) != set(contract["heads"])
+                            or set(row["models"]) != model_names
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
                     shared = arm in branch_arms and n < switch
                     charge_arm = shared_arm if shared else arm
-                    if arm in ENERGY_ARMS:
-                        rule, latent = ENERGY_ARMS[charge_arm]
+                    if arm in ENERGY_ARMS or discovery:
+                        rule, latent = ARM_RULES[charge_arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
-                        energy_receipt(rule, row["energy"], row["scores"], prefix, updated, checked_label)
+                        fallback = row["energy"]["improvement"] is None
+                        receipt = row.get("discovery")
+                        if discovery and fallback:
+                            if receipt is None or receipt["outcomes"] != dict(Counter(map(discovery_outcome, prefix))):
+                                raise ValueError("Discovery selector did not use the sealed outcome prefix")
+                            if receipt["probabilities"]["coverage"] != row["energy"]["coverage"]:
+                                raise ValueError("Discovery coverage forecast differs from the common feature scores")
+                            expected_scores = discovery_scores(rule, receipt, candidate_ids, spec["total"]-n)
+                            if expected_scores != row["scores"]:
+                                raise ValueError("Discovery acquisition does not replay")
+                        elif receipt is not None:
+                            raise ValueError("Unexpected discovery evidence after activation of energy acquisition")
+                        energy_receipt("cei" if discovery else rule, row["energy"],
+                                       row["energy"]["coverage"] if discovery and fallback else row["scores"],
+                                       prefix, updated, supported_joint, minimum_exact=1 if discovery else 2)
                         fallback_calls += row["energy"]["improvement"] is None
                         identity = row["energy"]["representation"]
                         if representation is not None and not updated and representation != identity:
@@ -476,6 +544,9 @@ def verify_evidence(output, expected):
             usable = [label is True and record["observation"]["status"] == "completed"
                       and record["observation"]["objective"]["kind"] == "exact"
                       for record, label in zip(prefix, labels)]
+            if discovery:
+                outcomes = list(map(discovery_outcome, prefix))
+                usable = [result == "usable" for result in outcomes]
             online_labels = labels[spec["initial"]:]
             terminations = Counter(record["diagnostics"].get("termination_reason", "unreported")
                                    for record in prefix[spec["initial"]:])
@@ -490,6 +561,13 @@ def verify_evidence(output, expected):
                                  "online_unknown": sum(label is None for label in online_labels),
                                  "best_feasible_Wh": min(energies, default=None),
                                  "online_terminations": dict(terminations)})
+            if discovery:
+                trajectories[-1].update(
+                    initial_usable=sum(usable[:spec["initial"]]),
+                    initial_outcomes=dict(Counter(outcomes[:spec["initial"]])),
+                    online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
+                    discovery_calls=fallback_calls,
+                )
             if arm in ENERGY_ARMS:
                 trajectories[-1]["shared_rule_fallback_calls"] = fallback_calls
                 trajectories[-1]["objective_acquisition_calls"] = spec["total"]-spec["initial"]-fallback_calls
@@ -551,6 +629,13 @@ def analyze(source, expected, output):
     with (output/"analysis.json").open("x", encoding="utf-8") as stream:
         packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
+        spec = read(source/"plan.json")
+        if spec.get("staged_discovery"):
+            packet["discovery_pairs"] = discovery_pairs(trajectories, spec["total"])
+            with (output/"discovery_pairs.csv").open("x", encoding="utf-8", newline="") as pair_stream:
+                writer = csv.DictWriter(pair_stream, fieldnames=list(packet["discovery_pairs"][0]))
+                writer.writeheader()
+                writer.writerows(packet["discovery_pairs"])
         if arms & ENERGY_ARMS.keys():
             packet["energy_pairs"] = energy_pairs(trajectories)
             with (output/"energy_pairs.csv").open("x", encoding="utf-8", newline="") as energy_stream:
