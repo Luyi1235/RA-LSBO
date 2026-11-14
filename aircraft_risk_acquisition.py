@@ -20,8 +20,8 @@ def posterior_cross_covariance(model, left, right):
     return cross
 
 
-def sign_variance_reduction(query_z, reference_z, correlation):
-    """Var(E[1{g(y)<=0} | 1{g(x)<=0}]) for a bivariate Gaussian.
+def sign_covariance(query_z, reference_z, correlation):
+    """Covariance of two Gaussian sign indicators.
 
     Integrate the derivative of the bivariate normal CDF from zero correlation
     to the given correlation, with rho=sin(theta) to remove the endpoint factor.
@@ -34,10 +34,16 @@ def sign_variance_reduction(query_z, reference_z, correlation):
         rho = np.sin(angle)
         exponent = -0.25 * ((q-r)**2 / (1-rho) + (q+r)**2 / (1+rho))
         integral += weight * np.exp(np.minimum(exponent, 0.))
-    covariance = theta * integral / (4*np.pi)
+    return theta * integral / (4*np.pi)
+
+
+def sign_variance_reduction(query_z, reference_z, correlation):
+    """Var(E[1{g(y)<=0} | 1{g(x)<=0}]) for a bivariate Gaussian."""
+    covariance = sign_covariance(query_z, reference_z, correlation)
+    q, r = query_z[:, None], reference_z[None, :]
     p_query, p_reference = ndtr(q), ndtr(r)
     denominator = p_query * ndtr(-q)
-    reduction = np.divide(covariance**2, denominator, out=np.zeros_like(theta),
+    reduction = np.divide(covariance**2, denominator, out=np.zeros_like(covariance),
                           where=denominator > 1e-14)
     return np.clip(reduction, 0., p_reference * ndtr(-r))
 
