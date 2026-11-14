@@ -138,14 +138,15 @@ def discovery_scores(rule, receipt, candidate_ids, remaining_calls):
     return values[key]
 
 
-def discovery_pairs(trajectories, horizon):
-    comparisons = (
-        ("discovery_lookahead", "discovery_collapsed"),
-        ("discovery_lookahead", "discovery_staged"),
-        ("discovery_staged", "discovery_direct"),
-        ("discovery_staged", "discovery_constraints"),
-        ("discovery_lookahead", "discovery_coverage"),
-    )
+def discovery_pairs(trajectories, horizon, comparisons=None):
+    if comparisons is None:
+        comparisons = (
+            ("discovery_lookahead", "discovery_collapsed"),
+            ("discovery_lookahead", "discovery_staged"),
+            ("discovery_staged", "discovery_direct"),
+            ("discovery_staged", "discovery_constraints"),
+            ("discovery_lookahead", "discovery_coverage"),
+        )
     index = {(row["seed"], row["arm"]): row for row in trajectories}
     pairs = []
     for seed in sorted({seed for seed, _ in index}):
