@@ -63,9 +63,35 @@ FEEDBACK_MODES = {
 FEEDBACK_SCENARIOS = {"feedback-smoke": 4., "feedback-nominal": 0., "feedback-headwind": 4.}
 FEEDBACK_PAIRS = (("feedback_bounds", "feedback_sign"), ("feedback_sign", "feedback_exact"),
                   ("feedback_bounds", "feedback_exact"), ("feedback_bounds", "feedback_coverage"))
+SIGN_LSBO_ARMS = {
+    "lsbo_coverage_explicit": ("coverage", False),
+    "lsbo_coverage_latent": ("coverage", True),
+    "lsbo_sign_explicit": ("constraints", False),
+    "lsbo_sign_latent": ("constraints", True),
+    "lsbo_exact_latent": ("constraints", True),
+}
+SIGN_LSBO_FEEDBACK = {
+    "lsbo_coverage_explicit": "bounds", "lsbo_coverage_latent": "bounds",
+    "lsbo_sign_explicit": "sign", "lsbo_sign_latent": "sign", "lsbo_exact_latent": "exact",
+}
+SIGN_LSBO_SCENARIOS = {
+    "sign-lsbo-smoke": (4., 0.),
+    "sign-lsbo-headwind": (4., 0.),
+    "sign-lsbo-payload": (0., 24.),
+}
+SIGN_LSBO_PAIRS = (
+    ("lsbo_sign_latent", "lsbo_coverage_latent"),
+    ("lsbo_sign_latent", "lsbo_exact_latent"),
+    ("lsbo_sign_latent", "lsbo_sign_explicit"),
+    ("lsbo_sign_explicit", "lsbo_coverage_explicit"),
+    ("lsbo_coverage_latent", "lsbo_coverage_explicit"),
+)
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "sign-lsbo-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "sign-lsbo-headwind": (16, 4, 36, 256, 0, 32, 28437000, (4, 8, 12, 20, 28, 36)),
+    "sign-lsbo-payload": (16, 4, 36, 256, 0, 32, 28437000, (4, 8, 12, 20, 28, 36)),
     "feedback-smoke": (1, 4, 7, 32, 0, 16, 28429000, (4, 7)),
     "feedback-nominal": (16, 4, 20, 128, 0, 32, 28433000, (4, 8, 12, 16, 20)),
     "feedback-headwind": (16, 4, 20, 128, 0, 32, 28433000, (4, 8, 12, 16, 20)),
@@ -103,6 +129,8 @@ def plan(profile):
         arms = list(DISCOVERY_ARMS)
     if profile in FEEDBACK_SCENARIOS:
         arms = list(FEEDBACK_ARMS)
+    if profile in SIGN_LSBO_SCENARIOS:
+        arms = list(SIGN_LSBO_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -131,7 +159,11 @@ def plan(profile):
         spec.update(headwind_m_s=DISCOVERY_SCENARIOS[profile], staged_discovery=True)
     if profile in FEEDBACK_SCENARIOS:
         spec.update(headwind_m_s=FEEDBACK_SCENARIOS[profile], constraint_feedback=dict(FEEDBACK_MODES))
+    if profile in SIGN_LSBO_SCENARIOS:
+        headwind, payload = SIGN_LSBO_SCENARIOS[profile]
+        spec.update(headwind_m_s=headwind, payload_delta_kg=payload,
+                    constraint_feedback=dict(SIGN_LSBO_FEEDBACK), sign_lsbo=True)
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
-            or profile in DISCOVERY_SCENARIOS or profile in FEEDBACK_SCENARIOS):
+            or profile in DISCOVERY_SCENARIOS or profile in FEEDBACK_SCENARIOS or profile in SIGN_LSBO_SCENARIOS):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec

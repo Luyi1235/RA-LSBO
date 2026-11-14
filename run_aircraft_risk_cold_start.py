@@ -27,15 +27,16 @@ from aircraft_risk_feedback import (
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
     ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_PAIRS, LOCAL_ARMS, LOCAL_FACTOR_ARMS,
-    OPT_ARMS, PHASE_ARMS, PROFILES, plan,
+    OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, plan,
 )
+from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
 from ra_lsbo.budget import digest
 from risk_learning.core import binary_metrics
 
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -123,7 +124,8 @@ def run(profile, expected, output):
     start = time.perf_counter()
     try:
         torch.set_num_threads(1)
-        scenario = FlightScenario(headwind_m_s=spec.get("headwind_m_s", 0.))
+        scenario = FlightScenario(headwind_m_s=spec.get("headwind_m_s", 0.),
+                                  payload_delta_kg=spec.get("payload_delta_kg", 0.))
         problem = AircraftCase(BASE, "sparse", scenario=scenario, integration_step=spec["step_seconds"])
         heads = tuple(name for name in problem.required_constraints
                       if name not in problem.analytical_constraints)
@@ -380,7 +382,7 @@ def verify_evidence(output, expected):
     feedback = spec.get("constraint_feedback")
     first_discovery = discovery or feedback is not None
     if (spec.get("local_factorial") or first_discovery) and contract["settings"]["scenario"] != {
-            "headwind_m_s": spec["headwind_m_s"], "payload_delta_kg": 0.,
+            "headwind_m_s": spec["headwind_m_s"], "payload_delta_kg": spec.get("payload_delta_kg", 0.),
             "capacity_retention": 1., "initial_soc": .95}:
         raise ValueError("Aircraft scenario differs from the frozen profile")
     if set(contract["heads"]) != {"stall", "root_bending", "soc", "current", "voltage", "power"}:
@@ -414,6 +416,12 @@ def verify_evidence(output, expected):
         if any(not math.isclose(values["joint"][i], math.prod(values[head][i] for head in contract["heads"]),
                                 rel_tol=1e-12, abs_tol=1e-15) for i in range(size)):
             raise ValueError("Joint probabilities do not match the registered product")
+
+    if spec.get("sign_lsbo") and (
+            contract["settings"]["nominal_cruise_distance_m"] != 140000.
+            or contract["settings"]["integration_step_s"] != spec["step_seconds"]
+            or contract["settings"]["full_trajectory"] is not False):
+        raise ValueError("Aircraft mission or stopping rule differs from the sign-LSBO profile")
 
     calls, roles = {}, Counter()
     with (output/"calls.jsonl").open(encoding="utf-8") as stream:
@@ -455,6 +463,10 @@ def verify_evidence(output, expected):
             used.add(tag)
             return number, record
 
+        if spec.get("sign_lsbo"):
+            feature_info = read(unit/"features.json")
+            if not feature_info.get("explicit") or feature_info["anchor_count"] != spec["initial"]:
+                raise ValueError("Invalid explicit feature receipt")
         anchors = [record_at(f"{seed}/initial/{i}", row, "initial") for i, row in enumerate(initial)]
         tests = [record_at(f"{seed}/heldout/{i}", row, "heldout") for i, row in enumerate(heldout)]
         first_test = min(number for number, _ in tests)
@@ -467,6 +479,7 @@ def verify_evidence(output, expected):
         shared_journal = ({(row["event"], row["n"]): row for row in
                            map(json.loads, (unit/f"{shared_arm}.jsonl").read_bytes().splitlines())
                            if row["n"] <= switch} if shared_arm else {})
+        cold_paths = {}
         for arm in spec["arms"]:
             prefix, remaining = [record for _, record in anchors], list(pool)
             last_call = max(number for number, _ in anchors)
@@ -480,6 +493,7 @@ def verify_evidence(output, expected):
             new_candidate_calls = 0
             switch_best = None
             augmentation_mode = None
+            cold_path = []
             with (unit/f"{arm}.jsonl").open(encoding="utf-8") as stream:
                 for n in range(spec["initial"], spec["total"]+1):
                     if n == spec.get("local_switch"):
@@ -598,6 +612,8 @@ def verify_evidence(output, expected):
                                        prefix, updated, supported_joint, minimum_exact=1 if first_discovery else 2)
                         fallback_calls += row["energy"]["improvement"] is None
                         identity = row["energy"]["representation"]
+                        if spec.get("sign_lsbo") and not latent and identity != feature_info["explicit"]:
+                            raise ValueError("Explicit objective arm changed feature view")
                         if representation is not None and not updated and representation != identity:
                             raise ValueError("Objective representation changed outside its schedule")
                         representation = identity
@@ -607,6 +623,8 @@ def verify_evidence(output, expected):
                     if not last_call < number < first_test:
                         raise ValueError("Online evaluation is out of order or after held-out outcomes")
                     last_call = number
+                    if spec.get("sign_lsbo") and fallback:
+                        cold_path.append((row["candidate"], digest(outcome)))
                     prefix.append(outcome)
                     selected_augmentation = row["candidate"] in augmentation_ids
                     new_candidate_calls += selected_augmentation
@@ -642,6 +660,12 @@ def verify_evidence(output, expected):
                     online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
                     discovery_calls=fallback_calls,
                 )
+            if spec.get("sign_lsbo"):
+                trajectories[-1]["budget_trajectory"] = budget_trajectory(prefix, outcomes, spec["checkpoints"])
+                if feedback[arm] != "exact":
+                    matching_path = cold_paths.setdefault(ARM_RULES[arm][0], cold_path)
+                    if matching_path != cold_path:
+                        raise ValueError("Objective representation changed the cold-start trajectory")
             if arm in ENERGY_ARMS:
                 trajectories[-1]["shared_rule_fallback_calls"] = fallback_calls
                 trajectories[-1]["objective_acquisition_calls"] = spec["total"]-spec["initial"]-fallback_calls
@@ -705,7 +729,11 @@ def analyze(source, expected, output):
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
         spec = read(source/"plan.json")
         if spec.get("staged_discovery") or spec.get("constraint_feedback"):
-            comparisons = FEEDBACK_PAIRS if spec.get("constraint_feedback") else None
+            comparisons = None
+            if spec.get("sign_lsbo"):
+                comparisons = SIGN_LSBO_PAIRS
+            elif spec.get("constraint_feedback"):
+                comparisons = FEEDBACK_PAIRS
             packet["discovery_pairs"] = discovery_pairs(trajectories, spec["total"], comparisons)
             if comparisons:
                 packet["discovery_summary"] = summarize_discovery(packet["discovery_pairs"])
@@ -713,6 +741,13 @@ def analyze(source, expected, output):
                 writer = csv.DictWriter(pair_stream, fieldnames=list(packet["discovery_pairs"][0]))
                 writer.writeheader()
                 writer.writerows(packet["discovery_pairs"])
+        if spec.get("sign_lsbo"):
+            packet["budget_pairs"] = paired_endpoints(trajectories)
+            packet["terminal_summary"] = terminal_summary(packet["budget_pairs"], spec["total"])
+            with (output/"budget_pairs.csv").open("x", encoding="utf-8", newline="") as pair_stream:
+                writer = csv.DictWriter(pair_stream, fieldnames=list(packet["budget_pairs"][0]))
+                writer.writeheader()
+                writer.writerows(packet["budget_pairs"])
         if arms & ENERGY_ARMS.keys():
             packet["energy_pairs"] = energy_pairs(trajectories)
             with (output/"energy_pairs.csv").open("x", encoding="utf-8", newline="") as energy_stream:
