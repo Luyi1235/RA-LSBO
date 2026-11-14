@@ -1,0 +1,15 @@
+# PR102 任务指令副本
+
+固定代码 SHA：`9234809ffd35bfd49fc6f5fa06ce60ae3ef7334b`
+分支：`research/aircraft-risk-staged-discovery-20261114`
+结果分支：`results/aircraft-risk-staged-discovery-20261114-9234809`
+
+执行：
+1. `python -m unittest discover -s tests -p "test_aircraft_risk*.py"`
+2. 对 discovery-smoke、discovery-nominal、discovery-headwind 依次执行 plan、run、verify、analyze；固定 SHA；输出到独立目录。
+3. 保存命令、输出与退出码；技术失败保留账本和日志。
+4. 验收：38 + 2,112 + 2,112 = 4,262 次评价；RCAIDE/MDA 为 0；两个正式 discovery_pairs.csv 各 80 行。
+5. 上传原始账本、分析、日志、环境与 SHA256SUMS.txt 到结果分支；`* -text` 保持字节。
+6. README 按工况报告初值无解 seed 数、主比较 W/L/T、受限平均首次发现调用差、第 20 次调用发现率。
+
+不修改算法、不换种子、不重跑失败配置、不覆盖旧结果、不合并 PR。
