@@ -6,8 +6,10 @@ from aircraft_risk_protocol import SIGN_LSBO_PAIRS
 
 
 def budget_trajectory(records, outcomes, checkpoints):
+    if len(records) != len(outcomes):
+        raise ValueError("Records and discovery outcomes must align")
     rows, best = [], None
-    for n, (record, outcome) in enumerate(zip(records, outcomes, strict=True), 1):
+    for n, (record, outcome) in enumerate(zip(records, outcomes), 1):
         if outcome == "usable":
             energy = record["observation"]["objective"]["value"]
             best = energy if best is None else min(best, energy)
@@ -26,7 +28,10 @@ def paired_endpoints(trajectories):
             left, right = arms[arm], arms[baseline]
             if left["initial_usable"] != right["initial_usable"]:
                 raise ValueError("Paired search arms must share the initial usable count")
-            for a, b in zip(left["budget_trajectory"], right["budget_trajectory"], strict=True):
+            left_path, right_path = left["budget_trajectory"], right["budget_trajectory"]
+            if len(left_path) != len(right_path):
+                raise ValueError("Paired search budgets differ")
+            for a, b in zip(left_path, right_path):
                 if a["n"] != b["n"]:
                     raise ValueError("Paired search budgets differ")
                 x, y = a["best_feasible_Wh"], b["best_feasible_Wh"]

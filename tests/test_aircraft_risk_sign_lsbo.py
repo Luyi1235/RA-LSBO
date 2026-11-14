@@ -24,6 +24,17 @@ class SignLSBOTests(unittest.TestCase):
         self.assertEqual(terminal["both_discovered"], 0)
         self.assertIsNone(terminal["mean_delta_Wh"])
 
+    def test_mismatched_trajectory_lengths_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Records and discovery outcomes must align"):
+            budget_trajectory([{}], [], [1])
+
+        arms = [{"seed": 10, "arm": arm, "initial_usable": 0,
+                 "budget_trajectory": [] if arm == "lsbo_coverage_latent"
+                 else [{"n": 4, "best_feasible_Wh": None}]}
+                for arm in SIGN_LSBO_ARMS]
+        with self.assertRaisesRegex(ValueError, "Paired search budgets differ"):
+            paired_endpoints(arms)
+
     def test_frozen_scenarios_and_factorial(self):
         h, p = map(plan, ("sign-lsbo-headwind", "sign-lsbo-payload"))
         self.assertEqual(h["seeds"], p["seeds"])
