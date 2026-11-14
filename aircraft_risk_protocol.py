@@ -50,9 +50,25 @@ DISCOVERY_SCENARIOS = {
     "discovery-nominal": 0.,
     "discovery-headwind": 4.,
 }
+FEEDBACK_ARMS = {
+    "feedback_coverage": ("coverage", True),
+    "feedback_exact": ("constraints", True),
+    "feedback_sign": ("constraints", True),
+    "feedback_bounds": ("constraints", True),
+}
+FEEDBACK_MODES = {
+    "feedback_coverage": "bounds", "feedback_exact": "exact",
+    "feedback_sign": "sign", "feedback_bounds": "bounds",
+}
+FEEDBACK_SCENARIOS = {"feedback-smoke": 4., "feedback-nominal": 0., "feedback-headwind": 4.}
+FEEDBACK_PAIRS = (("feedback_bounds", "feedback_sign"), ("feedback_sign", "feedback_exact"),
+                  ("feedback_bounds", "feedback_exact"), ("feedback_bounds", "feedback_coverage"))
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "feedback-smoke": (1, 4, 7, 32, 0, 16, 28429000, (4, 7)),
+    "feedback-nominal": (16, 4, 20, 128, 0, 32, 28433000, (4, 8, 12, 16, 20)),
+    "feedback-headwind": (16, 4, 20, 128, 0, 32, 28433000, (4, 8, 12, 16, 20)),
     "discovery-smoke": (1, 4, 7, 32, 0, 16, 28429000, (4, 7)),
     "discovery-nominal": (16, 4, 20, 128, 0, 32, 28430000, (4, 8, 12, 16, 20)),
     "discovery-headwind": (16, 4, 20, 128, 0, 32, 28430000, (4, 8, 12, 16, 20)),
@@ -85,6 +101,8 @@ def plan(profile):
         arms = list(OPT_ARMS)
     if profile in DISCOVERY_SCENARIOS:
         arms = list(DISCOVERY_ARMS)
+    if profile in FEEDBACK_SCENARIOS:
+        arms = list(FEEDBACK_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -111,6 +129,9 @@ def plan(profile):
         spec["local_factorial"] = True
     if profile in DISCOVERY_SCENARIOS:
         spec.update(headwind_m_s=DISCOVERY_SCENARIOS[profile], staged_discovery=True)
-    if profile.startswith("energy-") or profile in LOCAL_SEARCH or profile in DISCOVERY_SCENARIOS:
+    if profile in FEEDBACK_SCENARIOS:
+        spec.update(headwind_m_s=FEEDBACK_SCENARIOS[profile], constraint_feedback=dict(FEEDBACK_MODES))
+    if (profile.startswith("energy-") or profile in LOCAL_SEARCH
+            or profile in DISCOVERY_SCENARIOS or profile in FEEDBACK_SCENARIOS):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec
