@@ -27,7 +27,7 @@ from aircraft_risk_feedback import (
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
     ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
-    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, plan,
+    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, TERMINATION_PAIRS, plan,
 )
 from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
 from ra_lsbo.budget import digest
@@ -99,6 +99,7 @@ def run(profile, expected, output):
     import torch
 
     from aircraft_risk_acquisition import brier_scores
+    from aircraft_risk_termination import with_termination_policy
     from ra_lsbo.experiments.core.protocol import BASE
     from ra_lsbo.experiments.core.problems import AircraftCase, FlightScenario
     from ra_lsbo.experiments.core.runner import Ledger, append, plain, save
@@ -127,6 +128,8 @@ def run(profile, expected, output):
         scenario = FlightScenario(headwind_m_s=spec.get("headwind_m_s", 0.),
                                   payload_delta_kg=spec.get("payload_delta_kg", 0.))
         problem = AircraftCase(BASE, "sparse", scenario=scenario, integration_step=spec["step_seconds"])
+        if "termination_feedback" in spec:
+            problem = with_termination_policy(problem, spec["termination_feedback"])
         heads = tuple(name for name in problem.required_constraints
                       if name not in problem.analytical_constraints)
         save(output/"contract.json", {"id": problem.contract_id, "settings": problem.settings,
@@ -427,6 +430,12 @@ def verify_evidence(output, expected):
             or contract["settings"]["integration_step_s"] != spec["step_seconds"]
             or contract["settings"]["full_trajectory"] is not False):
         raise ValueError("Aircraft mission or stopping rule differs from the frozen profile")
+
+    if "termination_feedback" in spec:
+        policy = spec["termination_feedback"]
+        settings = contract["settings"]
+        if settings.get("termination_feedback", "native") != policy:
+            raise ValueError("Termination observation policy differs from the frozen profile")
 
     calls, roles = {}, Counter()
     with (output/"calls.jsonl").open(encoding="utf-8") as stream:
@@ -744,6 +753,8 @@ def analyze(source, expected, output):
             comparisons = None
             if spec.get("sign_lsbo"):
                 comparisons = SIGN_LSBO_PAIRS
+            elif "termination_feedback" in spec:
+                comparisons = TERMINATION_PAIRS
             elif spec.get("feedback_baselines"):
                 comparisons = FEEDBACK_BASELINE_PAIRS
             elif spec.get("constraint_feedback"):
