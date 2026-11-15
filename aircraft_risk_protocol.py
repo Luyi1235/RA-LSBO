@@ -101,9 +101,21 @@ FEEDBACK_BASELINE_PAIRS = (
     ("lsbo_sign_latent", "discovery_direct"),
     ("discovery_staged", "discovery_direct"),
 )
+TERMINATION_FACTORIAL = {
+    "termination-native-smoke": (4., "native"),
+    "termination-structural-smoke": (4., "structural-first"),
+    "termination-native": (4., "native"),
+    "termination-structural": (4., "structural-first"),
+}
+TERMINATION_ARMS = ("lsbo_sign_latent", "discovery_staged")
+TERMINATION_PAIRS = (TERMINATION_ARMS,)
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "termination-native-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "termination-structural-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "termination-native": (24, 4, 24, 256, 0, 32, 28444000, (4, 8, 12, 20, 24)),
+    "termination-structural": (24, 4, 24, 256, 0, 32, 28444000, (4, 8, 12, 20, 24)),
     "feedback-baseline-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "feedback-baseline-headwind": (24, 4, 24, 256, 0, 32, 28440000, (4, 8, 12, 20, 24)),
     "feedback-baseline-payload": (24, 4, 24, 256, 0, 32, 28440000, (4, 8, 12, 20, 24)),
@@ -151,6 +163,8 @@ def plan(profile):
         arms = list(SIGN_LSBO_ARMS)
     if profile in FEEDBACK_BASELINE_SCENARIOS:
         arms = list(FEEDBACK_BASELINE_ARMS)
+    if profile in TERMINATION_FACTORIAL:
+        arms = list(TERMINATION_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -189,6 +203,11 @@ def plan(profile):
                     feedback_baselines=True,
                     constraint_feedback={arm: "sign" if rule == "constraints" else "bounds"
                                          for arm, (rule, _) in FEEDBACK_BASELINE_ARMS.items()})
+    if profile in TERMINATION_FACTORIAL:
+        headwind, policy = TERMINATION_FACTORIAL[profile]
+        spec.update(headwind_m_s=headwind, staged_discovery=True, feedback_baselines=True,
+                    termination_feedback=policy,
+                    constraint_feedback={TERMINATION_ARMS[0]: "sign", TERMINATION_ARMS[1]: "bounds"})
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
             or spec.get("staged_discovery") or spec.get("constraint_feedback")):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
