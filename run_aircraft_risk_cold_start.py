@@ -26,8 +26,8 @@ from aircraft_risk_feedback import (
 )
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
-    ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_PAIRS, LOCAL_ARMS, LOCAL_FACTOR_ARMS,
-    OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, plan,
+    ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
+    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, plan,
 )
 from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
 from ra_lsbo.budget import digest
@@ -262,7 +262,7 @@ def run(profile, expected, output):
                     if n == spec["total"]:
                         break
                     query_x = features.transform(remaining)
-                    energy = discovery_receipt = None
+                    energy = discovery_receipt = cold_constraint_forecast = None
                     if optimizing:
                         offset = n-spec["initial"]
                         updated = uses_latent and offset % spec["objective_update_every"] == 0
@@ -298,7 +298,10 @@ def run(profile, expected, output):
                             if rule in ROLLOUT_RULES and remaining_calls >= 2:
                                 indices = shortlist(forecast, candidate_ids)
                                 components = rollout_components(stage_heads, query_x, forecast, moments, z, indices)
-                            forecast.update(joint=probabilities(query_x)["joint"], coverage=coverage)
+                            constraints = probabilities(query_x)
+                            forecast.update(joint=constraints["joint"], coverage=coverage)
+                            if spec.get("feedback_baselines") and rule == "constraints":
+                                cold_constraint_forecast = plain(constraints)
                             discovery_receipt = {"probabilities": plain(forecast), "rollout": components,
                                                  "outcomes": dict(Counter(outcomes))}
                             scores = discovery_scores(rule, discovery_receipt, candidate_ids, remaining_calls)
@@ -333,6 +336,8 @@ def run(profile, expected, output):
                         proposal["supervision"] = supervision
                     if discovery_receipt is not None:
                         proposal["discovery"] = discovery_receipt
+                    if cold_constraint_forecast is not None:
+                        proposal["cold_constraint_forecast"] = cold_constraint_forecast
                     append(journal, proposal)
                     history.append(ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online"))
                     if arm == shared_arm and n < switch:
@@ -417,11 +422,11 @@ def verify_evidence(output, expected):
                                 rel_tol=1e-12, abs_tol=1e-15) for i in range(size)):
             raise ValueError("Joint probabilities do not match the registered product")
 
-    if spec.get("sign_lsbo") and (
+    if (spec.get("sign_lsbo") or spec.get("feedback_baselines")) and (
             contract["settings"]["nominal_cruise_distance_m"] != 140000.
             or contract["settings"]["integration_step_s"] != spec["step_seconds"]
             or contract["settings"]["full_trajectory"] is not False):
-        raise ValueError("Aircraft mission or stopping rule differs from the sign-LSBO profile")
+        raise ValueError("Aircraft mission or stopping rule differs from the frozen profile")
 
     calls, roles = {}, Counter()
     with (output/"calls.jsonl").open(encoding="utf-8") as stream:
@@ -583,7 +588,7 @@ def verify_evidence(output, expected):
                         receipt = row.get("discovery")
                         if feedback:
                             outcomes = check_feedback(row, prefix, arm)
-                        if feedback and fallback:
+                        if feedback and not discovery and fallback:
                             if (receipt is None or set(receipt) != {"outcomes", "probabilities"}
                                     or receipt["outcomes"] != dict(Counter(outcomes))):
                                 raise ValueError("Feedback acquisition does not match the sealed prefix")
@@ -598,10 +603,17 @@ def verify_evidence(output, expected):
                             if expected_scores != row["scores"]:
                                 raise ValueError("Feedback acquisition does not replay")
                         elif discovery and fallback:
-                            if receipt is None or receipt["outcomes"] != dict(Counter(map(discovery_outcome, prefix))):
+                            if not feedback:
+                                outcomes = list(map(discovery_outcome, prefix))
+                            if receipt is None or receipt["outcomes"] != dict(Counter(outcomes)):
                                 raise ValueError("Discovery selector did not use the sealed outcome prefix")
                             if receipt["probabilities"]["coverage"] != row["energy"]["coverage"]:
                                 raise ValueError("Discovery coverage forecast differs from the common feature scores")
+                            if spec.get("feedback_baselines") and rule == "constraints":
+                                forecasts = row["cold_constraint_forecast"]
+                                check_probabilities(forecasts, len(candidate_ids), {*contract["heads"], "joint"})
+                                if forecasts["joint"] != receipt["probabilities"]["joint"]:
+                                    raise ValueError("Sign acquisition differs from the sealed constraint probabilities")
                             expected_scores = discovery_scores(rule, receipt, candidate_ids, spec["total"]-n)
                             if expected_scores != row["scores"]:
                                 raise ValueError("Discovery acquisition does not replay")
@@ -732,6 +744,8 @@ def analyze(source, expected, output):
             comparisons = None
             if spec.get("sign_lsbo"):
                 comparisons = SIGN_LSBO_PAIRS
+            elif spec.get("feedback_baselines"):
+                comparisons = FEEDBACK_BASELINE_PAIRS
             elif spec.get("constraint_feedback"):
                 comparisons = FEEDBACK_PAIRS
             packet["discovery_pairs"] = discovery_pairs(trajectories, spec["total"], comparisons)
