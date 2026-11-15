@@ -86,9 +86,27 @@ SIGN_LSBO_PAIRS = (
     ("lsbo_sign_explicit", "lsbo_coverage_explicit"),
     ("lsbo_coverage_latent", "lsbo_coverage_explicit"),
 )
+FEEDBACK_BASELINE_ARMS = {
+    "lsbo_sign_latent": SIGN_LSBO_ARMS["lsbo_sign_latent"],
+    "discovery_staged": DISCOVERY_ARMS["discovery_staged"],
+    "discovery_direct": DISCOVERY_ARMS["discovery_direct"],
+}
+FEEDBACK_BASELINE_SCENARIOS = {
+    "feedback-baseline-smoke": SIGN_LSBO_SCENARIOS["sign-lsbo-smoke"],
+    "feedback-baseline-headwind": SIGN_LSBO_SCENARIOS["sign-lsbo-headwind"],
+    "feedback-baseline-payload": SIGN_LSBO_SCENARIOS["sign-lsbo-payload"],
+}
+FEEDBACK_BASELINE_PAIRS = (
+    ("lsbo_sign_latent", "discovery_staged"),
+    ("lsbo_sign_latent", "discovery_direct"),
+    ("discovery_staged", "discovery_direct"),
+)
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "feedback-baseline-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "feedback-baseline-headwind": (24, 4, 24, 256, 0, 32, 28440000, (4, 8, 12, 20, 24)),
+    "feedback-baseline-payload": (24, 4, 24, 256, 0, 32, 28440000, (4, 8, 12, 20, 24)),
     "sign-lsbo-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "sign-lsbo-headwind": (16, 4, 36, 256, 0, 32, 28437000, (4, 8, 12, 20, 28, 36)),
     "sign-lsbo-payload": (16, 4, 36, 256, 0, 32, 28437000, (4, 8, 12, 20, 28, 36)),
@@ -131,6 +149,8 @@ def plan(profile):
         arms = list(FEEDBACK_ARMS)
     if profile in SIGN_LSBO_SCENARIOS:
         arms = list(SIGN_LSBO_ARMS)
+    if profile in FEEDBACK_BASELINE_SCENARIOS:
+        arms = list(FEEDBACK_BASELINE_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -163,7 +183,13 @@ def plan(profile):
         headwind, payload = SIGN_LSBO_SCENARIOS[profile]
         spec.update(headwind_m_s=headwind, payload_delta_kg=payload,
                     constraint_feedback=dict(SIGN_LSBO_FEEDBACK), sign_lsbo=True)
+    if profile in FEEDBACK_BASELINE_SCENARIOS:
+        headwind, payload = FEEDBACK_BASELINE_SCENARIOS[profile]
+        spec.update(headwind_m_s=headwind, payload_delta_kg=payload, staged_discovery=True,
+                    feedback_baselines=True,
+                    constraint_feedback={arm: "sign" if rule == "constraints" else "bounds"
+                                         for arm, (rule, _) in FEEDBACK_BASELINE_ARMS.items()})
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
-            or profile in DISCOVERY_SCENARIOS or profile in FEEDBACK_SCENARIOS or profile in SIGN_LSBO_SCENARIOS):
+            or spec.get("staged_discovery") or spec.get("constraint_feedback")):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
     return spec
