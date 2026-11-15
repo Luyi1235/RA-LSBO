@@ -106,12 +106,16 @@ TERMINATION_FACTORIAL = {
     "termination-structural-smoke": (4., "structural-first"),
     "termination-native": (4., "native"),
     "termination-structural": (4., "structural-first"),
+    "termination-margins-smoke": (4., "structural-margins"),
+    "termination-margins": (4., "structural-margins"),
 }
 TERMINATION_ARMS = ("lsbo_sign_latent", "discovery_staged")
 TERMINATION_PAIRS = (TERMINATION_ARMS,)
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "termination-margins-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "termination-margins": (24, 4, 24, 256, 0, 32, 28444000, (4, 8, 12, 20, 24)),
     "termination-native-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "termination-structural-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "termination-native": (24, 4, 24, 256, 0, 32, 28444000, (4, 8, 12, 20, 24)),
