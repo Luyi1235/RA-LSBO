@@ -52,20 +52,23 @@ def loaded_calls(folder):
     return records, dict(categories)
 
 
-def compare(native, structural, expected):
-    folders = {"native": native, "structural-first": structural}
+def compare(native, structural, expected, *, native_source=None):
+    structural_plan = read(structural/"plan.json")
+    policy = structural_plan["termination_feedback"]
+    folders = {"native": native, policy: structural}
     plans = {key: read(folder/"plan.json") for key, folder in folders.items()}
     spec = plans["native"]
-    profiles = (plans["native"]["profile"], plans["structural-first"]["profile"])
-    if profiles not in {("termination-native-smoke", "termination-structural-smoke"),
-                        ("termination-native", "termination-structural")}:
+    profiles = (plans["native"]["profile"], plans[policy]["profile"])
+    if profiles not in {("termination-native"+suffix, "termination-"+view+suffix)
+                        for suffix in ("", "-smoke") for view in ("structural", "margins")}:
         raise ValueError("Use a registered native and structural path at the same scale")
     for field in ("seeds", "initial", "total", "pool", "heldout", "arms", "budget"):
-        if spec[field] != plans["structural-first"][field]:
+        if spec[field] != plans[policy][field]:
             raise ValueError("Termination experiment schedules differ")
     pairs, runs, recorded = {}, {}, {}
     for key, folder in folders.items():
-        report, _, trajectories = verify_evidence(folder, expected)
+        source = (native_source or expected) if key == "native" else expected
+        report, _, trajectories = verify_evidence(folder, source)
         records, triggers = loaded_calls(folder)
         pairs[key] = discovery_pairs(trajectories, spec["total"], TERMINATION_PAIRS)
         recorded[key] = records
@@ -77,7 +80,8 @@ def compare(native, structural, expected):
         raise ValueError("Underlying aircraft contracts differ")
     if digest([first["id"], second["settings"]]) != second["id"]:
         raise ValueError("Controlled observation contract is not bound to the native evaluator")
-    analytical = {name for name, _ in next(iter(recorded["native"].values()))["observation"]["constraints"]} - set(first["heads"])
+    names = {name for name, _ in next(iter(recorded["native"].values()))["observation"]["constraints"]}
+    analytical = names - set(first["heads"])
     fixed = set()
     for seed in spec["seeds"]:
         a, b = (read(folder/str(seed)/"roster.json") for folder in folders.values())
@@ -89,14 +93,15 @@ def compare(native, structural, expected):
     if not fixed <= overlap:
         raise ValueError("Missing paired fixed observations")
     for key in overlap:
-        expected_view = coarsen(DesignRecord.from_dict(a[key]), analytical, second["id"]).to_dict()
+        expected_view = coarsen(DesignRecord.from_dict(a[key]), analytical, second["id"],
+                                keep_margins=policy == "structural-margins").to_dict()
         if digest(expected_view) != digest(b[key]):
             raise ValueError("Paired output does not match the controlled coarsening")
         if (discovery_outcome(a[key]) == "usable") != (discovery_outcome(b[key]) == "usable"):
             raise ValueError("Feedback policies changed usability")
     return {"status": "VERIFIED_TERMINATION_FEEDBACK_FACTORIAL", "source_sha": expected,
             "matched_fixed_designs": len(fixed), "matched_evaluated_designs": len(overlap),
-            "runs": runs, "interaction": compare_discovery(pairs["native"], pairs["structural-first"])}
+            "runs": runs, "interaction": compare_discovery(pairs["native"], pairs[policy])}
 
 
 def main():

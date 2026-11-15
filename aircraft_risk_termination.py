@@ -7,10 +7,10 @@ from ra_lsbo.budget import digest
 from ra_lsbo.risk_core.observations import OutputObservation
 
 STRUCTURAL_GATES = ("stall", "root_bending")
-POLICIES = ("native", "structural-first")
+STRUCTURAL_POLICIES = ("structural-first", "structural-margins")
 
 
-def coarsen(record, analytical, contract):
+def coarsen(record, analytical, contract, *, keep_margins=False):
     """Emulate an early structural stop from a trusted, already computed margin."""
     packet = record.observation
     if packet.status in {"unknown", "infrastructure_error"} or record.diagnostics.get("numerical_failure"):
@@ -19,7 +19,10 @@ def coarsen(record, analytical, contract):
         margin = packet.constraint(name)
         if margin.kind == "exact" and margin.constraint_satisfaction() is False:
             evidence = digest([packet.evidence_id, contract, name])
-            outputs = tuple((key, value if key in analytical else
+            observed = set(analytical)
+            if keep_margins:
+                observed.update(STRUCTURAL_GATES)
+            outputs = tuple((key, value if key in observed else
                              OutputObservation("interval", evidence+":"+key, lower=0., lower_inclusive=False)
                              if key == name else
                              OutputObservation("missing", evidence+":"+key, reason="structural_stop"))
@@ -36,17 +39,17 @@ def coarsen(record, analytical, contract):
 def with_termination_policy(problem, policy):
     if policy == "native":
         return problem
-    if policy != "structural-first":
+    if policy not in STRUCTURAL_POLICIES:
         raise ValueError("Unknown controlled termination policy")
-    return StructuralFirstFeedback(problem)
+    return StructuralFirstFeedback(problem, policy)
 
 
 class StructuralFirstFeedback:
     """Keep canonicalization and the exact precheck of the underlying evaluator."""
 
-    def __init__(self, problem):
+    def __init__(self, problem, policy):
         self._problem = problem
-        self.settings = {**problem.settings, "termination_feedback": "structural-first",
+        self.settings = {**problem.settings, "termination_feedback": policy,
                          "structural_gate_order": list(STRUCTURAL_GATES),
                          "feedback_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
         self.contract_id = digest([problem.contract_id, self.settings])
@@ -55,4 +58,5 @@ class StructuralFirstFeedback:
         return getattr(self._problem, name)
 
     def evaluate(self, candidate):
-        return coarsen(self._problem.evaluate(candidate), self.analytical_constraints, self.contract_id)
+        return coarsen(self._problem.evaluate(candidate), self.analytical_constraints, self.contract_id,
+                       keep_margins=self.settings["termination_feedback"] == "structural-margins")

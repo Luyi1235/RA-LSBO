@@ -3,6 +3,7 @@ import unittest
 from aircraft_risk_protocol import plan
 from aircraft_risk_termination import coarsen
 from analyze_aircraft_termination_factorial import compare_discovery
+from analyze_aircraft_structural_margins import matched_staged_prefix
 from ra_lsbo.partial_bo.records import DesignRecord
 from ra_lsbo.risk_core.observations import OutputObservation, RunObservation
 from ra_lsbo.budget import digest
@@ -33,6 +34,19 @@ class TerminationFeedbackTests(unittest.TestCase):
         self.assertEqual(view.observation.constraint("stall").lower, 0.)
         self.assertEqual(view.observation.constraint("span"), native.observation.constraint("span"))
 
+    def test_margin_view_changes_only_observed_structural_channels_at_the_same_stop(self):
+        native = record(-.05, .1, -.02)
+        limited = coarsen(native, {"span"}, "limited")
+        richer = coarsen(native, {"span"}, "richer", keep_margins=True)
+        self.assertEqual(richer.diagnostics, limited.diagnostics)
+        self.assertEqual(discovery_outcome(richer.to_dict()), "abort")
+        self.assertEqual(richer.observation.objective.kind, "missing")
+        self.assertEqual(richer.observation.constraint("soc").kind, "missing")
+        for head in ("stall", "root_bending"):
+            self.assertEqual(richer.observation.constraint(head), native.observation.constraint(head))
+        self.assertTrue(matched_staged_prefix([("point", [.3])], [("point", [.3+1e-15])]))
+        self.assertFalse(matched_staged_prefix([("point", [.3])], [("other", [.3])]))
+
     def test_usable_and_untrusted_labels_are_preserved(self):
         for native, outcome in ((record(-.1, -.1, -.02), "usable"),
                                 (record(.2, -.1, -.02, numerical=True), "unknown")):
@@ -56,4 +70,8 @@ class TerminationFeedbackTests(unittest.TestCase):
         self.assertEqual(native["budget"], structural["budget"])
         self.assertEqual((native["termination_feedback"], structural["termination_feedback"]),
                          ("native", "structural-first"))
+        margins = plan("termination-margins")
+        self.assertEqual(margins["seeds"], structural["seeds"])
+        self.assertEqual(margins["budget"], structural["budget"])
+        self.assertEqual(margins["termination_feedback"], "structural-margins")
         self.assertTrue(set(native["seeds"]).isdisjoint(plan("feedback-baseline-headwind")["seeds"]))
