@@ -100,8 +100,10 @@ def active_scores(rule, receipt, n):
         if (set(parts) != set(keys) or any(
                 len(row) != n or not all(0 <= v <= .25+1e-12 for v in row) for row in parts.values())):
             raise ValueError("Invalid integrated Brier reductions")
-        scale = 1. if rule == "risk_information" else .5
-        scores = [scale*sum(values) for values in zip(*(parts[key] for key in keys))]
+        if rule == "risk_information":
+            scores = [abort+violation+usable for abort, violation, usable in zip(*(parts[key] for key in keys))]
+        else:
+            scores = [.5*(complete+conditional) for complete, conditional in zip(*(parts[key] for key in keys))]
         if any(v > .25+1e-12 for v in scores):
             raise ValueError("Integrated reduction exceeds Bernoulli variance bound")
         return scores
