@@ -16,8 +16,8 @@ import time
 import traceback
 
 from aircraft_risk_active import (
-    CONTRASTS as ACTIVE_CONTRASTS, active_scores, configuration_brier, configuration_weights,
-    information_receipt, learning_summary,
+    CONTRASTS as ACTIVE_CONTRASTS, STAGE_CONTRASTS, acquisition_rule, active_scores,
+    configuration_brier, configuration_weights, information_receipt, learning_summary,
 )
 from aircraft_risk_discovery import (
     ROLLOUT_RULES, STAGE_HEADS, discovery_pairs, discovery_scores, fit_stage_heads,
@@ -31,7 +31,8 @@ from aircraft_risk_feedback import (
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
     ACTIVE_ARMS, ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
-    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, TERMINATION_PAIRS, plan,
+    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS,
+    STAGE_INFORMATION_ARMS, TERMINATION_PAIRS, plan,
 )
 from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
 from ra_lsbo.budget import digest
@@ -40,7 +41,7 @@ from risk_learning.core import binary_metrics
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS, **STAGE_INFORMATION_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -327,13 +328,16 @@ def run(profile, expected, output):
                     elif active:
                         forecasts = stage_forecast(stage_heads, query_x)
                         p = forecasts[0]
-                        reductions = (information_receipt(stage_heads, query_x, ref_x, forecasts, weights)
-                                      if rule == "risk_information" else {})
+                        selected_rule = acquisition_rule(rule, n-spec["initial"], spec.get("coverage_period"))
+                        reductions = {}
+                        if selected_rule in {"risk_information", "risk_stage_information"}:
+                            reductions = information_receipt(stage_heads, query_x, ref_x, forecasts, weights,
+                                                             separate_stages=selected_rule == "risk_stage_information")
                         coverage = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :], axis=2), axis=1)
                         acquisition = {"mission": p["mission"].tolist(),
                                        "feasible_given_mission": p["feasible_given_mission"].tolist(),
                                        "coverage": coverage.tolist(), "reductions": reductions}
-                        scores = active_scores(rule, acquisition, len(remaining))
+                        scores = active_scores(selected_rule, acquisition, len(remaining))
                     elif rule == "iid":
                         scores = [random.random() for _ in remaining]
                     elif rule == "coverage":
@@ -612,8 +616,10 @@ def verify_evidence(output, expected):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
                     shared = arm in branch_arms and n < switch
                     charge_arm = shared_arm if shared else arm
-                    if active and active_scores(ARM_RULES[arm][0], row["risk_acquisition"], len(remaining)+1) != row["scores"]:
-                        raise ValueError("Cold-start acquisition does not replay")
+                    if active:
+                        rule = acquisition_rule(ARM_RULES[arm][0], n-spec["initial"], spec.get("coverage_period"))
+                        if active_scores(rule, row["risk_acquisition"], len(remaining)+1) != row["scores"]:
+                            raise ValueError("Cold-start acquisition does not replay")
                     if arm in ENERGY_ARMS or first_discovery:
                         rule, latent = ARM_RULES[charge_arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
@@ -705,6 +711,11 @@ def verify_evidence(output, expected):
                     online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
                     discovery_calls=spec["total"]-spec["initial"] if active else fallback_calls,
                 )
+            if spec.get("stage_information"):
+                configurations = [digest(r["candidate"]["discrete"]) for r in prefix]
+                trajectories[-1]["new_online_configurations"] = len(set(configurations) - set(configurations[:spec["initial"]]))
+                trajectories[-1]["online_conditional_labels"] = sum(
+                    kind in {"violation", "usable"} for kind in outcomes[spec["initial"]:])
             if spec.get("sign_lsbo"):
                 trajectories[-1]["budget_trajectory"] = budget_trajectory(prefix, outcomes, spec["checkpoints"])
                 if feedback[arm] != "exact":
@@ -773,12 +784,14 @@ def analyze(source, expected, output):
         packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
         spec = read(source/"plan.json")
+        active_contrasts = STAGE_CONTRASTS if spec.get("stage_information") else ACTIVE_CONTRASTS
         if spec.get("active_risk"):
-            packet["learning_comparisons"] = learning_summary(results, spec["learning_checkpoints"])
+            packet["learning_comparisons"] = learning_summary(results, spec["learning_checkpoints"],
+                                                              contrasts=active_contrasts)
         if spec.get("staged_discovery") or spec.get("constraint_feedback") or spec.get("active_risk"):
             comparisons = None
             if spec.get("active_risk"):
-                comparisons = ACTIVE_CONTRASTS
+                comparisons = active_contrasts
             elif spec.get("sign_lsbo"):
                 comparisons = SIGN_LSBO_PAIRS
             elif "termination_feedback" in spec:

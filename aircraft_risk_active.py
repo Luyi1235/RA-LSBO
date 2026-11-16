@@ -12,6 +12,16 @@ CONTRASTS = (PRIMARY, ("risk_active", "risk_greedy"), ("risk_active", "risk_poin
              ("risk_active_latent", "risk_active"))
 
 
+STAGE_CONTRASTS = (
+    ("risk_staged_interleaved", "risk_coverage"),
+    ("risk_staged_interleaved", "risk_joint_interleaved"),
+    ("risk_staged", "risk_active"),
+    ("risk_joint_interleaved", "risk_active"),
+    ("risk_staged_interleaved", "risk_staged"),
+)
+STAGE_COMPONENTS = ("mission", "feasible_given_mission")
+
+
 def configuration_weights(candidates):
     configs = [digest(row["discrete"]) for row in candidates]
     counts = Counter(configs)
@@ -36,12 +46,45 @@ def reduction_components(left, right, joint, weights):
     return components
 
 
-def information_receipt(heads, query, reference, forecast, weights):
+def acquisition_rule(rule, online_offset, coverage_period=None):
+    if rule.endswith("_interleaved"):
+        if coverage_period is None or coverage_period < 2:
+            raise ValueError("Interleaved risk acquisition needs a registered coverage schedule")
+        return "risk_coverage" if online_offset % coverage_period == 0 else rule.removesuffix("_interleaved")
+    return rule
+
+
+def stage_reduction_components(left, right, joint, weights):
+    """Expected headwise Brier reduction with conditional labels observed only on completion."""
+    import numpy as np
+
+    c, f = (left[head] for head in STAGE_COMPONENTS)
+    cr, fr = (right[head] for head in STAGE_COMPONENTS)
+    cc, ff = (joint[head] for head in STAGE_COMPONENTS)
+
+    def reduction(p, q, pq, panel_weights):
+        covariance = pq-p[:, None]*q[None, :]
+        denominator = (p*(1-p))[:, None]
+        change = np.divide(covariance**2, denominator, out=np.zeros_like(covariance),
+                           where=denominator > 1e-14)
+        return change @ panel_weights
+
+    complete = reduction(c, cr, cc, weights)
+    target_weights = cr*weights
+    total = target_weights.sum()
+    # y must plausibly admit a conditional target. x yields one only if it completes.
+    conditional = (c*reduction(f, fr, ff, target_weights/total)
+                   if total > 1e-14 else np.zeros_like(f))
+    return {"mission": complete.tolist(), "feasible_given_mission": conditional.tolist()}
+
+
+def information_receipt(heads, query, reference, forecast, weights, *, separate_stages=False):
     from aircraft_risk_discovery import stage_forecast, stage_joint_probabilities
 
     reference_forecast = stage_forecast(heads, reference)
     joint = stage_joint_probabilities(heads, query, reference, forecast, reference_forecast)
-    return reduction_components(forecast[0], reference_forecast[0], joint, weights)
+    criterion = stage_reduction_components if separate_stages else reduction_components
+    return criterion(forecast[0], reference_forecast[0], joint, weights)
 
 
 def active_scores(rule, receipt, n):
@@ -52,11 +95,13 @@ def active_scores(rule, receipt, n):
             or not all(math.isfinite(x) and x >= 0 for x in coverage)):
         raise ValueError("Invalid candidate forecasts")
     p = [a*b for a, b in zip(c, f)]
-    if rule == "risk_information":
-        if (set(parts) != set(OUTCOMES) or any(
+    if rule in {"risk_information", "risk_stage_information"}:
+        keys = OUTCOMES if rule == "risk_information" else STAGE_COMPONENTS
+        if (set(parts) != set(keys) or any(
                 len(row) != n or not all(0 <= v <= .25+1e-12 for v in row) for row in parts.values())):
             raise ValueError("Invalid integrated Brier reductions")
-        scores = [a+b+c for a, b, c in zip(*(parts[k] for k in OUTCOMES))]
+        scale = 1. if rule == "risk_information" else .5
+        scores = [scale*sum(values) for values in zip(*(parts[key] for key in keys))]
         if any(v > .25+1e-12 for v in scores):
             raise ValueError("Integrated reduction exceeds Bernoulli variance bound")
         return scores
@@ -80,7 +125,7 @@ def configuration_brier(rows):
     return (mean(mean(group) for group in groups.values()) if groups else None), len(groups)
 
 
-def learning_summary(metrics, checkpoints):
+def learning_summary(metrics, checkpoints, *, contrasts=CONTRASTS):
     groups = defaultdict(dict)
     for row in metrics:
         if row["head"] == "usable_factored" and row["n"] in checkpoints:
@@ -92,7 +137,7 @@ def learning_summary(metrics, checkpoints):
     scores = {key: mean(series.values()) for key, series in groups.items()}
     seeds = sorted({seed for seed, _ in scores})
     result = []
-    for arm, comparator in CONTRASTS:
+    for arm, comparator in contrasts:
         pairs = [(seed, scores[seed, arm]-scores[seed, comparator]) for seed in seeds]
         values = [delta for _, delta in pairs]
         rng = Random(20261116)
