@@ -16,7 +16,7 @@ import time
 import traceback
 
 from aircraft_risk_active import (
-    CONTRASTS as ACTIVE_CONTRASTS, STAGE_CONTRASTS, acquisition_rule, active_scores,
+    CONTRASTS as ACTIVE_CONTRASTS, PRIOR_CONTRASTS, STAGE_CONTRASTS, acquisition_rule, active_scores,
     configuration_brier, configuration_weights, information_receipt, learning_summary,
 )
 from aircraft_risk_discovery import (
@@ -31,7 +31,7 @@ from aircraft_risk_feedback import (
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
     ACTIVE_ARMS, ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
-    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS,
+    LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PRIOR_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS,
     STAGE_INFORMATION_ARMS, TERMINATION_PAIRS, plan,
 )
 from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
@@ -41,7 +41,7 @@ from risk_learning.core import binary_metrics
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS, **STAGE_INFORMATION_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS, **STAGE_INFORMATION_ARMS, **PRIOR_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -104,6 +104,7 @@ def run(profile, expected, output):
     import torch
 
     from aircraft_risk_acquisition import brier_scores
+    from aircraft_risk_prior import layout_features
     from aircraft_risk_termination import with_termination_policy
     from ra_lsbo.experiments.core.protocol import BASE
     from ra_lsbo.experiments.core.problems import AircraftCase, FlightScenario
@@ -178,7 +179,10 @@ def run(profile, expected, output):
             shared_history, shared_remaining, shared_rows = [], [], []
             shared_objective_features = shared_session = None
             global_addition = local_addition = None
+            coverage_records = {}
             for arm in spec["arms"]:
+                sharing = spec.get("risk_priors", {}).get(arm)
+                reuse_coverage = arm in spec.get("risk_prior_coverage_reuse", ())
                 rule, uses_latent = ARM_RULES[arm]
                 features = latent if uses_latent and not optimizing else explicit
                 if optimizing and uses_latent and not ("local_switch" in spec and arm in branch_arms):
@@ -189,6 +193,8 @@ def run(profile, expected, output):
                 history, remaining = list(anchors), list(pool)
                 ref_x = features.transform(reference) if reference else None
                 heldout_x = features.transform(heldout)
+                stage_ref_x = layout_features(ref_x, reference) if sharing else ref_x
+                stage_heldout_x = layout_features(heldout_x, heldout) if sharing else heldout_x
                 first_n = spec["initial"]
                 if arm in branch_arms:
                     if len(shared_history) != switch:
@@ -246,15 +252,20 @@ def run(profile, expected, output):
                         return values
 
                     if discovery or active:
-                        stage_heads = fit_stage_heads(history, past_x, outcomes, seed, len(problem.space.continuous))
+                        stage_past_x = (layout_features(past_x, [row.candidate for row in history])
+                                        if sharing else past_x)
+                        stage_heads = fit_stage_heads(history, stage_past_x, outcomes, seed,
+                                                      len(problem.space.continuous), sharing=sharing)
                         model_ids.update({name: head.identity for name, head in stage_heads.items()})
 
                     if n in spec["checkpoints"]:
                         forecast = probabilities(heldout_x)
                         if discovery or active:
-                            forecast.update(stage_forecast(stage_heads, heldout_x)[0])
+                            forecast.update(stage_forecast(stage_heads, stage_heldout_x)[0])
                         prediction = {"event": "prediction", "n": n, "models": model_ids,
                                       "probabilities": plain(forecast)}
+                        if "risk_priors" in spec:
+                            prediction["risk_prior"] = sharing or "matern"
                         if feedback:
                             prediction["supervision"] = supervision
                             if arm == "feedback_coverage":
@@ -326,12 +337,13 @@ def run(profile, expected, output):
                                   "representation_updated": updated, "improvement": improvement,
                                   "probability": probability, "coverage": coverage}
                     elif active:
-                        forecasts = stage_forecast(stage_heads, query_x)
+                        stage_query_x = layout_features(query_x, remaining) if sharing else query_x
+                        forecasts = stage_forecast(stage_heads, stage_query_x)
                         p = forecasts[0]
                         selected_rule = acquisition_rule(rule, n-spec["initial"], spec.get("coverage_period"))
                         reductions = {}
                         if selected_rule in {"risk_information", "risk_stage_information"}:
-                            reductions = information_receipt(stage_heads, query_x, ref_x, forecasts, weights,
+                            reductions = information_receipt(stage_heads, stage_query_x, stage_ref_x, forecasts, weights,
                                                              separate_stages=selected_rule == "risk_stage_information")
                         coverage = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :], axis=2), axis=1)
                         acquisition = {"mission": p["mission"].tolist(),
@@ -353,6 +365,8 @@ def run(profile, expected, output):
                     proposal = {"event": "proposal", "n": n, "models": model_ids,
                                 "prefix": digest(plain([r.to_dict() for r in history])),
                                 "index": selected, "candidate": digest(candidate), "scores": scores}
+                    if "risk_priors" in spec:
+                        proposal["risk_prior"] = sharing or "matern"
                     if acquisition is not None:
                         proposal["risk_acquisition"] = acquisition
                     if energy is not None:
@@ -364,7 +378,15 @@ def run(profile, expected, output):
                     if cold_constraint_forecast is not None:
                         proposal["cold_constraint_forecast"] = cold_constraint_forecast
                     append(journal, proposal)
-                    history.append(ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online"))
+                    if reuse_coverage:
+                        evaluated = coverage_records[n]
+                        if digest(evaluated.candidate) != digest(candidate):
+                            raise ValueError("Prior arms must reuse the same coverage design")
+                    else:
+                        evaluated = ledger.evaluate(problem, candidate, f"{seed}/{arm}/{n}", "online")
+                        if "risk_priors" in spec and arm == "risk_coverage":
+                            coverage_records[n] = evaluated
+                    history.append(evaluated)
                     if arm == shared_arm and n < switch:
                         shared_rows.append(proposal)
                         if n+1 == switch:
@@ -518,6 +540,8 @@ def verify_evidence(output, expected):
                            if row["n"] <= switch} if shared_arm else {})
         cold_paths = {}
         for arm in spec["arms"]:
+            sharing = spec.get("risk_priors", {}).get(arm, "matern")
+            reuse_coverage = arm in spec.get("risk_prior_coverage_reuse", ())
             prefix, remaining = [record for _, record in anchors], list(pool)
             last_call = max(number for number, _ in anchors)
             if last_call >= first_test:
@@ -553,6 +577,8 @@ def verify_evidence(output, expected):
                             raise ValueError("Checkpoint order mismatch")
                         if arm in branch_arms and n <= switch and row != shared_journal["prediction", n]:
                             raise ValueError("Shared checkpoint differs between matched arms")
+                        if "risk_priors" in spec and row.get("risk_prior") != sharing:
+                            raise ValueError("Checkpoint differs from the registered risk prior")
                         models_at_checkpoint = row["models"]
                         if set(models_at_checkpoint) != model_names:
                             raise ValueError("Wrong checkpoint model roster")
@@ -595,6 +621,13 @@ def verify_evidence(output, expected):
                             if active:
                                 scores["configuration_brier"], scores["scored_configurations"] = configuration_brier(
                                     zip(heldout, labels, probabilities))
+                            if "risk_priors" in spec and head == "usable_factored":
+                                prefix_labels = [metric_label(item, head) for item in prefix]
+                                prefix_known = [target for target in prefix_labels if target is not None]
+                                rate = (sum(prefix_known)+1)/(len(prefix_known)+2)
+                                scores["prefix_rate_probability"] = rate
+                                scores["prefix_rate_configuration_brier"], _ = configuration_brier(
+                                    (design, y, rate) for design, y in zip(heldout, labels))
                             results.append({**scores, "seed": seed, "arm": arm, "n": n,
                                 "head": head, "labeled_test_count": scores["n"], "unknown": len(heldout)-len(known), "common_anchor_probability": baseline,
                                 "baseline_brier": baseline_brier, "ece_5_bins": ece,
@@ -614,8 +647,10 @@ def verify_evidence(output, expected):
                             or (models_at_checkpoint is not None and models_at_checkpoint != row["models"])
                             or row["index"] != i or row["candidate"] != digest(candidate)):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
+                    if "risk_priors" in spec and row.get("risk_prior") != sharing:
+                        raise ValueError("Proposal differs from the registered risk prior")
                     shared = arm in branch_arms and n < switch
-                    charge_arm = shared_arm if shared else arm
+                    charge_arm = "risk_coverage" if reuse_coverage else shared_arm if shared else arm
                     if active:
                         rule = acquisition_rule(ARM_RULES[arm][0], n-spec["initial"], spec.get("coverage_period"))
                         if active_scores(rule, row["risk_acquisition"], len(remaining)+1) != row["scores"]:
@@ -670,7 +705,8 @@ def verify_evidence(output, expected):
                         representation = identity
                     if shared and row != shared_journal["proposal", n]:
                         raise ValueError("Shared proposal differs between matched arms")
-                    number, outcome = record_at(f"{seed}/{charge_arm}/{n}", candidate, "online", shared=shared)
+                    number, outcome = record_at(f"{seed}/{charge_arm}/{n}", candidate, "online",
+                                                shared=shared or reuse_coverage)
                     if not last_call < number < first_test:
                         raise ValueError("Online evaluation is out of order or after held-out outcomes")
                     last_call = number
@@ -711,7 +747,7 @@ def verify_evidence(output, expected):
                     online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
                     discovery_calls=spec["total"]-spec["initial"] if active else fallback_calls,
                 )
-            if spec.get("stage_information"):
+            if spec.get("stage_information") or "risk_priors" in spec:
                 configurations = [digest(r["candidate"]["discrete"]) for r in prefix]
                 trajectories[-1]["new_online_configurations"] = len(set(configurations) - set(configurations[:spec["initial"]]))
                 trajectories[-1]["online_conditional_labels"] = sum(
@@ -784,7 +820,17 @@ def analyze(source, expected, output):
         packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
         spec = read(source/"plan.json")
-        active_contrasts = STAGE_CONTRASTS if spec.get("stage_information") else ACTIVE_CONTRASTS
+        active_contrasts = ACTIVE_CONTRASTS
+        if spec.get("stage_information"):
+            active_contrasts = STAGE_CONTRASTS
+        if "risk_priors" in spec:
+            active_contrasts = PRIOR_CONTRASTS
+            baseline_rows = [{**row, "arm": row["arm"]+"_prefix_rate",
+                              "configuration_brier": row["prefix_rate_configuration_brier"]}
+                             for row in results if row["head"] == "usable_factored"]
+            packet["prefix_rate_comparisons"] = learning_summary(
+                results + baseline_rows, spec["learning_checkpoints"],
+                contrasts=[(arm, arm+"_prefix_rate") for arm in spec["arms"]])
         if spec.get("active_risk"):
             packet["learning_comparisons"] = learning_summary(results, spec["learning_checkpoints"],
                                                               contrasts=active_contrasts)

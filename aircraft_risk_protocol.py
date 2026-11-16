@@ -136,9 +136,24 @@ STAGE_INFORMATION_ARMS = {
 STAGE_INFORMATION_SCENARIOS = {
     "stage-information-smoke": 4., "stage-information-nominal": 0., "stage-information-headwind": 4.,
 }
+PRIOR_ARMS = {
+    "risk_coverage": ("risk_coverage", False),
+    "risk_global_coverage": ("risk_coverage", False),
+    "risk_layout_coverage": ("risk_coverage", False),
+    "risk_active": ("risk_information", False),
+    "risk_layout_active": ("risk_information", False),
+}
+PRIOR_SCENARIOS = {
+    "hierarchical-prior-smoke": 4., "hierarchical-prior-nominal": 0., "hierarchical-prior-headwind": 4.,
+}
+PRIOR_MODES = {"risk_global_coverage": "global", "risk_layout_coverage": "layout", "risk_layout_active": "layout"}
+PRIOR_COVERAGE_REUSE = ("risk_global_coverage", "risk_layout_coverage")
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "hierarchical-prior-smoke": (1, 4, 7, 32, 24, 16, 28459900, (4, 7)),
+    "hierarchical-prior-nominal": (24, 4, 16, 128, 96, 64, 28460000, (4, 8, 12, 16)),
+    "hierarchical-prior-headwind": (24, 4, 16, 128, 96, 64, 28460000, (4, 8, 12, 16)),
     "stage-information-smoke": (1, 4, 7, 32, 24, 16, 28429000, (4, 7)),
     "stage-information-nominal": (20, 4, 16, 128, 96, 64, 28456000, (4, 8, 12, 16)),
     "stage-information-headwind": (20, 4, 16, 128, 96, 64, 28456000, (4, 8, 12, 16)),
@@ -209,6 +224,9 @@ def plan(profile):
     if profile in STAGE_INFORMATION_SCENARIOS:
         arms = list(STAGE_INFORMATION_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
+    if profile in PRIOR_SCENARIOS:
+        arms = list(PRIOR_ARMS)
+        shared = len(PRIOR_COVERAGE_REUSE) * (total-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
         arms = ["cei_latent", *LOCAL_ARMS]
@@ -260,6 +278,10 @@ def plan(profile):
         spec.update(active_risk=True, stage_information=True, coverage_period=3,
                     headwind_m_s=STAGE_INFORMATION_SCENARIOS[profile],
                     learning_checkpoints=list(checkpoints[1:]))
+    if profile in PRIOR_SCENARIOS:
+        spec.update(active_risk=True, risk_priors=dict(PRIOR_MODES),
+                    risk_prior_coverage_reuse=list(PRIOR_COVERAGE_REUSE),
+                    headwind_m_s=PRIOR_SCENARIOS[profile], learning_checkpoints=list(checkpoints[1:]))
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
             or spec.get("staged_discovery") or spec.get("constraint_feedback")):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY

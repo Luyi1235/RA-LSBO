@@ -19,6 +19,14 @@ STAGE_CONTRASTS = (
     ("risk_joint_interleaved", "risk_active"),
     ("risk_staged_interleaved", "risk_staged"),
 )
+PRIOR_CONTRASTS = (
+    ("risk_layout_coverage", "risk_coverage"),
+    ("risk_global_coverage", "risk_coverage"),
+    ("risk_layout_coverage", "risk_global_coverage"),
+    ("risk_layout_active", "risk_active"),
+    ("risk_layout_active", "risk_layout_coverage"),
+    ("risk_active", "risk_coverage"),
+)
 STAGE_COMPONENTS = ("mission", "feasible_given_mission")
 
 
