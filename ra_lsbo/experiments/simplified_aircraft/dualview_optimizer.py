@@ -79,7 +79,7 @@ class StableGroupedHead:
     """
     def __init__(self, inputs, observations, *, continuous_count, seed, name,
                  objective=False, completion=False, reference_scale=1.,
-                 continuous_grid=C_GRID, discrete_grid=D_GRID, gp_factory=EvidenceGP):
+                 continuous_grid=C_GRID, discrete_grid=D_GRID, gp_factory=None, retain_grid=False):
         inputs=np.asarray(inputs,float)
         if inputs.ndim!=2 or len(inputs)!=len(observations) or not np.isfinite(inputs).all():
             raise ValueError("Finite aligned GP feature rows required")
@@ -88,6 +88,8 @@ class StableGroupedHead:
         self.center,self.scale,normalized=_normalize(
             observations,objective,completion,reference_scale)
         self.name=name
+        if gp_factory is None:
+            gp_factory=EvidenceGP
         self.candidates=[]
         fitted=[]
         for c in C_GRID:
@@ -116,13 +118,24 @@ class StableGroupedHead:
         successful=[(i,item) for i,item in enumerate(fitted) if item is not None]
         if not successful:
             raise ModelNumericalFailure(self.name,self.candidates)
-        self.selected_index=max(successful,key=lambda t:self.candidates[t[0]]["log_evidence"])[0]
-        self.model,self.divisor=fitted[self.selected_index]
-        self.identity=digest({"name":name,"center":self.center,"scale":self.scale,
-                              "features_dim":inputs.shape[1],"candidate_grid":self.candidates,
+        self.features_dim=inputs.shape[1]
+        index=max(successful,key=lambda t:self.candidates[t[0]]["log_evidence"])[0]
+        self._select(index, fitted[index])
+        if retain_grid:
+            self.fitted_grid=fitted
+
+    def _select(self,index,fit):
+        self.selected_index=index
+        self.model,self.divisor=fit
+        self.identity=digest({"name":self.name,"center":self.center,"scale":self.scale,
+                              "features_dim":self.features_dim,"candidate_grid":self.candidates,
                               "selected_index":self.selected_index,
                               "model":self.model.to_dict(),
                               "stable_tail":True})
+
+    def select_shared_kernel(self,index):
+        self._select(index,self.fitted_grid[index])
+        del self.fitted_grid
 
     def predict(self, raw):
         try:
@@ -181,7 +194,7 @@ def conservative_soc_moments(onehot,latent):
 class HeterogeneousRiskPosterior(RefinementPosterior):
     """Prefix-only heterogeneous view allocation, no target leakage."""
     def __init__(self, problem, records, seed, settings, objective_features,
-                 risk_features, *, dual_soc=False, view_policy=None):
+                 risk_features, *, dual_soc=False, view_policy=None, shared_kernel=False):
         if settings.average_kernel:
             raise ValueError("This registered experiment uses kernel evidence selection")
         if any(r.observation.contract_id!=problem.contract_id for r in records):
@@ -192,6 +205,9 @@ class HeterogeneousRiskPosterior(RefinementPosterior):
         self.risk_features=risk_features
         self.view_policy=view_policy or FEATURE_VIEW_POLICY
         self.dual_soc=bool(dual_soc)
+        if shared_kernel and dual_soc:
+            raise ValueError("Shared kernel control does not add a SOC guard")
+        self.shared_kernel_index=None
         self.history_digest=digest([r.to_dict() for r in records])
         x_obj=objective_features.transform([r.candidate for r in records])
         x_risk=risk_features.transform([r.candidate for r in records])
@@ -202,7 +218,7 @@ class HeterogeneousRiskPosterior(RefinementPosterior):
             return StableGroupedHead(x,obs,continuous_count=nc,
                 seed=seed+offset,name=name,
                 continuous_grid=settings.continuous_grid,
-                discrete_grid=settings.discrete_grid,**kwargs)
+                discrete_grid=settings.discrete_grid,retain_grid=shared_kernel,**kwargs)
 
         def supported(packet,value,name):
             if packet.status in {"unknown","infrastructure_error"}:
@@ -235,6 +251,21 @@ class HeterogeneousRiskPosterior(RefinementPosterior):
         self.best=min((r.observation.objective.value for r in records
             if r.usable_feasible and r.observation.objective.kind=="exact"),default=None)
 
+        if shared_kernel:
+            heads=[self.completion,*self.constraints.values()]
+            if self.objective is not None:
+                heads.append(self.objective)
+            shared_scores=[]
+            for index in range(len(C_GRID)*len(D_GRID)):
+                values=[head.candidates[index]["log_evidence"] for head in heads]
+                shared_scores.append(None if None in values else math.fsum(values))
+            eligible=[index for index,score in enumerate(shared_scores) if score is not None]
+            if not eligible:
+                raise ModelNumericalFailure("shared_kernel",[{"joint_log_evidence":shared_scores}])
+            self.shared_kernel_index=max(eligible,key=shared_scores.__getitem__)
+            for head in heads:
+                head.select_shared_kernel(self.shared_kernel_index)
+
     def predict(self,candidates):
         xo=self.objective_features.transform(candidates)
         xr=self.risk_features.transform(candidates)
@@ -264,7 +295,8 @@ class HeterogeneousRiskPosterior(RefinementPosterior):
                 "risk_feature_identity":self.risk_features.identity,
                 "view_policy":self.view_policy,"soc_dual_guard":self.dual_soc,
                 "soc_dual_rule":"min_per_candidate_P_g_le_0" if self.dual_soc else None,
-                "heads":heads,"best_observed":self.best}
+                "heads":heads,"best_observed":self.best,
+                **({"shared_kernel_index":self.shared_kernel_index} if self.shared_kernel_index is not None else {})}
 
 
 def _registered_failure_proposal(engine, records, global_pool, iteration, error):
