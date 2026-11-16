@@ -126,9 +126,22 @@ ACTIVE_ARMS = {
     "risk_active_latent": ("risk_information", True),
 }
 ACTIVE_SCENARIOS = {"active-risk-smoke": 4., "active-risk-nominal": 0., "active-risk-headwind": 4.}
+STAGE_INFORMATION_ARMS = {
+    "risk_coverage": ("risk_coverage", False),
+    "risk_active": ("risk_information", False),
+    "risk_staged": ("risk_stage_information", False),
+    "risk_joint_interleaved": ("risk_information_interleaved", False),
+    "risk_staged_interleaved": ("risk_stage_information_interleaved", False),
+}
+STAGE_INFORMATION_SCENARIOS = {
+    "stage-information-smoke": 4., "stage-information-nominal": 0., "stage-information-headwind": 4.,
+}
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "stage-information-smoke": (1, 4, 7, 32, 24, 16, 28429000, (4, 7)),
+    "stage-information-nominal": (20, 4, 16, 128, 96, 64, 28456000, (4, 8, 12, 16)),
+    "stage-information-headwind": (20, 4, 16, 128, 96, 64, 28456000, (4, 8, 12, 16)),
     "active-risk-smoke": (1, 4, 7, 32, 24, 16, 28429000, (4, 7)),
     "active-risk-nominal": (16, 4, 16, 128, 96, 64, 28452000, (4, 8, 12, 16)),
     "active-risk-headwind": (16, 4, 16, 128, 96, 64, 28452000, (4, 8, 12, 16)),
@@ -193,6 +206,8 @@ def plan(profile):
         arms = list(TERMINATION_ARMS)
     if profile in ACTIVE_SCENARIOS:
         arms = list(ACTIVE_ARMS)
+    if profile in STAGE_INFORMATION_SCENARIOS:
+        arms = list(STAGE_INFORMATION_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -240,6 +255,10 @@ def plan(profile):
         spec["payload_delta_kg"] = 24.
     if profile in ACTIVE_SCENARIOS:
         spec.update(active_risk=True, headwind_m_s=ACTIVE_SCENARIOS[profile],
+                    learning_checkpoints=list(checkpoints[1:]))
+    if profile in STAGE_INFORMATION_SCENARIOS:
+        spec.update(active_risk=True, stage_information=True, coverage_period=3,
+                    headwind_m_s=STAGE_INFORMATION_SCENARIOS[profile],
                     learning_checkpoints=list(checkpoints[1:]))
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
             or spec.get("staged_discovery") or spec.get("constraint_feedback")):
