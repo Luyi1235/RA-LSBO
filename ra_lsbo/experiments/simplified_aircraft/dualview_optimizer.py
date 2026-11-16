@@ -79,7 +79,7 @@ class StableGroupedHead:
     """
     def __init__(self, inputs, observations, *, continuous_count, seed, name,
                  objective=False, completion=False, reference_scale=1.,
-                 continuous_grid=C_GRID, discrete_grid=D_GRID):
+                 continuous_grid=C_GRID, discrete_grid=D_GRID, gp_factory=EvidenceGP):
         inputs=np.asarray(inputs,float)
         if inputs.ndim!=2 or len(inputs)!=len(observations) or not np.isfinite(inputs).all():
             raise ValueError("Finite aligned GP feature rows required")
@@ -95,7 +95,7 @@ class StableGroupedHead:
                 divisor=group_divisors(inputs.shape[1],continuous_count,c,d)
                 row={"continuous_length":c,"discrete_length":d}
                 try:
-                    model=EvidenceGP(inputs/divisor,normalized,seed=seed,
+                    model=gp_factory(inputs/divisor,normalized,seed=seed,
                         settings=MixedGPSettings(
                             length_scale=1.,
                             exact_noise=1e-3,

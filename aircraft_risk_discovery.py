@@ -36,9 +36,15 @@ def label(result, head):
     return result == "usable"
 
 
-def fit_stage_heads(history, past_x, outcomes, seed, continuous_count):
+def fit_stage_heads(history, past_x, outcomes, seed, continuous_count, *, sharing=None):
     from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import StableGroupedHead
 
+    kwargs = {}
+    if sharing is not None:
+        from functools import partial
+        from aircraft_risk_prior import SharedRiskEvidenceGP
+
+        kwargs["gp_factory"] = partial(SharedRiskEvidenceGP, sharing=sharing)
     heads = {}
     for name in ("mission", "feasible_given_mission", "usable_direct"):
         observations = []
@@ -53,7 +59,7 @@ def fit_stage_heads(history, past_x, outcomes, seed, continuous_count):
                 obs = OutputObservation("interval", evidence, lower=0., lower_inclusive=False)
             observations.append(obs)
         heads[name] = StableGroupedHead(past_x, observations, seed=seed, name=name,
-                                       continuous_count=continuous_count, completion=True)
+                                       continuous_count=continuous_count, completion=True, **kwargs)
     return heads
 
 
