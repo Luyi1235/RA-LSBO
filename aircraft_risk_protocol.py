@@ -109,11 +109,22 @@ TERMINATION_FACTORIAL = {
     "termination-margins-smoke": (4., "structural-margins"),
     "termination-margins": (4., "structural-margins"),
 }
+MARGIN_REPLICATION = {
+    "margin-replication-trigger-smoke": "structural-first",
+    "margin-replication-margins-smoke": "structural-margins",
+    "margin-replication-trigger": "structural-first",
+    "margin-replication-margins": "structural-margins",
+}
+TERMINATION_FACTORIAL.update({name: (0., policy) for name, policy in MARGIN_REPLICATION.items()})
 TERMINATION_ARMS = ("lsbo_sign_latent", "discovery_staged")
 TERMINATION_PAIRS = (TERMINATION_ARMS,)
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "margin-replication-trigger-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "margin-replication-margins-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
+    "margin-replication-trigger": (32, 4, 24, 256, 0, 32, 28448000, (4, 8, 12, 20, 24)),
+    "margin-replication-margins": (32, 4, 24, 256, 0, 32, 28448000, (4, 8, 12, 20, 24)),
     "termination-margins-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "termination-margins": (24, 4, 24, 256, 0, 32, 28444000, (4, 8, 12, 20, 24)),
     "termination-native-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
@@ -212,6 +223,8 @@ def plan(profile):
         spec.update(headwind_m_s=headwind, staged_discovery=True, feedback_baselines=True,
                     termination_feedback=policy,
                     constraint_feedback={TERMINATION_ARMS[0]: "sign", TERMINATION_ARMS[1]: "bounds"})
+    if profile in MARGIN_REPLICATION:
+        spec["payload_delta_kg"] = 24.
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
             or spec.get("staged_discovery") or spec.get("constraint_feedback")):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY
