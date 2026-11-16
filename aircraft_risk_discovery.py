@@ -78,22 +78,36 @@ def shortlist(probabilities, candidate_ids):
                                 for values in (usable, uncertainty))))
 
 
-def rollout_components(heads, query, probabilities, moments, z, indices):
+def stage_joint_probabilities(heads, left, right, left_forecast, right_forecast):
     import numpy as np
     from aircraft_risk_acquisition import posterior_cross_covariance, sign_covariance
 
+    left_p, left_moments, left_z = left_forecast
+    right_p, right_moments, right_z = right_forecast
     joint = {}
     for name in ("mission", "feasible_given_mission"):
         head = heads[name]
-        scale = np.sqrt(1 + moments[name]["variance"])
-        covariance = posterior_cross_covariance(head.model, query[indices]/head.divisor, query/head.divisor)
-        rho = covariance * head.scale**2 / scale[indices, None] / scale[None, :]
+        left_scale = np.sqrt(1 + left_moments[name]["variance"])
+        right_scale = np.sqrt(1 + right_moments[name]["variance"])
+        covariance = posterior_cross_covariance(head.model, left/head.divisor, right/head.divisor)
+        rho = covariance * head.scale**2 / left_scale[:, None] / right_scale[None, :]
         if not np.isfinite(rho).all() or np.any(np.abs(rho) > 1.00001):
             raise FloatingPointError("Invalid future probit-label correlation")
-        p = probabilities[name]
-        both = p[indices, None]*p[None, :] + sign_covariance(z[name][indices], z[name], rho)
-        joint[name] = np.clip(both, np.maximum(0., p[indices, None]+p[None, :]-1.),
-                              np.minimum(p[indices, None], p[None, :]))
+        p, q = left_p[name][:, None], right_p[name][None, :]
+        both = p*q + sign_covariance(left_z[name], right_z[name], rho)
+        joint[name] = np.clip(both, np.maximum(0., p+q-1.), np.minimum(p, q))
+    return joint
+
+
+def rollout_components(heads, query, probabilities, moments, z, indices):
+    import numpy as np
+
+    selected_probabilities = {name: value[indices] for name, value in probabilities.items()}
+    selected_moments = {name: {"variance": pred["variance"][indices]} for name, pred in moments.items()}
+    selected_z = {name: value[indices] for name, value in z.items()}
+    joint = stage_joint_probabilities(heads, query[indices], query,
+                                      (selected_probabilities, selected_moments, selected_z),
+                                      (probabilities, moments, z))
     c, f = probabilities["mission"], probabilities["feasible_given_mission"]
     after_abort = (c[None, :] - joint["mission"]) * f[None, :]
     after_violation = joint["mission"] * (f[None, :] - joint["feasible_given_mission"])

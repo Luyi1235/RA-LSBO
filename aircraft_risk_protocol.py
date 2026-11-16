@@ -118,9 +118,20 @@ MARGIN_REPLICATION = {
 TERMINATION_FACTORIAL.update({name: (0., policy) for name, policy in MARGIN_REPLICATION.items()})
 TERMINATION_ARMS = ("lsbo_sign_latent", "discovery_staged")
 TERMINATION_PAIRS = (TERMINATION_ARMS,)
+ACTIVE_ARMS = {
+    "risk_coverage": ("risk_coverage", False),
+    "risk_greedy": ("risk_greedy", False),
+    "risk_pointwise": ("risk_pointwise", False),
+    "risk_active": ("risk_information", False),
+    "risk_active_latent": ("risk_information", True),
+}
+ACTIVE_SCENARIOS = {"active-risk-smoke": 4., "active-risk-nominal": 0., "active-risk-headwind": 4.}
 OBJECTIVE_UPDATE_EVERY = 8
 PHASE_SWITCH = {"phase-check": 5, "phase-smoke": 5, "phase-pilot": 24}
 PROFILES = {
+    "active-risk-smoke": (1, 4, 7, 32, 24, 16, 28429000, (4, 7)),
+    "active-risk-nominal": (16, 4, 16, 128, 96, 64, 28452000, (4, 8, 12, 16)),
+    "active-risk-headwind": (16, 4, 16, 128, 96, 64, 28452000, (4, 8, 12, 16)),
     "margin-replication-trigger-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "margin-replication-margins-smoke": (1, 4, 8, 48, 0, 12, 28429000, (4, 8)),
     "margin-replication-trigger": (32, 4, 24, 256, 0, 32, 28448000, (4, 8, 12, 20, 24)),
@@ -180,6 +191,8 @@ def plan(profile):
         arms = list(FEEDBACK_BASELINE_ARMS)
     if profile in TERMINATION_FACTORIAL:
         arms = list(TERMINATION_ARMS)
+    if profile in ACTIVE_SCENARIOS:
+        arms = list(ACTIVE_ARMS)
     shared = 0 if switch is None else len(PHASE_ARMS)*(switch-initial)
     if profile in LOCAL_SEARCH:
         switch, _ = LOCAL_SEARCH[profile]
@@ -225,6 +238,9 @@ def plan(profile):
                     constraint_feedback={TERMINATION_ARMS[0]: "sign", TERMINATION_ARMS[1]: "bounds"})
     if profile in MARGIN_REPLICATION:
         spec["payload_delta_kg"] = 24.
+    if profile in ACTIVE_SCENARIOS:
+        spec.update(active_risk=True, headwind_m_s=ACTIVE_SCENARIOS[profile],
+                    learning_checkpoints=list(checkpoints[1:]))
     if (profile.startswith("energy-") or profile in LOCAL_SEARCH
             or spec.get("staged_discovery") or spec.get("constraint_feedback")):
         spec["objective_update_every"] = OBJECTIVE_UPDATE_EVERY

@@ -15,6 +15,10 @@ import sys
 import time
 import traceback
 
+from aircraft_risk_active import (
+    CONTRASTS as ACTIVE_CONTRASTS, active_scores, configuration_brier, configuration_weights,
+    information_receipt, learning_summary,
+)
 from aircraft_risk_discovery import (
     ROLLOUT_RULES, STAGE_HEADS, discovery_pairs, discovery_scores, fit_stage_heads,
     label as stage_label, outcome as stage_outcome,
@@ -26,7 +30,7 @@ from aircraft_risk_feedback import (
 )
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
-    ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
+    ACTIVE_ARMS, ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
     LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS, TERMINATION_PAIRS, plan,
 )
 from aircraft_risk_sign_lsbo import budget_trajectory, paired_endpoints, terminal_summary
@@ -36,7 +40,7 @@ from risk_learning.core import binary_metrics
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -136,6 +140,7 @@ def run(profile, expected, output):
                                       "heads": heads, "joint": "product_of_marginal_probabilities"})
         optimizing = "objective_update_every" in spec
         discovery = spec.get("staged_discovery", False)
+        active = spec.get("active_risk", False)
         feedback = spec.get("constraint_feedback")
         first_discovery = discovery or feedback is not None
         minimum_exact = 1 if first_discovery else 2
@@ -162,6 +167,7 @@ def run(profile, expected, output):
                 latent = feature_snapshot(problem, BASE, anchors, session)
                 feature_ids.update(latent=latent.identity, encoder_state=latent.state_hash)
             save(unit/"features.json", feature_ids)
+            weights = np.asarray(configuration_weights(reference)) if active else None
             switch = spec.get("coverage_switch")
             shared_arm = spec.get("shared_coverage_arm")
             branch_arms = PHASE_ARMS
@@ -208,7 +214,7 @@ def run(profile, expected, output):
                                         "anchor": digest(anchor) if local else None, "candidates": extra})
                         remaining.extend(extra)
                     past_x = features.transform([row.candidate for row in history])
-                    if first_discovery:
+                    if first_discovery or active:
                         records = [row.to_dict() for row in history]
                         outcomes = [discovery_outcome(row) for row in records]
                     if feedback:
@@ -238,13 +244,13 @@ def run(profile, expected, output):
                         values["joint"] = np.prod(list(values.values()), axis=0)
                         return values
 
-                    if discovery:
+                    if discovery or active:
                         stage_heads = fit_stage_heads(history, past_x, outcomes, seed, len(problem.space.continuous))
                         model_ids.update({name: head.identity for name, head in stage_heads.items()})
 
                     if n in spec["checkpoints"]:
                         forecast = probabilities(heldout_x)
-                        if discovery:
+                        if discovery or active:
                             forecast.update(stage_forecast(stage_heads, heldout_x)[0])
                         prediction = {"event": "prediction", "n": n, "models": model_ids,
                                       "probabilities": plain(forecast)}
@@ -265,7 +271,7 @@ def run(profile, expected, output):
                     if n == spec["total"]:
                         break
                     query_x = features.transform(remaining)
-                    energy = discovery_receipt = cold_constraint_forecast = None
+                    energy = discovery_receipt = cold_constraint_forecast = acquisition = None
                     if optimizing:
                         offset = n-spec["initial"]
                         updated = uses_latent and offset % spec["objective_update_every"] == 0
@@ -318,6 +324,16 @@ def run(profile, expected, output):
                                   "representation": objective_features.identity,
                                   "representation_updated": updated, "improvement": improvement,
                                   "probability": probability, "coverage": coverage}
+                    elif active:
+                        forecasts = stage_forecast(stage_heads, query_x)
+                        p = forecasts[0]
+                        reductions = (information_receipt(stage_heads, query_x, ref_x, forecasts, weights)
+                                      if rule == "risk_information" else {})
+                        coverage = np.min(np.linalg.norm(query_x[:, None, :]-past_x[None, :, :], axis=2), axis=1)
+                        acquisition = {"mission": p["mission"].tolist(),
+                                       "feasible_given_mission": p["feasible_given_mission"].tolist(),
+                                       "coverage": coverage.tolist(), "reductions": reductions}
+                        scores = active_scores(rule, acquisition, len(remaining))
                     elif rule == "iid":
                         scores = [random.random() for _ in remaining]
                     elif rule == "coverage":
@@ -333,6 +349,8 @@ def run(profile, expected, output):
                     proposal = {"event": "proposal", "n": n, "models": model_ids,
                                 "prefix": digest(plain([r.to_dict() for r in history])),
                                 "index": selected, "candidate": digest(candidate), "scores": scores}
+                    if acquisition is not None:
+                        proposal["risk_acquisition"] = acquisition
                     if energy is not None:
                         proposal["energy"] = energy
                     if feedback:
@@ -387,17 +405,18 @@ def verify_evidence(output, expected):
         raise ValueError("Run summary does not match the budget or source")
     contract = read(output/"contract.json")
     discovery = spec.get("staged_discovery", False)
+    active = spec.get("active_risk", False)
     feedback = spec.get("constraint_feedback")
     first_discovery = discovery or feedback is not None
-    if (spec.get("local_factorial") or first_discovery) and contract["settings"]["scenario"] != {
+    if (spec.get("local_factorial") or first_discovery or active) and contract["settings"]["scenario"] != {
             "headwind_m_s": spec["headwind_m_s"], "payload_delta_kg": spec.get("payload_delta_kg", 0.),
             "capacity_retention": 1., "initial_soc": .95}:
         raise ValueError("Aircraft scenario differs from the frozen profile")
     if set(contract["heads"]) != {"stall", "root_bending", "soc", "current", "voltage", "power"}:
         raise ValueError("Wrong engineering constraint roster")
-    stage_models = set(STAGE_HEADS) - {"usable_factored"} if discovery else set()
+    stage_models = set(STAGE_HEADS) - {"usable_factored"} if discovery or active else set()
     model_names = {*contract["heads"], *stage_models}
-    value_names = {*contract["heads"], "joint", *(STAGE_HEADS if discovery else ())}
+    value_names = {*contract["heads"], "joint", *(STAGE_HEADS if discovery or active else ())}
 
     def metric_label(record, head):
         if head in STAGE_HEADS:
@@ -553,7 +572,7 @@ def verify_evidence(output, expected):
                                     score = binary_metrics([y for y, _ in known], [p for _, p in known])
                                     results.append({**score, "seed": seed, "arm": arm, "n": n,
                                                     "head": f"common_{head}_{level}"})
-                        if discovery and any(not math.isclose(c*f, p, abs_tol=1e-13)
+                        if (discovery or active) and any(not math.isclose(c*f, p, abs_tol=1e-13)
                                              for c, f, p in zip(values["mission"], values["feasible_given_mission"],
                                                                 values["usable_factored"])):
                             raise ValueError("Checkpoint usable probability differs from its conditional product")
@@ -569,6 +588,9 @@ def verify_evidence(output, expected):
                             ece = (sum(bin_["n"]*abs(bin_["mean_probability"]-bin_["observed_fraction"])
                                        for bin_ in scores["calibration_bins"] if bin_["n"])/len(known)
                                    if known else None)
+                            if active:
+                                scores["configuration_brier"], scores["scored_configurations"] = configuration_brier(
+                                    zip(heldout, labels, probabilities))
                             results.append({**scores, "seed": seed, "arm": arm, "n": n,
                                 "head": head, "labeled_test_count": scores["n"], "unknown": len(heldout)-len(known), "common_anchor_probability": baseline,
                                 "baseline_brier": baseline_brier, "ece_5_bins": ece,
@@ -590,6 +612,8 @@ def verify_evidence(output, expected):
                         raise ValueError("Proposal does not reproduce from the sealed prefix and scores")
                     shared = arm in branch_arms and n < switch
                     charge_arm = shared_arm if shared else arm
+                    if active and active_scores(ARM_RULES[arm][0], row["risk_acquisition"], len(remaining)+1) != row["scores"]:
+                        raise ValueError("Cold-start acquisition does not replay")
                     if arm in ENERGY_ARMS or first_discovery:
                         rule, latent = ARM_RULES[charge_arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
@@ -657,7 +681,7 @@ def verify_evidence(output, expected):
             usable = [label is True and record["observation"]["status"] == "completed"
                       and record["observation"]["objective"]["kind"] == "exact"
                       for record, label in zip(prefix, labels)]
-            if first_discovery:
+            if first_discovery or active:
                 outcomes = list(map(discovery_outcome, prefix))
                 usable = [result == "usable" for result in outcomes]
             online_labels = labels[spec["initial"]:]
@@ -674,12 +698,12 @@ def verify_evidence(output, expected):
                                  "online_unknown": sum(label is None for label in online_labels),
                                  "best_feasible_Wh": min(energies, default=None),
                                  "online_terminations": dict(terminations)})
-            if first_discovery:
+            if first_discovery or active:
                 trajectories[-1].update(
                     initial_usable=sum(usable[:spec["initial"]]),
                     initial_outcomes=dict(Counter(outcomes[:spec["initial"]])),
                     online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
-                    discovery_calls=fallback_calls,
+                    discovery_calls=spec["total"]-spec["initial"] if active else fallback_calls,
                 )
             if spec.get("sign_lsbo"):
                 trajectories[-1]["budget_trajectory"] = budget_trajectory(prefix, outcomes, spec["checkpoints"])
@@ -749,9 +773,13 @@ def analyze(source, expected, output):
         packet = {"status": "COMPLETE_AIRCRAFT_RISK_ANALYSIS", "verified_run": report,
                   "metrics": results, "pairs": pairs, "trajectories": trajectories}
         spec = read(source/"plan.json")
-        if spec.get("staged_discovery") or spec.get("constraint_feedback"):
+        if spec.get("active_risk"):
+            packet["learning_comparisons"] = learning_summary(results, spec["learning_checkpoints"])
+        if spec.get("staged_discovery") or spec.get("constraint_feedback") or spec.get("active_risk"):
             comparisons = None
-            if spec.get("sign_lsbo"):
+            if spec.get("active_risk"):
+                comparisons = ACTIVE_CONTRASTS
+            elif spec.get("sign_lsbo"):
                 comparisons = SIGN_LSBO_PAIRS
             elif "termination_feedback" in spec:
                 comparisons = TERMINATION_PAIRS
