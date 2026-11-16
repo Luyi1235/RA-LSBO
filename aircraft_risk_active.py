@@ -27,6 +27,13 @@ PRIOR_CONTRASTS = (
     ("risk_layout_active", "risk_layout_coverage"),
     ("risk_active", "risk_coverage"),
 )
+CONFIGURATION_CONTRASTS = (
+    ("risk_balanced_active", "risk_coverage"),
+    ("risk_balanced_active", "risk_balanced_coverage"),
+    ("risk_balanced_active", "risk_active"),
+    ("risk_balanced_active", "risk_joint_interleaved"),
+    ("risk_balanced_coverage", "risk_coverage"),
+)
 STAGE_COMPONENTS = ("mission", "feasible_given_mission")
 
 
@@ -124,6 +131,34 @@ def active_scores(rule, receipt, n):
     if rule == "risk_coverage":
         return coverage
     raise ValueError("Unknown cold-start acquisition rule")
+
+
+def configuration_counts(candidates):
+    return Counter(digest(row["discrete"]) for row in candidates)
+
+
+def balance_configuration_scores(scores, remaining, evaluated):
+    """Apply the selector only among the least evaluated available configurations."""
+    counts = configuration_counts(evaluated)
+    occupancy = [counts[digest(row["discrete"])] for row in remaining]
+    lowest = min(occupancy)
+    return [score if count == lowest else -1. for score, count in zip(scores, occupancy)]
+
+
+def configuration_diagnostics(rows, evaluated):
+    counts = configuration_counts(evaluated)
+    errors = defaultdict(list)
+    for candidate, label, probability in rows:
+        if label is not None:
+            errors[digest(candidate["discrete"])].append(probability-label)
+    unseen = [values for key, values in errors.items() if key not in counts]
+    return {
+        "training_configurations": len(counts),
+        "max_training_configuration_count": max(counts.values(), default=0),
+        "configuration_probability_bias": (mean(mean(group) for group in errors.values()) if errors else None),
+        "unseen_configuration_brier": (mean(mean(value**2 for value in group) for group in unseen) if unseen else None),
+        "unseen_scored_configurations": len(unseen),
+    }
 
 
 def configuration_brier(rows):
