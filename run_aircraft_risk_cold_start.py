@@ -16,8 +16,9 @@ import time
 import traceback
 
 from aircraft_risk_active import (
-    CONTRASTS as ACTIVE_CONTRASTS, PRIOR_CONTRASTS, STAGE_CONTRASTS, acquisition_rule, active_scores,
-    configuration_brier, configuration_weights, information_receipt, learning_summary,
+    CONTRASTS as ACTIVE_CONTRASTS, CONFIGURATION_CONTRASTS, PRIOR_CONTRASTS, STAGE_CONTRASTS,
+    acquisition_rule, active_scores, balance_configuration_scores, configuration_brier,
+    configuration_diagnostics, configuration_weights, information_receipt, learning_summary,
 )
 from aircraft_risk_discovery import (
     ROLLOUT_RULES, STAGE_HEADS, discovery_pairs, discovery_scores, fit_stage_heads,
@@ -30,7 +31,7 @@ from aircraft_risk_feedback import (
 )
 from aircraft_risk_local_search import check_augmentation, local_anchor, local_candidates
 from aircraft_risk_protocol import (
-    ACTIVE_ARMS, ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
+    ACTIVE_ARMS, ARMS, CONFIGURATION_ARMS, DISCOVERY_ARMS, FEEDBACK_ARMS, FEEDBACK_BASELINE_PAIRS, FEEDBACK_PAIRS, LOCAL_ARMS,
     LOCAL_FACTOR_ARMS, OPT_ARMS, PHASE_ARMS, PRIOR_ARMS, PROFILES, SIGN_LSBO_ARMS, SIGN_LSBO_PAIRS,
     STAGE_INFORMATION_ARMS, TERMINATION_PAIRS, plan,
 )
@@ -41,7 +42,7 @@ from risk_learning.core import binary_metrics
 ROOT = Path(__file__).resolve().parent
 ENERGY_ARMS = {**OPT_ARMS, **LOCAL_ARMS, **LOCAL_FACTOR_ARMS}
 LOCAL_CANDIDATE_ARMS = {"cei_latent_local", "ei_latent_local"}
-ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS, **STAGE_INFORMATION_ARMS, **PRIOR_ARMS}
+ARM_RULES = {**ARMS, **PHASE_ARMS, **ENERGY_ARMS, **DISCOVERY_ARMS, **FEEDBACK_ARMS, **SIGN_LSBO_ARMS, **ACTIVE_ARMS, **STAGE_INFORMATION_ARMS, **PRIOR_ARMS, **CONFIGURATION_ARMS}
 
 
 def source_commit(expected, *, clean=False):
@@ -183,6 +184,7 @@ def run(profile, expected, output):
             for arm in spec["arms"]:
                 sharing = spec.get("risk_priors", {}).get(arm)
                 reuse_coverage = arm in spec.get("risk_prior_coverage_reuse", ())
+                balance_configurations = arm in spec.get("configuration_balanced_arms", ())
                 rule, uses_latent = ARM_RULES[arm]
                 features = latent if uses_latent and not optimizing else explicit
                 if optimizing and uses_latent and not ("local_switch" in spec and arm in branch_arms):
@@ -350,6 +352,8 @@ def run(profile, expected, output):
                                        "feasible_given_mission": p["feasible_given_mission"].tolist(),
                                        "coverage": coverage.tolist(), "reductions": reductions}
                         scores = active_scores(selected_rule, acquisition, len(remaining))
+                        if balance_configurations:
+                            scores = balance_configuration_scores(scores, remaining, (r.candidate for r in history))
                     elif rule == "iid":
                         scores = [random.random() for _ in remaining]
                     elif rule == "coverage":
@@ -542,6 +546,7 @@ def verify_evidence(output, expected):
         for arm in spec["arms"]:
             sharing = spec.get("risk_priors", {}).get(arm, "matern")
             reuse_coverage = arm in spec.get("risk_prior_coverage_reuse", ())
+            balance_configurations = arm in spec.get("configuration_balanced_arms", ())
             prefix, remaining = [record for _, record in anchors], list(pool)
             last_call = max(number for number, _ in anchors)
             if last_call >= first_test:
@@ -621,6 +626,9 @@ def verify_evidence(output, expected):
                             if active:
                                 scores["configuration_brier"], scores["scored_configurations"] = configuration_brier(
                                     zip(heldout, labels, probabilities))
+                            if "configuration_balanced_arms" in spec and head == "usable_factored":
+                                scores.update(configuration_diagnostics(
+                                    zip(heldout, labels, probabilities), (r["candidate"] for r in prefix)))
                             if "risk_priors" in spec and head == "usable_factored":
                                 prefix_labels = [metric_label(item, head) for item in prefix]
                                 prefix_known = [target for target in prefix_labels if target is not None]
@@ -640,6 +648,14 @@ def verify_evidence(output, expected):
                     if not all(math.isfinite(value) for value in row["scores"]):
                         raise ValueError("Nonfinite proposal scores")
                     candidate_ids = list(map(digest, remaining)) if discovery else None
+                    if active:
+                        rule = acquisition_rule(ARM_RULES[arm][0], n-spec["initial"], spec.get("coverage_period"))
+                        expected_scores = active_scores(rule, row["risk_acquisition"], len(remaining))
+                        if balance_configurations:
+                            expected_scores = balance_configuration_scores(
+                                expected_scores, remaining, (r["candidate"] for r in prefix))
+                        if expected_scores != row["scores"]:
+                            raise ValueError("Cold-start acquisition does not replay")
                     i = select(remaining, row["scores"])
                     candidate = remaining.pop(i)
                     if (row["event"] != "proposal" or row["n"] != n or row["prefix"] != digest(prefix)
@@ -651,10 +667,6 @@ def verify_evidence(output, expected):
                         raise ValueError("Proposal differs from the registered risk prior")
                     shared = arm in branch_arms and n < switch
                     charge_arm = "risk_coverage" if reuse_coverage else shared_arm if shared else arm
-                    if active:
-                        rule = acquisition_rule(ARM_RULES[arm][0], n-spec["initial"], spec.get("coverage_period"))
-                        if active_scores(rule, row["risk_acquisition"], len(remaining)+1) != row["scores"]:
-                            raise ValueError("Cold-start acquisition does not replay")
                     if arm in ENERGY_ARMS or first_discovery:
                         rule, latent = ARM_RULES[charge_arm]
                         updated = latent and (n-spec["initial"]) % spec["objective_update_every"] == 0
@@ -747,7 +759,7 @@ def verify_evidence(output, expected):
                     online_outcomes=dict(Counter(outcomes[spec["initial"]:])),
                     discovery_calls=spec["total"]-spec["initial"] if active else fallback_calls,
                 )
-            if spec.get("stage_information") or "risk_priors" in spec:
+            if spec.get("stage_information") or "risk_priors" in spec or "configuration_balanced_arms" in spec:
                 configurations = [digest(r["candidate"]["discrete"]) for r in prefix]
                 trajectories[-1]["new_online_configurations"] = len(set(configurations) - set(configurations[:spec["initial"]]))
                 trajectories[-1]["online_conditional_labels"] = sum(
@@ -823,6 +835,8 @@ def analyze(source, expected, output):
         active_contrasts = ACTIVE_CONTRASTS
         if spec.get("stage_information"):
             active_contrasts = STAGE_CONTRASTS
+        if "configuration_balanced_arms" in spec:
+            active_contrasts = CONFIGURATION_CONTRASTS
         if "risk_priors" in spec:
             active_contrasts = PRIOR_CONTRASTS
             baseline_rows = [{**row, "arm": row["arm"]+"_prefix_rate",
