@@ -29,9 +29,15 @@ from run_aircraft_risk_cold_start import file_hash, source_commit
 
 
 ARMS = ("ra_separate", "original_lsbo", "ra_joint_kernel", "ra_explicit", "logcei", "scbo_adapted")
-COMPARATORS = ARMS[1:]
+HANDOFF_FROM = {"ra_to_lsbo": "ra_separate", "logcei_to_lsbo": "logcei"}
+FULL_NATIVE = "lsbo_full_budget"
+NATIVE_ARMS = {"original_lsbo", FULL_NATIVE}
+HANDOFF_ARMS = ("ra_to_lsbo", FULL_NATIVE, "original_lsbo", "ra_separate", "logcei_to_lsbo", "logcei")
 RA_MODELS = ("ra_separate", "ra_joint_kernel")
 PROFILES = {
+    "handoff-smoke": (4., 0., 2, 6, 128, 0, 28470100),
+    "handoff-headwind": (4., 0., 24, 20, 128, 0, 28475000),
+    "handoff-payload": (0., 24., 24, 20, 128, 0, 28475000),
     "comparison-smoke": (4., 0., 1, 3, 32, 12, 28469900),
     "comparison-headwind": (4., 0., 24, 20, 128, 32, 28470000),
     "comparison-payload": (0., 24., 24, 20, 128, 32, 28470000),
@@ -40,12 +46,17 @@ PROFILES = {
 
 def plan(name):
     wind, payload, runs, horizon, pool, heldout, seed = PROFILES[name]
+    handoff = name.startswith("handoff-")
+    arms = HANDOFF_ARMS if handoff else ARMS
     return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload, "horizon": horizon,
-            "initial": 4, "pool": pool, "heldout": heldout, "arms": list(ARMS),
-            "seeds": [seed+100*i for i in range(runs)], "encoder_epochs": 30, "native_gp_steps": 45,
-            "checkpoints": [4, 7] if name == "comparison-smoke" else [4, 8, 12, 16],
-            "budget": {"initial": runs*4, "online": runs*horizon*len(ARMS), "heldout": runs*heldout},
-            "calibration_path": "logcei", "rcaide_mda_calls": 0}
+            "initial": 4, "pool": pool, "heldout": heldout, "arms": list(arms),
+            "seeds": [28470100, 28470800] if name == "handoff-smoke" else [seed+100*i for i in range(runs)],
+            "encoder_epochs": 30, "native_gp_steps": 45,
+            "checkpoints": [] if handoff else [4, 7] if name == "comparison-smoke" else [4, 8, 12, 16],
+            "budget": {"initial": runs*4, "online": runs*horizon*len(arms), "heldout": runs*heldout},
+            "calibration_path": None if handoff else "logcei", "rcaide_mda_calls": 0,
+            **({"comparison_reference": "ra_to_lsbo", "handoff": "first_observed_usable_design"}
+               if handoff else {})}
 
 
 class BenchmarkAircraft(AircraftCase):
@@ -80,7 +91,53 @@ def ra_settings(spec, *, latent=True):
     return replace(model_settings("hybrid_onehot" if latent else "onehot_stable", spec), local=False)
 
 
+def active_backend(arm, history):
+    if arm in HANDOFF_FROM:
+        return FULL_NATIVE if any(row.usable_feasible for row in history) else HANDOFF_FROM[arm]
+    return arm
+
+
+class FullBudgetLSBO(NativeLSBO):
+    """Use the original proposals and updates, lifting only the failure-stop cap."""
+
+    def accept(self, record):
+        self.engine.engine.resume_failure_limit = self.profile["horizon"]+1
+        super().accept(record)
+
+
+class FirstUsableHandoff:
+    def __init__(self, problem, seed, arm, spec, output):
+        self.problem, self.seed, self.arm = problem, seed, arm
+        self.spec, self.output = spec, output
+        self.optimizer = engine_for(problem, seed, HANDOFF_FROM[arm], spec, output/"cold")
+        self.offset, self.native = None, None
+
+    def propose(self, history, pool, iteration):
+        if self.native is None and active_backend(self.arm, history) == FULL_NATIVE:
+            self.offset = iteration
+            self.native = FullBudgetLSBO(self.problem, BASE, self.seed,
+                                         {**self.spec, "horizon": self.spec["horizon"]-iteration},
+                                         self.output/"refinement")
+            self.optimizer = self.native
+        return self.optimizer.propose(history, pool, iteration-(self.offset or 0))
+
+    def accept(self, record):
+        self.optimizer.accept(record)
+
+
+def native_receipt(optimizer):
+    if isinstance(optimizer, FirstUsableHandoff):
+        return native_receipt(optimizer.native)
+    if isinstance(optimizer, NativeLSBO):
+        return {"native_settings": optimizer.engine.settings}
+    return {}
+
+
 def engine_for(problem, seed, arm, spec, output):
+    if arm in HANDOFF_FROM:
+        return FirstUsableHandoff(problem, seed, arm, spec, output)
+    if arm == FULL_NATIVE:
+        return FullBudgetLSBO(problem, BASE, seed, spec, output)
     if arm == "original_lsbo":
         return NativeLSBO(problem, BASE, seed, spec, output)
     if arm in ("logcei", "scbo_adapted"):
@@ -129,20 +186,23 @@ def run(spec, sha, output):
         unit = output/str(seed)
         seen, roster = set(), {}
         for offset, role in enumerate(("initial", "pool", "heldout"), 1):
-            roster[role], _ = candidate_pool(problem, seed+offset, spec[role], seen)
+            roster[role] = candidate_pool(problem, seed+offset, spec[role], seen)[0] if spec[role] else []
             seen.update(map(digest, roster[role]))
         save(unit/"roster.json", roster)
         initial = [ledger.evaluate(problem, row, f"{seed}/initial/{i}", "initial")
                    for i, row in enumerate(roster["initial"])]
         for arm in spec["arms"]:
+            if "handoff" in spec:
+                torch.manual_seed(seed)
             folder = unit/arm
             folder.mkdir()
             optimizer = engine_for(problem, seed, arm, spec, folder)
             history, remaining = list(initial), list(roster["pool"])
             started = time.monotonic()
             for i in range(spec["horizon"]):
+                backend = active_backend(arm, history)
                 candidate, info = optimizer.propose(history, remaining, i)
-                if arm != "original_lsbo":
+                if backend not in NATIVE_ARMS:
                     remaining.remove(candidate)
                 if digest(candidate) in {row.observation.design_id for row in history}:
                     raise ValueError("Method proposed a repeated design")
@@ -151,6 +211,7 @@ def run(spec, sha, output):
                     "mode": info.get("mode", info.get("phase", info.get("original_proposal", {}).get("source"))),
                     "selected_kernel": info.get("shared_kernel_index"),
                     "coverage_reason": info.get("coverage_reason"),
+                    **({"backend": backend} if "handoff" in spec else {}),
                 })
                 result = ledger.evaluate(problem, candidate, f"{seed}/{arm}/{i}", "online")
                 optimizer.accept(result)
@@ -160,7 +221,7 @@ def run(spec, sha, output):
             save(folder/"run.json", {"online_calls": len(history)-len(initial),
                                     "stop_reason": getattr(optimizer, "stop_reason", None),
                                     "elapsed_s": time.monotonic()-started,
-                                    **({"native_settings": optimizer.engine.settings} if arm == "original_lsbo" else {})})
+                                    **native_receipt(optimizer)})
             if arm == spec["calibration_path"]:
                 calibration_forecasts(problem, spec, seed, history, roster["heldout"], unit/"calibration")
             print(f"{seed} {arm} {len(history)-len(initial)} online calls", flush=True)
@@ -202,10 +263,11 @@ def paired_interval(values):
     return np.quantile(draws, [.025, .975]).tolist()
 
 
-def comparisons(trajectories, spec):
-    reference = {r["seed"]: r for r in trajectories if r["method"] == "ra_separate"}
+def comparisons(trajectories, spec, *, reference_method=None, baselines=None):
+    method = reference_method or spec.get("comparison_reference", "ra_separate")
+    reference = {r["seed"]: r for r in trajectories if r["method"] == method}
     output = []
-    for baseline in COMPARATORS:
+    for baseline in baselines if baselines is not None else (arm for arm in spec["arms"] if arm != method):
         paired = [(reference[row["seed"]], row) for row in trajectories if row["method"] == baseline]
         for cohort in ("cold", "all"):
             group = [(a, b) for a, b in paired if cohort == "all" or a["initial_kind"] == cohort]
@@ -227,6 +289,8 @@ def comparisons(trajectories, spec):
                              "terminal_feasibility_energy_win": win,
                              "energy_delta_Wh": xa-xb if xa is not None and xb is not None else None})
             result = {"comparator": baseline, "cohort": cohort, "pairs": rows, "n": len(rows)}
+            if "handoff" in spec:
+                result["reference"] = method
             for metric in ("capped_first_call_delta", "discovery_delta", "discovery_by_8_delta",
                            "terminal_feasibility_energy_win", "energy_delta_Wh"):
                 values = [r[metric] for r in rows if r[metric] is not None]
@@ -267,6 +331,7 @@ def verify(folder, sha):
             raise ValueError("Frozen panels must be sized and disjoint")
         initial = [use(f"{seed}/initial/{i}", "initial", c) for i, c in enumerate(roster["initial"])]
         heldout = [use(f"{seed}/heldout/{i}", "heldout", c) for i, c in enumerate(roster["heldout"])]
+        paths = {}
         for arm in spec["arms"]:
             folder_arm = unit/arm
             receipt = read(folder_arm/"run.json")
@@ -280,22 +345,30 @@ def verify(folder, sha):
             history, previous = list(anchors), initial[-1][0]
             seen = {row.observation.design_id for row in anchors}
             available = set(map(digest, roster["pool"]))
+            holdout_start = heldout[0][0] if heldout else len(calls)+1
+            handoff_at = None
             for i, p in enumerate(proposals):
                 candidate = p["candidate"]
                 key = digest(candidate)
                 if key in seen or p["prefix"] != digest([row.to_dict() for row in history]):
                     raise ValueError("Proposal uses a different observed prefix")
-                if arm != "original_lsbo":
+                backend = active_backend(arm, history)
+                if p.get("backend", arm) != backend:
+                    raise ValueError("Proposal uses the wrong engine for its observed prefix")
+                if backend not in NATIVE_ARMS:
                     available.remove(key)
+                elif arm in HANDOFF_FROM and handoff_at is None:
+                    handoff_at = i
                 seen.add(key)
                 index, row = use(f"{seed}/{arm}/{i}", "online", candidate)
-                if not previous < index < heldout[0][0]:
+                if not previous < index < holdout_start:
                     raise ValueError("Online evaluation violates time or holdout order")
                 previous = index
                 history.append(row)
-            if arm == "original_lsbo":
+            if arm in NATIVE_ARMS or handoff_at is not None:
                 native = receipt["native_settings"]
-                if (native["initial"] != spec["initial"] or native["budget"] != spec["initial"]+spec["horizon"]
+                if (native["initial"] != spec["initial"]+(handoff_at or 0)
+                        or native["budget"] != spec["initial"]+spec["horizon"]
                         or native["gp_steps"] != spec["native_gp_steps"] or native["max_consecutive_solver_failures"] != 5):
                     raise ValueError("Original LSBO settings differ from the native frozen configuration")
                 if stop is not None and (len(proposals) < 5 or any(row.observation.objective.kind == "exact"
@@ -303,14 +376,40 @@ def verify(folder, sha):
                     raise ValueError("Native stop is not supported by the final five missing objectives")
             if arm == spec["calibration_path"]:
                 calibration.extend(score_calibration(spec, seed, history, heldout, unit))
+            online = history[len(anchors):]
+            paths[arm] = online
             trajectories.append({"seed": seed, "method": arm, "stop_reason": stop, "elapsed_s": receipt["elapsed_s"],
-                                 **trajectory_metrics(anchors, history[len(anchors):], spec["horizon"], bool(stop))})
+                                 **({"handoff_after_online": handoff_at} if arm in HANDOFF_FROM else {}),
+                                 **trajectory_metrics(anchors, online, spec["horizon"], bool(stop))})
+        if "handoff" in spec:
+            check_handoff_paths(anchors, paths)
     if used != set(calls):
         raise ValueError("Unexpected charged calls in ledger")
     return {"status": "VERIFIED_RA_LSBO_COMPARISON", "source_sha": sha, "roles": dict(roles),
             "total_calls": len(calls), "max_calls": sum(spec["budget"].values()), "rcaide_mda_calls": 0,
             "trajectories": trajectories, "comparisons": comparisons(trajectories, spec),
-            "calibration": calibration, "calibration_comparison": compare_calibration(calibration)}
+            "calibration": calibration, "calibration_comparison": compare_calibration(calibration),
+            **({"native_stop_comparison": comparisons(
+                trajectories, spec, reference_method=FULL_NATIVE, baselines=("original_lsbo",))}
+               if "handoff" in spec else {})}
+
+
+def check_handoff_paths(initial, paths):
+    """Audit the matched trajectories up to the fixed policy intervention."""
+    native = paths["original_lsbo"]
+    if native != paths[FULL_NATIVE][:len(native)]:
+        raise ValueError("Lifting the native stop cap changed a pre-stop decision")
+    for handoff, cold in HANDOFF_FROM.items():
+        original = paths[cold]
+        if any(row.usable_feasible for row in initial):
+            expected = paths[FULL_NATIVE]
+            observed = paths[handoff]
+        else:
+            first = next((i for i, row in enumerate(original, 1) if row.usable_feasible), len(original))
+            expected = original[:first]
+            observed = paths[handoff][:first]
+        if observed != expected:
+            raise ValueError("Paired handoff changed its declared cold or initial-warm trajectory")
 
 
 def score_calibration(spec, seed, history, heldout, unit):
