@@ -60,3 +60,40 @@ class HandoffProtocolTests(unittest.TestCase):
             check_handoff_paths([a], {**paths, "ra_to_lsbo": [a, winner, b]})
         with self.assertRaisesRegex(ValueError, "pre-stop"):
             check_handoff_paths([a], {**paths, FULL_NATIVE: [b, a]})
+
+
+class TrainingAblationTests(unittest.TestCase):
+    def test_training_plan_freezes_matched_primary_and_fresh_seeds(self):
+        spec = plan("training-headwind")
+        self.assertEqual(spec["arms"], ["ra_to_lsbo", "ra_joint_to_lsbo", "logcei_to_lsbo"])
+        self.assertEqual(spec["primary"], {"reference": "ra_to_lsbo", "comparator": "ra_joint_to_lsbo",
+                                           "cohort": "cold", "metric": "capped_first_call_delta"})
+        self.assertEqual(spec["seeds"], plan("training-payload")["seeds"])
+        for prior in ("comparison-headwind", "handoff-headwind", "training-smoke"):
+            self.assertTrue(set(spec["seeds"]).isdisjoint(plan(prior)["seeds"]))
+        self.assertEqual(sum(spec["budget"].values()), 2560)
+
+    def test_shared_handoff_uses_shared_kernel_only_before_discovery(self):
+        from types import SimpleNamespace
+        from run_aircraft_ra_lsbo_comparison import active_backend, FULL_NATIVE, training_proposal_kind
+
+        cold, warm = [SimpleNamespace(usable_feasible=v) for v in (False, True)]
+        self.assertEqual(active_backend("ra_joint_to_lsbo", [cold]), "ra_joint_kernel")
+        self.assertEqual(active_backend("ra_joint_to_lsbo", [cold, warm]), FULL_NATIVE)
+        decision = {"mode": "feasible_discovery", "selected_kernel": 4}
+        self.assertEqual(training_proposal_kind("ra_joint_kernel", decision), "model")
+        with self.assertRaisesRegex(ValueError, "missing"):
+            training_proposal_kind("ra_joint_kernel", {**decision, "selected_kernel": None})
+        with self.assertRaisesRegex(ValueError, "Unexpected"):
+            training_proposal_kind("ra_separate", decision)
+
+    def test_three_way_initial_warm_trajectories_are_equal(self):
+        from types import SimpleNamespace
+        from run_aircraft_ra_lsbo_comparison import check_handoff_paths
+
+        initial = [SimpleNamespace(usable_feasible=True)]
+        spec = plan("training-headwind")
+        paths = {arm: ["common-proposal"] for arm in spec["arms"]}
+        check_handoff_paths(initial, paths)
+        with self.assertRaisesRegex(ValueError, "initial-warm"):
+            check_handoff_paths(initial, {**paths, "ra_joint_to_lsbo": ["other-proposal"]})
