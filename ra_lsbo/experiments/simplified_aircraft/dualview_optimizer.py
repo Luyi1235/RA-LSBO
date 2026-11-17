@@ -359,11 +359,15 @@ class StableCorpusDiscoveryBO(CorpusDiscoveryBO):
         self.allocation=allocation
         super().__init__(problem,base,seed,settings,output)
 
+    def _posterior_records(self, records):
+        """Return the GP supervision view after building features from raw history."""
+        return records
+
     def _build_posterior(self, records):
         latent=feature_snapshot(self.problem,self.base,records,self.session)
         risk=(latent if self.allocation=="latent_all" else
               PrefixFeatures(self.problem,self.base,records,self.seed,False,30))
-        return HeterogeneousRiskPosterior(self.problem,records,self.seed,
+        return HeterogeneousRiskPosterior(self.problem,self._posterior_records(records),self.seed,
             self.settings,latent,risk,dual_soc=self.allocation=="soc_dual_guard",
             view_policy=self.allocation)
 
