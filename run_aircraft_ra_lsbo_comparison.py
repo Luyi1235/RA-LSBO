@@ -16,6 +16,7 @@ from ra_lsbo.experiments.core.problems import AircraftCase, FlightScenario
 from ra_lsbo.experiments.core.protocol import BASE
 from ra_lsbo.experiments.core.runner import Ledger, NATIVE_STOP, append, lines, plain, read, save
 from ra_lsbo.experiments.discovery_stages.methods import NativeLSBO
+from ra_lsbo.experiments.discovery_stages.policies import COVERAGE_PERIOD
 from ra_lsbo.experiments.simplified_aircraft.dualview_protocol import model_settings
 from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import (
     C_GRID, D_GRID, HeterogeneousRiskPosterior, ModelNumericalFailure, StableCorpusDiscoveryBO, StableOnehotDiscoveryBO,
@@ -32,6 +33,7 @@ ARMS = ("ra_separate", "original_lsbo", "ra_joint_kernel", "ra_explicit", "logce
 HANDOFF_FROM = {
     "ra_to_lsbo": "ra_separate",
     "ra_joint_to_lsbo": "ra_joint_kernel",
+    "ra_feasibility_to_lsbo": "ra_feasibility",
     "logcei_to_lsbo": "logcei",
 }
 FULL_NATIVE = "lsbo_full_budget"
@@ -39,8 +41,14 @@ NATIVE_ARMS = {"original_lsbo", FULL_NATIVE}
 HANDOFF_ARMS = ("ra_to_lsbo", FULL_NATIVE, "original_lsbo", "ra_separate", "logcei_to_lsbo", "logcei")
 TRAINING_ARMS = ("ra_to_lsbo", "ra_joint_to_lsbo", "logcei_to_lsbo")
 TRAINING_SMOKE_SEEDS = (28470100, 28475000)
+BOUNDARY_SMOKE_SEEDS = (28470100, 28480900)
+BOUNDARY_ARMS = ("ra_to_lsbo", "ra_feasibility_to_lsbo")
+BOUNDARY_INFORMATION = "budgeted_boundary_information"
 RA_MODELS = ("ra_separate", "ra_joint_kernel")
 PROFILES = {
+    "boundary-smoke": (4., 0., len(BOUNDARY_SMOKE_SEEDS), 6, 128, 0, BOUNDARY_SMOKE_SEEDS[0]),
+    "boundary-headwind": (4., 0., 40, 20, 128, 0, 28485000),
+    "boundary-payload": (0., 24., 40, 20, 128, 0, 28485000),
     "training-smoke": (4., 0., len(TRAINING_SMOKE_SEEDS), 6, 128, 0, TRAINING_SMOKE_SEEDS[0]),
     "training-headwind": (4., 0., 40, 20, 128, 0, 28480000),
     "training-payload": (0., 24., 40, 20, 128, 0, 28480000),
@@ -56,13 +64,23 @@ PROFILES = {
 def plan(name):
     wind, payload, runs, horizon, pool, heldout, seed = PROFILES[name]
     training = name.startswith("training-")
-    handoff = training or name.startswith("handoff-")
-    arms = TRAINING_ARMS if training else HANDOFF_ARMS if handoff else ARMS
+    boundary = name.startswith("boundary-")
+    handoff = training or boundary or name.startswith("handoff-")
+    arms = ARMS
+    if boundary:
+        arms = BOUNDARY_ARMS
+    elif training:
+        arms = TRAINING_ARMS
+    elif handoff:
+        arms = HANDOFF_ARMS
     seeds = [seed+100*i for i in range(runs)]
     if name == "handoff-smoke":
         seeds = [28470100, 28470800]
     elif name == "training-smoke":
         seeds = list(TRAINING_SMOKE_SEEDS)
+    elif name == "boundary-smoke":
+        seeds = list(BOUNDARY_SMOKE_SEEDS)
+    comparator = BOUNDARY_ARMS[1] if boundary else "ra_joint_to_lsbo"
     return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload, "horizon": horizon,
             "initial": 4, "pool": pool, "heldout": heldout, "arms": list(arms),
             "seeds": seeds,
@@ -72,9 +90,11 @@ def plan(name):
             "calibration_path": None if handoff else "logcei", "rcaide_mda_calls": 0,
             **({"comparison_reference": "ra_to_lsbo", "handoff": "first_observed_usable_design"}
                if handoff else {}),
-            **({"primary": {"reference": "ra_to_lsbo", "comparator": "ra_joint_to_lsbo",
+            **({"primary": {"reference": "ra_to_lsbo", "comparator": comparator,
                            "cohort": "cold", "metric": "capped_first_call_delta"}}
-               if training else {})}
+               if training or boundary else {}),
+            **({"boundary_ablation": {"information_fraction": .2, "feasibility_fraction": 0.,
+                                     "coverage_period": COVERAGE_PERIOD}} if boundary else {})}
 
 
 class BenchmarkAircraft(AircraftCase):
@@ -164,7 +184,12 @@ def engine_for(problem, seed, arm, spec, output):
         return StableOnehotDiscoveryBO(problem, BASE, seed, ra_settings(spec, latent=False),
                                        cold_global=True, protect=True, feedback="interval", coverage_scope="cold")
     engine = JointKernelRA if arm == "ra_joint_kernel" else StableCorpusDiscoveryBO
-    return engine(problem, BASE, seed, ra_settings(spec), output, allocation="onehot_risk")
+    settings = ra_settings(spec)
+    if "boundary_ablation" in spec:
+        ablation = spec["boundary_ablation"]
+        fraction = ablation["feasibility_fraction"] if arm == "ra_feasibility" else ablation["information_fraction"]
+        settings = replace(settings, boundary_fraction=fraction)
+    return engine(problem, BASE, seed, settings, output, allocation="onehot_risk")
 
 
 def calibration_forecasts(problem, spec, seed, prefix, heldout, folder):
@@ -230,6 +255,8 @@ def run(spec, sha, output):
                     "selected_kernel": info.get("shared_kernel_index"),
                     "coverage_reason": info.get("coverage_reason"),
                     **({"backend": backend} if "handoff" in spec else {}),
+                    **({"boundary_slot": info.get("boundary_slot"), "model_mode": info.get("model_mode")}
+                       if "boundary_ablation" in spec else {}),
                 })
                 result = ledger.evaluate(problem, candidate, f"{seed}/{arm}/{i}", "online")
                 optimizer.accept(result)
@@ -332,7 +359,8 @@ def verify(folder, sha):
             or roles["online"] > spec["budget"]["online"]):
         raise ValueError("Charged calls differ from the frozen budget")
     used, trajectories, calibration = set(), [], []
-    training_steps = []
+    training_steps, boundary_steps = [], []
+    ablation = spec.get("boundary_ablation")
 
     def use(tag, role, candidate):
         index, row, actual_role = calls[tag]
@@ -377,7 +405,9 @@ def verify(folder, sha):
                     raise ValueError("Proposal uses the wrong engine for its observed prefix")
                 if backend not in NATIVE_ARMS:
                     available.remove(key)
-                    if "primary" in spec:
+                    if ablation:
+                        cold_steps[boundary_proposal_kind(arm, i, p, ablation)] += 1
+                    elif "primary" in spec:
                         cold_steps[training_proposal_kind(backend, p)] += 1
                 elif arm in HANDOFF_FROM and handoff_at is None:
                     handoff_at = i
@@ -401,12 +431,15 @@ def verify(folder, sha):
             online = history[len(anchors):]
             paths[arm] = online
             if "primary" in spec:
-                training_steps.append({"seed": seed, "method": arm, "cold_steps": dict(cold_steps)})
+                steps = boundary_steps if ablation else training_steps
+                steps.append({"seed": seed, "method": arm, "cold_steps": dict(cold_steps)})
             trajectories.append({"seed": seed, "method": arm, "stop_reason": stop, "elapsed_s": receipt["elapsed_s"],
                                  **({"handoff_after_online": handoff_at} if arm in HANDOFF_FROM else {}),
                                  **trajectory_metrics(anchors, online, spec["horizon"], bool(stop))})
         if "handoff" in spec:
             check_handoff_paths(anchors, paths)
+        if ablation:
+            check_boundary_prefix(paths, ablation["information_fraction"])
     if used != set(calls):
         raise ValueError("Unexpected charged calls in ledger")
     paired = comparisons(trajectories, spec)
@@ -421,7 +454,44 @@ def verify(folder, sha):
             **({"primary": {**primary, **next(row[primary["metric"]] for row in paired
                                              if row["comparator"] == primary["comparator"]
                                              and row["cohort"] == primary["cohort"])},
-                "training_steps": training_steps} if primary else {})}
+                **({"boundary_steps": boundary_steps} if ablation else {"training_steps": training_steps})}
+               if primary else {})}
+
+
+def is_boundary_slot(iteration, fraction):
+    return math.floor((iteration+1)*fraction) > math.floor(iteration*fraction)
+
+
+def boundary_proposal_kind(arm, iteration, proposal, ablation):
+    """Audit the score applied at each cold decision and count realized replacements."""
+    mode = proposal["mode"]
+    if iteration % ablation["coverage_period"] == 0:
+        if mode != "scheduled_coverage":
+            raise ValueError("Boundary ablation changed the planned coverage schedule")
+        return mode
+    if mode == "model_failure_coverage":
+        return mode
+    nominal_slot = is_boundary_slot(iteration, ablation["information_fraction"])
+    fraction = (ablation["information_fraction"] if arm == BOUNDARY_ARMS[0]
+                else ablation["feasibility_fraction"])
+    boundary = is_boundary_slot(iteration, fraction)
+    expected = BOUNDARY_INFORMATION if boundary else "feasible_discovery"
+    chosen = proposal["model_mode"] if mode == "degenerate_gate_coverage" else mode
+    if proposal["boundary_slot"] is not boundary or chosen != expected:
+        raise ValueError("Cold proposal disagrees with the frozen information ablation")
+    if mode == "feasible_discovery" and nominal_slot:
+        return "information_replaced_by_feasibility"
+    return mode
+
+
+def check_boundary_prefix(paths, fraction):
+    """Both arms must agree before an information slot can change their paths."""
+    reference, comparator = (paths[arm] for arm in BOUNDARY_ARMS)
+    first_slot = next((i for i in range(len(reference)) if is_boundary_slot(i, fraction)), len(reference))
+    settled_before_slot = any(row.usable_feasible for row in reference[:first_slot])
+    prefix = len(reference) if settled_before_slot else first_slot
+    if reference[:prefix] != comparator[:prefix]:
+        raise ValueError("Boundary ablation changed decisions before its first intervention")
 
 
 def training_proposal_kind(backend, proposal):
