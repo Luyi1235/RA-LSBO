@@ -48,8 +48,8 @@ Counts over all cold steps (summed over 32 seeds per condition):
 ## Terminal outcomes
 Headwind: win/loss/tie (feasibility then energy) **8/5/27**; energy delta +132.7 Wh [-335.2, +720.4] with 33 comparable seeds. Payload: **7/10/23**; energy delta -76.9 Wh [-499.4, +394.1] with 36 comparable seeds. Positive energy means the information-scored arm ended at a higher (worse) best feasible energy; the paired energy sample excludes seeds where either arm had no feasible design.
 
-## Failed attempt (preserved)
-The first `boundary-headwind` attempt stopped after four seeds without a `seal.json`; its partial ledger and complete log are kept in `failed-headwind-first/` and `logs/boundary-headwind-first.log`. It was not overwritten. The fresh rerun is `headwind/`.
+## Duplicate headwind run (preserved)
+The first `boundary-headwind` run completed all 1,760 calls and sealed, but its wrapper returned exit 1. A second identical run was executed to rule out a faulty ledger. Both ledgers verify independently and produce byte-identical analyses; both are preserved as `headwind-original/` and `headwind/`.
 
 ## Limitations
 - 32 cold seeds, reduced-aircraft task, two arms only.
