@@ -18,7 +18,7 @@ from ra_lsbo.experiments.core.runner import Ledger, NATIVE_STOP, append, lines, 
 from ra_lsbo.experiments.discovery_stages.methods import NativeLSBO
 from ra_lsbo.experiments.simplified_aircraft.dualview_protocol import model_settings
 from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import (
-    HeterogeneousRiskPosterior, ModelNumericalFailure, StableCorpusDiscoveryBO, StableOnehotDiscoveryBO,
+    C_GRID, D_GRID, HeterogeneousRiskPosterior, ModelNumericalFailure, StableCorpusDiscoveryBO, StableOnehotDiscoveryBO,
 )
 from ra_lsbo.partial_bo.models import PrefixFeatures
 from ra_lsbo.partial_bo.problems import candidate_pool
@@ -29,12 +29,21 @@ from run_aircraft_risk_cold_start import file_hash, source_commit
 
 
 ARMS = ("ra_separate", "original_lsbo", "ra_joint_kernel", "ra_explicit", "logcei", "scbo_adapted")
-HANDOFF_FROM = {"ra_to_lsbo": "ra_separate", "logcei_to_lsbo": "logcei"}
+HANDOFF_FROM = {
+    "ra_to_lsbo": "ra_separate",
+    "ra_joint_to_lsbo": "ra_joint_kernel",
+    "logcei_to_lsbo": "logcei",
+}
 FULL_NATIVE = "lsbo_full_budget"
 NATIVE_ARMS = {"original_lsbo", FULL_NATIVE}
 HANDOFF_ARMS = ("ra_to_lsbo", FULL_NATIVE, "original_lsbo", "ra_separate", "logcei_to_lsbo", "logcei")
+TRAINING_ARMS = ("ra_to_lsbo", "ra_joint_to_lsbo", "logcei_to_lsbo")
+TRAINING_SMOKE_SEEDS = (28470100, 28475000)
 RA_MODELS = ("ra_separate", "ra_joint_kernel")
 PROFILES = {
+    "training-smoke": (4., 0., len(TRAINING_SMOKE_SEEDS), 6, 128, 0, TRAINING_SMOKE_SEEDS[0]),
+    "training-headwind": (4., 0., 40, 20, 128, 0, 28480000),
+    "training-payload": (0., 24., 40, 20, 128, 0, 28480000),
     "handoff-smoke": (4., 0., 2, 6, 128, 0, 28470100),
     "handoff-headwind": (4., 0., 24, 20, 128, 0, 28475000),
     "handoff-payload": (0., 24., 24, 20, 128, 0, 28475000),
@@ -46,17 +55,26 @@ PROFILES = {
 
 def plan(name):
     wind, payload, runs, horizon, pool, heldout, seed = PROFILES[name]
-    handoff = name.startswith("handoff-")
-    arms = HANDOFF_ARMS if handoff else ARMS
+    training = name.startswith("training-")
+    handoff = training or name.startswith("handoff-")
+    arms = TRAINING_ARMS if training else HANDOFF_ARMS if handoff else ARMS
+    seeds = [seed+100*i for i in range(runs)]
+    if name == "handoff-smoke":
+        seeds = [28470100, 28470800]
+    elif name == "training-smoke":
+        seeds = list(TRAINING_SMOKE_SEEDS)
     return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload, "horizon": horizon,
             "initial": 4, "pool": pool, "heldout": heldout, "arms": list(arms),
-            "seeds": [28470100, 28470800] if name == "handoff-smoke" else [seed+100*i for i in range(runs)],
+            "seeds": seeds,
             "encoder_epochs": 30, "native_gp_steps": 45,
             "checkpoints": [] if handoff else [4, 7] if name == "comparison-smoke" else [4, 8, 12, 16],
             "budget": {"initial": runs*4, "online": runs*horizon*len(arms), "heldout": runs*heldout},
             "calibration_path": None if handoff else "logcei", "rcaide_mda_calls": 0,
             **({"comparison_reference": "ra_to_lsbo", "handoff": "first_observed_usable_design"}
-               if handoff else {})}
+               if handoff else {}),
+            **({"primary": {"reference": "ra_to_lsbo", "comparator": "ra_joint_to_lsbo",
+                           "cohort": "cold", "metric": "capped_first_call_delta"}}
+               if training else {})}
 
 
 class BenchmarkAircraft(AircraftCase):
@@ -314,6 +332,7 @@ def verify(folder, sha):
             or roles["online"] > spec["budget"]["online"]):
         raise ValueError("Charged calls differ from the frozen budget")
     used, trajectories, calibration = set(), [], []
+    training_steps = []
 
     def use(tag, role, candidate):
         index, row, actual_role = calls[tag]
@@ -347,6 +366,7 @@ def verify(folder, sha):
             available = set(map(digest, roster["pool"]))
             holdout_start = heldout[0][0] if heldout else len(calls)+1
             handoff_at = None
+            cold_steps = Counter()
             for i, p in enumerate(proposals):
                 candidate = p["candidate"]
                 key = digest(candidate)
@@ -357,6 +377,8 @@ def verify(folder, sha):
                     raise ValueError("Proposal uses the wrong engine for its observed prefix")
                 if backend not in NATIVE_ARMS:
                     available.remove(key)
+                    if "primary" in spec:
+                        cold_steps[training_proposal_kind(backend, p)] += 1
                 elif arm in HANDOFF_FROM and handoff_at is None:
                     handoff_at = i
                 seen.add(key)
@@ -378,6 +400,8 @@ def verify(folder, sha):
                 calibration.extend(score_calibration(spec, seed, history, heldout, unit))
             online = history[len(anchors):]
             paths[arm] = online
+            if "primary" in spec:
+                training_steps.append({"seed": seed, "method": arm, "cold_steps": dict(cold_steps)})
             trajectories.append({"seed": seed, "method": arm, "stop_reason": stop, "elapsed_s": receipt["elapsed_s"],
                                  **({"handoff_after_online": handoff_at} if arm in HANDOFF_FROM else {}),
                                  **trajectory_metrics(anchors, online, spec["horizon"], bool(stop))})
@@ -385,29 +409,54 @@ def verify(folder, sha):
             check_handoff_paths(anchors, paths)
     if used != set(calls):
         raise ValueError("Unexpected charged calls in ledger")
+    paired = comparisons(trajectories, spec)
+    primary = spec.get("primary")
     return {"status": "VERIFIED_RA_LSBO_COMPARISON", "source_sha": sha, "roles": dict(roles),
             "total_calls": len(calls), "max_calls": sum(spec["budget"].values()), "rcaide_mda_calls": 0,
-            "trajectories": trajectories, "comparisons": comparisons(trajectories, spec),
+            "trajectories": trajectories, "comparisons": paired,
             "calibration": calibration, "calibration_comparison": compare_calibration(calibration),
             **({"native_stop_comparison": comparisons(
                 trajectories, spec, reference_method=FULL_NATIVE, baselines=("original_lsbo",))}
-               if "handoff" in spec else {})}
+               if FULL_NATIVE in spec["arms"] else {}),
+            **({"primary": {**primary, **next(row[primary["metric"]] for row in paired
+                                             if row["comparator"] == primary["comparator"]
+                                             and row["cohort"] == primary["cohort"])},
+                "training_steps": training_steps} if primary else {})}
+
+
+def training_proposal_kind(backend, proposal):
+    """Distinguish scored decisions from coverage and the registered failure fallback."""
+    kernel = proposal["selected_kernel"]
+    mode = proposal["mode"]
+    skipped = mode in {"scheduled_coverage", "model_failure_coverage"}
+    if backend == "ra_joint_kernel" and not skipped:
+        if type(kernel) is not int or not 0 <= kernel < len(C_GRID)*len(D_GRID):
+            raise ValueError("Shared training decision is missing a valid kernel selection")
+    elif kernel is not None:
+        raise ValueError("Unexpected shared kernel selection")
+    return mode if skipped else "model"
 
 
 def check_handoff_paths(initial, paths):
     """Audit the matched trajectories up to the fixed policy intervention."""
-    native = paths["original_lsbo"]
-    if native != paths[FULL_NATIVE][:len(native)]:
-        raise ValueError("Lifting the native stop cap changed a pre-stop decision")
-    for handoff, cold in HANDOFF_FROM.items():
-        original = paths[cold]
-        if any(row.usable_feasible for row in initial):
-            expected = paths[FULL_NATIVE]
-            observed = paths[handoff]
+    if "original_lsbo" in paths:
+        native = paths["original_lsbo"]
+        if native != paths[FULL_NATIVE][:len(native)]:
+            raise ValueError("Lifting the native stop cap changed a pre-stop decision")
+    handoffs = [arm for arm in HANDOFF_FROM if arm in paths]
+    warm = any(row.usable_feasible for row in initial)
+    for arm in handoffs:
+        if warm:
+            expected = paths[FULL_NATIVE] if FULL_NATIVE in paths else paths[handoffs[0]]
+            observed = paths[arm]
         else:
+            cold = HANDOFF_FROM[arm]
+            if cold not in paths:
+                continue
+            original = paths[cold]
             first = next((i for i, row in enumerate(original, 1) if row.usable_feasible), len(original))
             expected = original[:first]
-            observed = paths[handoff][:first]
+            observed = paths[arm][:first]
         if observed != expected:
             raise ValueError("Paired handoff changed its declared cold or initial-warm trajectory")
 
