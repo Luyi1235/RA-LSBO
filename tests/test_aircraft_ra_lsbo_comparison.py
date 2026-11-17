@@ -222,3 +222,67 @@ class StopEvidenceAblationTests(unittest.TestCase):
         self.assertEqual(stop_evidence_proposal_kind("ra_stop_status", p, raw), "fit_with_masked_stop_evidence")
         with self.assertRaisesRegex(ValueError, "frozen stop-evidence"):
             stop_evidence_proposal_kind("ra_separate", p, raw)
+
+    def test_sign_view_coarsens_exact_and_interval_targets_only_at_known_stops(self):
+        from dataclasses import replace
+        from ra_lsbo.risk_core.observations import OutputObservation
+        from run_aircraft_ra_lsbo_comparison import BenchmarkAircraft, mask_stopped_constraints
+
+        raw = self.history()
+        packet = raw[0].observation
+        extra = (
+            ("unresolved", OutputObservation("interval", "unresolved", lower=-.2, upper=.3)),
+            ("zero", OutputObservation("exact", "zero", value=0.)),
+            ("inclusive_lower_zero", OutputObservation("interval", "inclusive_lower_zero", lower=0.)),
+        )
+        raw[0] = replace(raw[0], observation=replace(packet, constraints=packet.constraints+extra))
+        signed = mask_stopped_constraints(raw, BenchmarkAircraft.analytical_constraints, keep_signs=True)
+        observed = signed[0].observation
+        self.assertEqual(signed[1:], raw[1:])
+        self.assertEqual(observed.objective, packet.objective)
+        self.assertEqual(observed.completion_label(), 0)
+        self.assertEqual(observed.constraint("span"), packet.constraint("span"))
+        self.assertEqual(observed.constraint("missing"), packet.constraint("missing"))
+        self.assertEqual(observed.constraint("stress"), OutputObservation("interval", "stress", upper=0.))
+        self.assertEqual(observed.constraint("zero"), OutputObservation("interval", "zero", upper=0.))
+        self.assertEqual(observed.constraint("soc"),
+                         OutputObservation("interval", "soc", lower=0., lower_inclusive=False))
+        self.assertEqual(observed.constraint("unresolved").kind, "missing")
+        self.assertEqual(observed.constraint("inclusive_lower_zero").kind, "missing")
+
+    def test_sign_gp_receipt_and_exposure_distinguish_resolved_targets(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from ra_lsbo.budget import digest
+        from run_aircraft_ra_lsbo_comparison import BenchmarkAircraft, StopSignRA, stop_evidence_proposal_kind
+
+        raw = self.history()
+        model = StopSignRA.__new__(StopSignRA)
+        model.problem = SimpleNamespace(analytical_constraints=BenchmarkAircraft.analytical_constraints)
+        model.base, model.session, model.seed, model.settings, model.allocation = None, None, 42, None, "onehot_risk"
+        module = "ra_lsbo.experiments.simplified_aircraft.dualview_optimizer"
+        with patch(f"{module}.feature_snapshot") as features, patch(f"{module}.PrefixFeatures") as explicit, \
+                patch(f"{module}.HeterogeneousRiskPosterior") as posterior:
+            model._build_posterior(raw)
+            self.assertIs(features.call_args.args[2], raw)
+            self.assertIs(explicit.call_args.args[2], raw)
+            view = posterior.call_args.args[1]
+        p = {"mode": "feasible_discovery", "model_history_digest": digest([r.to_dict() for r in view])}
+        self.assertEqual(stop_evidence_proposal_kind("ra_stop_sign", p, raw), "fit_with_signed_stop_evidence")
+        with self.assertRaisesRegex(ValueError, "frozen stop-evidence"):
+            stop_evidence_proposal_kind("ra_stop_status", p, raw)
+
+    def test_sign_plan_freezes_paired_fresh_seeds_and_budgets(self):
+        from run_aircraft_ra_lsbo_comparison import PROFILES
+
+        spec = plan("stop-signs-headwind")
+        self.assertEqual(spec["primary"], {"reference": "ra_stop_sign_to_lsbo",
+                                           "comparator": "ra_stop_status_to_lsbo",
+                                           "cohort": "cold", "metric": "capped_first_call_delta"})
+        self.assertEqual(spec["arms"], ["ra_stop_sign_to_lsbo", "ra_stop_status_to_lsbo", "ra_to_lsbo"])
+        self.assertEqual(spec["seeds"], plan("stop-signs-payload")["seeds"])
+        for prior in PROFILES:
+            if not prior.startswith("stop-signs-"):
+                self.assertTrue(set(spec["seeds"]).isdisjoint(plan(prior)["seeds"]))
+        self.assertEqual(sum(spec["budget"].values()), 2560)
+        self.assertEqual(sum(plan("stop-signs-smoke")["budget"].values()), 44)
