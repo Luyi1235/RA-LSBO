@@ -36,6 +36,7 @@ HANDOFF_FROM = {
     "ra_joint_to_lsbo": "ra_joint_kernel",
     "ra_feasibility_to_lsbo": "ra_feasibility",
     "ra_stop_status_to_lsbo": "ra_stop_status",
+    "ra_stop_sign_to_lsbo": "ra_stop_sign",
     "logcei_to_lsbo": "logcei",
 }
 FULL_NATIVE = "lsbo_full_budget"
@@ -48,8 +49,12 @@ BOUNDARY_ARMS = ("ra_to_lsbo", "ra_feasibility_to_lsbo")
 BOUNDARY_INFORMATION = "budgeted_boundary_information"
 STOP_EVIDENCE_ARMS = ("ra_to_lsbo", "ra_stop_status_to_lsbo")
 STOP_EVIDENCE_SMOKE_SEEDS = (28470100, 28480900)
+STOP_SIGN_ARMS = ("ra_stop_sign_to_lsbo", "ra_stop_status_to_lsbo", "ra_to_lsbo")
 RA_MODELS = ("ra_separate", "ra_joint_kernel")
 PROFILES = {
+    "stop-signs-smoke": (4., 0., len(STOP_EVIDENCE_SMOKE_SEEDS), 6, 128, 0, STOP_EVIDENCE_SMOKE_SEEDS[0]),
+    "stop-signs-headwind": (4., 0., 40, 20, 128, 0, 28495000),
+    "stop-signs-payload": (0., 24., 40, 20, 128, 0, 28495000),
     "stop-evidence-smoke": (4., 0., len(STOP_EVIDENCE_SMOKE_SEEDS), 6, 128, 0, STOP_EVIDENCE_SMOKE_SEEDS[0]),
     "stop-evidence-headwind": (4., 0., 40, 20, 128, 0, 28490000),
     "stop-evidence-payload": (0., 24., 40, 20, 128, 0, 28490000),
@@ -72,10 +77,13 @@ def plan(name):
     wind, payload, runs, horizon, pool, heldout, seed = PROFILES[name]
     training = name.startswith("training-")
     boundary = name.startswith("boundary-")
-    stop_evidence = name.startswith("stop-evidence-")
+    stop_signs = name.startswith("stop-signs-")
+    stop_evidence = stop_signs or name.startswith("stop-evidence-")
     handoff = training or boundary or stop_evidence or name.startswith("handoff-")
     arms = ARMS
-    if stop_evidence:
+    if stop_signs:
+        arms = STOP_SIGN_ARMS
+    elif stop_evidence:
         arms = STOP_EVIDENCE_ARMS
     elif boundary:
         arms = BOUNDARY_ARMS
@@ -90,9 +98,10 @@ def plan(name):
         seeds = list(TRAINING_SMOKE_SEEDS)
     elif name == "boundary-smoke":
         seeds = list(BOUNDARY_SMOKE_SEEDS)
-    elif name == "stop-evidence-smoke":
+    elif name in ("stop-evidence-smoke", "stop-signs-smoke"):
         seeds = list(STOP_EVIDENCE_SMOKE_SEEDS)
     comparator = arms[1] if training or boundary or stop_evidence else None
+    reference = arms[0] if stop_signs else "ra_to_lsbo"
     return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload, "horizon": horizon,
             "initial": 4, "pool": pool, "heldout": heldout, "arms": list(arms),
             "seeds": seeds,
@@ -100,13 +109,15 @@ def plan(name):
             "checkpoints": [] if handoff else [4, 7] if name == "comparison-smoke" else [4, 8, 12, 16],
             "budget": {"initial": runs*4, "online": runs*horizon*len(arms), "heldout": runs*heldout},
             "calibration_path": None if handoff else "logcei", "rcaide_mda_calls": 0,
-            **({"comparison_reference": "ra_to_lsbo", "handoff": "first_observed_usable_design"}
+            **({"comparison_reference": reference, "handoff": "first_observed_usable_design"}
                if handoff else {}),
-            **({"primary": {"reference": "ra_to_lsbo", "comparator": comparator,
+            **({"primary": {"reference": reference, "comparator": comparator,
                            "cohort": "cold", "metric": "capped_first_call_delta"}}
                if comparator else {}),
-            **({"stop_evidence_ablation": "mask_stopped_nonanalytical_constraint_targets"}
+            **({"stop_evidence_ablation": "full_sign_or_mask_stopped_nonanalytical_constraint_targets"
+                if stop_signs else "mask_stopped_nonanalytical_constraint_targets"}
                if stop_evidence else {}),
+            **({"stop_sign_ablation": {"near_preservation_margin_calls": 1.0}} if stop_signs else {}),
             **({"boundary_ablation": {"information_fraction": .2, "feasibility_fraction": 0.,
                                      "coverage_period": COVERAGE_PERIOD}} if boundary else {})}
 
@@ -139,14 +150,24 @@ class JointKernelRA(StableCorpusDiscoveryBO):
                                           latent, explicit, view_policy=self.allocation, shared_kernel=True)
 
 
-def mask_stopped_constraints(records, analytical_constraints):
-    """Mask only observable constraint targets of known incomplete evaluations."""
+def coarsen_stopped_target(value, keep_signs):
+    if keep_signs:
+        satisfied = value.constraint_satisfaction()
+        if satisfied is True:
+            return OutputObservation("interval", value.evidence_id, upper=0.)
+        if satisfied is False:
+            return OutputObservation("interval", value.evidence_id, lower=0., lower_inclusive=False)
+    return OutputObservation("missing", value.evidence_id, reason="stop_evidence_ablation")
+
+
+def mask_stopped_constraints(records, analytical_constraints, *, keep_signs=False):
+    """Remove magnitudes or all evidence from observable nonanalytical targets at known stops."""
     view = []
     for row in records:
         packet = row.observation
         if packet.completion_label() == 0:
             constraints = tuple(
-                (name, OutputObservation("missing", value.evidence_id, reason="stop_evidence_ablation")
+                (name, coarsen_stopped_target(value, keep_signs)
                  if name not in analytical_constraints and value.kind != "missing" else value)
                 for name, value in packet.constraints
             )
@@ -159,6 +180,11 @@ def mask_stopped_constraints(records, analytical_constraints):
 class StopStatusRA(StableCorpusDiscoveryBO):
     def _posterior_records(self, records):
         return mask_stopped_constraints(records, self.problem.analytical_constraints)
+
+
+class StopSignRA(StableCorpusDiscoveryBO):
+    def _posterior_records(self, records):
+        return mask_stopped_constraints(records, self.problem.analytical_constraints, keep_signs=True)
 
 
 def ra_settings(spec, *, latent=True):
@@ -219,7 +245,8 @@ def engine_for(problem, seed, arm, spec, output):
     if arm == "ra_explicit":
         return StableOnehotDiscoveryBO(problem, BASE, seed, ra_settings(spec, latent=False),
                                        cold_global=True, protect=True, feedback="interval", coverage_scope="cold")
-    engine = {"ra_joint_kernel": JointKernelRA, "ra_stop_status": StopStatusRA}.get(arm, StableCorpusDiscoveryBO)
+    engine = {"ra_joint_kernel": JointKernelRA, "ra_stop_status": StopStatusRA,
+              "ra_stop_sign": StopSignRA}.get(arm, StableCorpusDiscoveryBO)
     settings = ra_settings(spec)
     if "boundary_ablation" in spec:
         ablation = spec["boundary_ablation"]
@@ -481,7 +508,7 @@ def verify(folder, sha):
             check_handoff_paths(anchors, paths)
         if ablation:
             check_boundary_prefix(paths, ablation["information_fraction"])
-        if stop_evidence and paths[STOP_EVIDENCE_ARMS[0]][0] != paths[STOP_EVIDENCE_ARMS[1]][0]:
+        if stop_evidence and any(paths[arm][0] != paths[spec["arms"][0]][0] for arm in spec["arms"][1:]):
             raise ValueError("Stop-evidence ablation changed the common initial coverage decision")
     if used != set(calls):
         raise ValueError("Unexpected charged calls in ledger")
@@ -494,6 +521,9 @@ def verify(folder, sha):
             **({"native_stop_comparison": comparisons(
                 trajectories, spec, reference_method=FULL_NATIVE, baselines=("original_lsbo",))}
                if FULL_NATIVE in spec["arms"] else {}),
+            **({"full_evidence_replication": comparisons(
+                trajectories, spec, reference_method="ra_to_lsbo", baselines=("ra_stop_status_to_lsbo",))}
+               if "stop_sign_ablation" in spec else {}),
             **({"primary": {**primary, **next(row[primary["metric"]] for row in paired
                                              if row["comparator"] == primary["comparator"]
                                              and row["cohort"] == primary["cohort"])},
@@ -512,12 +542,18 @@ def stop_evidence_proposal_kind(backend, proposal, history):
             raise ValueError("Coverage fallback cannot report a successful GP training view")
         return proposal["mode"]
     masked = mask_stopped_constraints(history, BenchmarkAircraft.analytical_constraints)
-    view = masked if backend == "ra_stop_status" else history
+    if backend == "ra_stop_sign":
+        view = mask_stopped_constraints(history, BenchmarkAircraft.analytical_constraints, keep_signs=True)
+        kind = "fit_with_signed_stop_evidence" if view != masked else "fit_without_resolved_stop_signs"
+    elif backend == "ra_stop_status":
+        view, kind = masked, "fit_with_masked_stop_evidence"
+    else:
+        view, kind = history, "fit_with_stop_evidence"
     if receipt != digest([row.to_dict() for row in view]):
         raise ValueError("GP training view disagrees with the frozen stop-evidence ablation")
     if masked == history:
         return "fit_without_stop_evidence"
-    return "fit_with_masked_stop_evidence" if backend == "ra_stop_status" else "fit_with_stop_evidence"
+    return kind
 
 
 def is_boundary_slot(iteration, fraction):
