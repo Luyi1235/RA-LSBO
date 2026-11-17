@@ -97,3 +97,54 @@ class TrainingAblationTests(unittest.TestCase):
         check_handoff_paths(initial, paths)
         with self.assertRaisesRegex(ValueError, "initial-warm"):
             check_handoff_paths(initial, {**paths, "ra_joint_to_lsbo": ["other-proposal"]})
+
+
+class BoundaryAblationTests(unittest.TestCase):
+    def test_formal_pair_and_fresh_seeds(self):
+        from dataclasses import asdict
+        from pathlib import Path
+        from run_aircraft_ra_lsbo_comparison import BenchmarkAircraft, engine_for, ra_settings
+
+        spec = plan("boundary-headwind")
+        self.assertEqual(sum(spec["budget"].values()), 1760)
+        self.assertEqual(spec["seeds"], plan("boundary-payload")["seeds"])
+        self.assertTrue(set(spec["seeds"]).isdisjoint(plan("training-headwind")["seeds"]))
+        self.assertEqual(spec["arms"], ["ra_to_lsbo", "ra_feasibility_to_lsbo"])
+        self.assertEqual(spec["primary"]["comparator"], "ra_feasibility_to_lsbo")
+        problem = BenchmarkAircraft(spec)
+        args = problem, spec["seeds"][0]
+        left, right = (engine_for(*args, arm, spec, Path(".")).optimizer for arm in spec["arms"])
+        self.assertEqual(asdict(left.settings), asdict(ra_settings(spec)))
+        self.assertEqual(asdict(right.settings), {**asdict(left.settings), "boundary_fraction": 0.})
+
+    def test_score_replacement_keeps_gate_and_checks_coverage(self):
+        import numpy as np
+        from ra_lsbo.soc_revision.acquisition import choose_acquisition
+        from run_aircraft_ra_lsbo_comparison import boundary_proposal_kind
+        from types import SimpleNamespace
+
+        a = plan("boundary-headwind")["boundary_ablation"]
+        options = dict(horizon=20, initial_kappa=1., final_kappa=1., completion_threshold=.5)
+        prediction = {"completion": {"mean": np.array([-2., 0.]), "variance": np.array([.01, .01])},
+                      "constraints": {}, "objective": None}
+        i, info = choose_acquisition(prediction, None, 4, SimpleNamespace(**options, boundary_fraction=.2), True)
+        j, feasible = choose_acquisition(prediction, None, 4, SimpleNamespace(**options, boundary_fraction=0.), True)
+        self.assertEqual(info["eligible"], feasible["eligible"])
+        self.assertEqual((i, j), (1, 0))
+        self.assertEqual(boundary_proposal_kind("ra_to_lsbo", 4, info, a), "budgeted_boundary_information")
+        self.assertEqual(boundary_proposal_kind("ra_feasibility_to_lsbo", 4, feasible, a),
+                         "information_replaced_by_feasibility")
+        with self.assertRaisesRegex(ValueError, "coverage schedule"):
+            boundary_proposal_kind("ra_to_lsbo", 5, feasible, a)
+
+    def test_preintervention_prefix_cannot_change(self):
+        from types import SimpleNamespace
+        from run_aircraft_ra_lsbo_comparison import check_boundary_prefix
+
+        same = SimpleNamespace(usable_feasible=False)
+        different = SimpleNamespace(usable_feasible=False, another_design=True)
+        ref = [same]*6
+        paths = {"ra_to_lsbo": ref, "ra_feasibility_to_lsbo": [same]*4+[different, same]}
+        check_boundary_prefix(paths, .2)
+        with self.assertRaisesRegex(ValueError, "first intervention"):
+            check_boundary_prefix({**paths, "ra_feasibility_to_lsbo": [different]+[same]*5}, .2)
