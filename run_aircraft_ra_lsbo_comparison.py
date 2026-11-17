@@ -24,6 +24,7 @@ from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import (
 from ra_lsbo.partial_bo.models import PrefixFeatures
 from ra_lsbo.partial_bo.problems import candidate_pool
 from ra_lsbo.partial_bo.records import DesignRecord
+from ra_lsbo.risk_core.observations import OutputObservation
 from ra_lsbo.soc_revision.acquisition import quantities
 from ra_lsbo.structure_corpus import feature_snapshot
 from run_aircraft_risk_cold_start import file_hash, source_commit
@@ -34,6 +35,7 @@ HANDOFF_FROM = {
     "ra_to_lsbo": "ra_separate",
     "ra_joint_to_lsbo": "ra_joint_kernel",
     "ra_feasibility_to_lsbo": "ra_feasibility",
+    "ra_stop_status_to_lsbo": "ra_stop_status",
     "logcei_to_lsbo": "logcei",
 }
 FULL_NATIVE = "lsbo_full_budget"
@@ -44,8 +46,13 @@ TRAINING_SMOKE_SEEDS = (28470100, 28475000)
 BOUNDARY_SMOKE_SEEDS = (28470100, 28480900)
 BOUNDARY_ARMS = ("ra_to_lsbo", "ra_feasibility_to_lsbo")
 BOUNDARY_INFORMATION = "budgeted_boundary_information"
+STOP_EVIDENCE_ARMS = ("ra_to_lsbo", "ra_stop_status_to_lsbo")
+STOP_EVIDENCE_SMOKE_SEEDS = (28470100, 28480900)
 RA_MODELS = ("ra_separate", "ra_joint_kernel")
 PROFILES = {
+    "stop-evidence-smoke": (4., 0., len(STOP_EVIDENCE_SMOKE_SEEDS), 6, 128, 0, STOP_EVIDENCE_SMOKE_SEEDS[0]),
+    "stop-evidence-headwind": (4., 0., 40, 20, 128, 0, 28490000),
+    "stop-evidence-payload": (0., 24., 40, 20, 128, 0, 28490000),
     "boundary-smoke": (4., 0., len(BOUNDARY_SMOKE_SEEDS), 6, 128, 0, BOUNDARY_SMOKE_SEEDS[0]),
     "boundary-headwind": (4., 0., 40, 20, 128, 0, 28485000),
     "boundary-payload": (0., 24., 40, 20, 128, 0, 28485000),
@@ -65,9 +72,12 @@ def plan(name):
     wind, payload, runs, horizon, pool, heldout, seed = PROFILES[name]
     training = name.startswith("training-")
     boundary = name.startswith("boundary-")
-    handoff = training or boundary or name.startswith("handoff-")
+    stop_evidence = name.startswith("stop-evidence-")
+    handoff = training or boundary or stop_evidence or name.startswith("handoff-")
     arms = ARMS
-    if boundary:
+    if stop_evidence:
+        arms = STOP_EVIDENCE_ARMS
+    elif boundary:
         arms = BOUNDARY_ARMS
     elif training:
         arms = TRAINING_ARMS
@@ -80,7 +90,9 @@ def plan(name):
         seeds = list(TRAINING_SMOKE_SEEDS)
     elif name == "boundary-smoke":
         seeds = list(BOUNDARY_SMOKE_SEEDS)
-    comparator = BOUNDARY_ARMS[1] if boundary else "ra_joint_to_lsbo"
+    elif name == "stop-evidence-smoke":
+        seeds = list(STOP_EVIDENCE_SMOKE_SEEDS)
+    comparator = arms[1] if training or boundary or stop_evidence else None
     return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload, "horizon": horizon,
             "initial": 4, "pool": pool, "heldout": heldout, "arms": list(arms),
             "seeds": seeds,
@@ -92,7 +104,9 @@ def plan(name):
                if handoff else {}),
             **({"primary": {"reference": "ra_to_lsbo", "comparator": comparator,
                            "cohort": "cold", "metric": "capped_first_call_delta"}}
-               if training or boundary else {}),
+               if comparator else {}),
+            **({"stop_evidence_ablation": "mask_stopped_nonanalytical_constraint_targets"}
+               if stop_evidence else {}),
             **({"boundary_ablation": {"information_fraction": .2, "feasibility_fraction": 0.,
                                      "coverage_period": COVERAGE_PERIOD}} if boundary else {})}
 
@@ -123,6 +137,28 @@ class JointKernelRA(StableCorpusDiscoveryBO):
         explicit = PrefixFeatures(self.problem, self.base, records, self.seed, latent=False)
         return HeterogeneousRiskPosterior(self.problem, records, self.seed, self.settings,
                                           latent, explicit, view_policy=self.allocation, shared_kernel=True)
+
+
+def mask_stopped_constraints(records, analytical_constraints):
+    """Mask only observable constraint targets of known incomplete evaluations."""
+    view = []
+    for row in records:
+        packet = row.observation
+        if packet.completion_label() == 0:
+            constraints = tuple(
+                (name, OutputObservation("missing", value.evidence_id, reason="stop_evidence_ablation")
+                 if name not in analytical_constraints and value.kind != "missing" else value)
+                for name, value in packet.constraints
+            )
+            if constraints != packet.constraints:
+                row = replace(row, observation=replace(packet, constraints=constraints))
+        view.append(row)
+    return view
+
+
+class StopStatusRA(StableCorpusDiscoveryBO):
+    def _posterior_records(self, records):
+        return mask_stopped_constraints(records, self.problem.analytical_constraints)
 
 
 def ra_settings(spec, *, latent=True):
@@ -183,7 +219,7 @@ def engine_for(problem, seed, arm, spec, output):
     if arm == "ra_explicit":
         return StableOnehotDiscoveryBO(problem, BASE, seed, ra_settings(spec, latent=False),
                                        cold_global=True, protect=True, feedback="interval", coverage_scope="cold")
-    engine = JointKernelRA if arm == "ra_joint_kernel" else StableCorpusDiscoveryBO
+    engine = {"ra_joint_kernel": JointKernelRA, "ra_stop_status": StopStatusRA}.get(arm, StableCorpusDiscoveryBO)
     settings = ra_settings(spec)
     if "boundary_ablation" in spec:
         ablation = spec["boundary_ablation"]
@@ -257,6 +293,8 @@ def run(spec, sha, output):
                     **({"backend": backend} if "handoff" in spec else {}),
                     **({"boundary_slot": info.get("boundary_slot"), "model_mode": info.get("model_mode")}
                        if "boundary_ablation" in spec else {}),
+                    **({"model_history_digest": info.get("history_digest")}
+                       if "stop_evidence_ablation" in spec else {}),
                 })
                 result = ledger.evaluate(problem, candidate, f"{seed}/{arm}/{i}", "online")
                 optimizer.accept(result)
@@ -359,8 +397,9 @@ def verify(folder, sha):
             or roles["online"] > spec["budget"]["online"]):
         raise ValueError("Charged calls differ from the frozen budget")
     used, trajectories, calibration = set(), [], []
-    training_steps, boundary_steps = [], []
+    training_steps, boundary_steps, stop_evidence_steps = [], [], []
     ablation = spec.get("boundary_ablation")
+    stop_evidence = "stop_evidence_ablation" in spec
 
     def use(tag, role, candidate):
         index, row, actual_role = calls[tag]
@@ -407,6 +446,8 @@ def verify(folder, sha):
                     available.remove(key)
                     if ablation:
                         cold_steps[boundary_proposal_kind(arm, i, p, ablation)] += 1
+                    elif stop_evidence:
+                        cold_steps[stop_evidence_proposal_kind(backend, p, history)] += 1
                     elif "primary" in spec:
                         cold_steps[training_proposal_kind(backend, p)] += 1
                 elif arm in HANDOFF_FROM and handoff_at is None:
@@ -431,7 +472,7 @@ def verify(folder, sha):
             online = history[len(anchors):]
             paths[arm] = online
             if "primary" in spec:
-                steps = boundary_steps if ablation else training_steps
+                steps = stop_evidence_steps if stop_evidence else boundary_steps if ablation else training_steps
                 steps.append({"seed": seed, "method": arm, "cold_steps": dict(cold_steps)})
             trajectories.append({"seed": seed, "method": arm, "stop_reason": stop, "elapsed_s": receipt["elapsed_s"],
                                  **({"handoff_after_online": handoff_at} if arm in HANDOFF_FROM else {}),
@@ -440,6 +481,8 @@ def verify(folder, sha):
             check_handoff_paths(anchors, paths)
         if ablation:
             check_boundary_prefix(paths, ablation["information_fraction"])
+        if stop_evidence and paths[STOP_EVIDENCE_ARMS[0]][0] != paths[STOP_EVIDENCE_ARMS[1]][0]:
+            raise ValueError("Stop-evidence ablation changed the common initial coverage decision")
     if used != set(calls):
         raise ValueError("Unexpected charged calls in ledger")
     paired = comparisons(trajectories, spec)
@@ -454,8 +497,27 @@ def verify(folder, sha):
             **({"primary": {**primary, **next(row[primary["metric"]] for row in paired
                                              if row["comparator"] == primary["comparator"]
                                              and row["cohort"] == primary["cohort"])},
-                **({"boundary_steps": boundary_steps} if ablation else {"training_steps": training_steps})}
+                **({"boundary_steps": boundary_steps} if ablation else
+                   {"stop_evidence_steps": stop_evidence_steps} if stop_evidence else
+                   {"training_steps": training_steps})}
                if primary else {})}
+
+
+def stop_evidence_proposal_kind(backend, proposal, history):
+    """Verify successful GP fits used the declared view of the raw ledger prefix."""
+    skipped = proposal["mode"] in {"scheduled_coverage", "model_failure_coverage"}
+    receipt = proposal["model_history_digest"]
+    if skipped:
+        if receipt is not None:
+            raise ValueError("Coverage fallback cannot report a successful GP training view")
+        return proposal["mode"]
+    masked = mask_stopped_constraints(history, BenchmarkAircraft.analytical_constraints)
+    view = masked if backend == "ra_stop_status" else history
+    if receipt != digest([row.to_dict() for row in view]):
+        raise ValueError("GP training view disagrees with the frozen stop-evidence ablation")
+    if masked == history:
+        return "fit_without_stop_evidence"
+    return "fit_with_masked_stop_evidence" if backend == "ra_stop_status" else "fit_with_stop_evidence"
 
 
 def is_boundary_slot(iteration, fraction):

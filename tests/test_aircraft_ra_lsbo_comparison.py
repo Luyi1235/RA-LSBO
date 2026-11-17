@@ -148,3 +148,77 @@ class BoundaryAblationTests(unittest.TestCase):
         check_boundary_prefix(paths, .2)
         with self.assertRaisesRegex(ValueError, "first intervention"):
             check_boundary_prefix({**paths, "ra_feasibility_to_lsbo": [different]+[same]*5}, .2)
+
+
+class StopEvidenceAblationTests(unittest.TestCase):
+    @staticmethod
+    def history():
+        from ra_lsbo.budget import digest
+        from ra_lsbo.partial_bo.records import DesignRecord
+        from ra_lsbo.risk_core.observations import OutputObservation, RunObservation
+
+        rows = []
+        for i, status in enumerate(("hidden_failure", "completed", "unknown")):
+            candidate = {"i": i}
+            packet = RunObservation(
+                digest(candidate), "contract", f"run-{i}", status,
+                OutputObservation("interval", "energy", lower=30.),
+                (("span", OutputObservation("exact", "span", value=-1.)),
+                 ("stress", OutputObservation("exact", "stress", value=-.5)),
+                 ("soc", OutputObservation("interval", "soc", lower=.1)),
+                 ("missing", OutputObservation("missing", "missing", reason="absent"))),
+                failure_cause="physical_soc_reserve_abort" if status == "hidden_failure" else None)
+            rows.append(DesignRecord(candidate, packet, {"trial": i}))
+        return rows
+
+    def test_only_known_stops_lose_observed_nonanalytical_targets(self):
+        from run_aircraft_ra_lsbo_comparison import BenchmarkAircraft, mask_stopped_constraints
+
+        raw = self.history()
+        masked = mask_stopped_constraints(raw, BenchmarkAircraft.analytical_constraints)
+        self.assertEqual(masked[1:], raw[1:])
+        self.assertEqual(masked[0].candidate, raw[0].candidate)
+        self.assertEqual(masked[0].diagnostics, raw[0].diagnostics)
+        a, b = masked[0].observation, raw[0].observation
+        self.assertEqual(a.completion_label(), b.completion_label())
+        self.assertEqual(a.objective, b.objective)
+        self.assertEqual(a.constraint("span"), b.constraint("span"))
+        self.assertEqual(a.constraint("missing"), b.constraint("missing"))
+        self.assertEqual(b.constraint("stress").kind, "exact")
+        self.assertEqual(b.constraint("soc").kind, "interval")
+        self.assertEqual(a.constraint("stress").kind, "missing")
+        self.assertEqual(a.constraint("soc").kind, "missing")
+        self.assertEqual(a.constraint("soc").evidence_id, b.constraint("soc").evidence_id)
+
+    def test_gp_features_see_raw_but_constraint_supervision_is_masked(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from run_aircraft_ra_lsbo_comparison import StopStatusRA
+
+        model = StopStatusRA.__new__(StopStatusRA)
+        model.problem = SimpleNamespace(analytical_constraints=("span", "packing"))
+        model.base, model.session, model.seed, model.settings, model.allocation = None, None, 42, None, "onehot_risk"
+        raw = self.history()
+        module = "ra_lsbo.experiments.simplified_aircraft.dualview_optimizer"
+        with patch(f"{module}.feature_snapshot") as features, patch(f"{module}.PrefixFeatures") as explicit, \
+                patch(f"{module}.HeterogeneousRiskPosterior") as posterior:
+            model._build_posterior(raw)
+            self.assertIs(features.call_args.args[2], raw)
+            self.assertIs(explicit.call_args.args[2], raw)
+            self.assertEqual(posterior.call_args.args[1][0].observation.constraint("soc").kind, "missing")
+
+    def test_frozen_fresh_pair_and_training_receipts(self):
+        from ra_lsbo.budget import digest
+        from run_aircraft_ra_lsbo_comparison import BenchmarkAircraft, mask_stopped_constraints, stop_evidence_proposal_kind
+
+        spec = plan("stop-evidence-headwind")
+        self.assertEqual(spec["seeds"], plan("stop-evidence-payload")["seeds"])
+        self.assertTrue(set(spec["seeds"]).isdisjoint(plan("boundary-headwind")["seeds"]))
+        self.assertEqual(spec["primary"]["comparator"], "ra_stop_status_to_lsbo")
+        self.assertEqual(sum(spec["budget"].values()), 1760)
+        raw = self.history()
+        masked = mask_stopped_constraints(raw, BenchmarkAircraft.analytical_constraints)
+        p = {"mode": "feasible_discovery", "model_history_digest": digest([r.to_dict() for r in masked])}
+        self.assertEqual(stop_evidence_proposal_kind("ra_stop_status", p, raw), "fit_with_masked_stop_evidence")
+        with self.assertRaisesRegex(ValueError, "frozen stop-evidence"):
+            stop_evidence_proposal_kind("ra_separate", p, raw)
