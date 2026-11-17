@@ -1,0 +1,40 @@
+{
+  "name": "stop-signs-smoke",
+  "headwind_m_s": 4.0,
+  "payload_delta_kg": 0.0,
+  "horizon": 6,
+  "initial": 4,
+  "pool": 128,
+  "heldout": 0,
+  "arms": [
+    "ra_stop_sign_to_lsbo",
+    "ra_stop_status_to_lsbo",
+    "ra_to_lsbo"
+  ],
+  "seeds": [
+    28470100,
+    28480900
+  ],
+  "encoder_epochs": 30,
+  "native_gp_steps": 45,
+  "checkpoints": [],
+  "budget": {
+    "initial": 8,
+    "online": 36,
+    "heldout": 0
+  },
+  "calibration_path": null,
+  "rcaide_mda_calls": 0,
+  "comparison_reference": "ra_stop_sign_to_lsbo",
+  "handoff": "first_observed_usable_design",
+  "primary": {
+    "reference": "ra_stop_sign_to_lsbo",
+    "comparator": "ra_stop_status_to_lsbo",
+    "cohort": "cold",
+    "metric": "capped_first_call_delta"
+  },
+  "stop_evidence_ablation": "full_sign_or_mask_stopped_nonanalytical_constraint_targets",
+  "stop_sign_ablation": {
+    "near_preservation_margin_calls": 1.0
+  }
+}
