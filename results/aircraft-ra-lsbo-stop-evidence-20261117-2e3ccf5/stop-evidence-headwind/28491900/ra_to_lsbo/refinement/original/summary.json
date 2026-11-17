@@ -1,0 +1,135 @@
+{
+  "status": "running",
+  "problem": "Extended reduced electric-aircraft (sparse)",
+  "settings": {
+    "budget": 24,
+    "initial": 9,
+    "seed": 28491900,
+    "latent_dim": 4,
+    "pretrain_epochs": 60,
+    "update_epochs": 20,
+    "update_every": 8,
+    "gp_steps": 45,
+    "branches": 12,
+    "points_per_branch": 10,
+    "restarts": 4,
+    "raw_samples": 64,
+    "local_branches": 2,
+    "refinement_fraction": 0.2,
+    "exploration_probability": 0.1,
+    "use_prior": true,
+    "max_proposal_attempts": 3000,
+    "max_consecutive_solver_failures": 5,
+    "initial_local_fraction": 0.0,
+    "initial_local_radius": 0.03,
+    "stratified_initialization": true,
+    "coverage_interval": 5,
+    "use_solver_domain": true,
+    "refinement_radius": 0.03,
+    "adaptive_refinement": true,
+    "refinement_min_radius": 0.001,
+    "screen_solver_risk": true,
+    "bo_domain_probability": 0.8,
+    "refinement_domain_probability": 0.95,
+    "bo_success_probability": 0.5,
+    "refinement_success_probability": 0.7,
+    "proposal_pool_size": 512,
+    "coverage_min_evaluations": 4,
+    "refinement_challenger_patience": 8,
+    "refinement_challenger_interval": 5,
+    "constrained_local_search": true
+  },
+  "method": "lsbo",
+  "initial_design_sha256": null,
+  "recovery_policy": "margin_ranked_anchor_backoff_v1",
+  "consecutive_solver_failures": 0,
+  "resume_failure_limit": null,
+  "continuation": null,
+  "last_representation_update": 17,
+  "coverage": [
+    {
+      "stratum": {
+        "prop_layout": "wingtip"
+      },
+      "evaluations": 4
+    },
+    {
+      "stratum": {
+        "prop_layout": "distributed"
+      },
+      "evaluations": 20
+    }
+  ],
+  "evaluations": 24,
+  "feasible_evaluations": 6,
+  "precheck_rejections": {
+    "span": 221,
+    "packing": 75
+  },
+  "proposal_sources": {
+    "unspecified": 9,
+    "latent_decode_rescore": 9,
+    "global_exploration": 1,
+    "feasible_neighborhood_recovery": 3,
+    "elite_local_rescore": 2
+  },
+  "best": {
+    "evaluation": 19,
+    "candidate": {
+      "continuous": {
+        "wing_area": 11.12448121985241,
+        "aspect_ratio": 13.5,
+        "tip_diameter": 1.72,
+        "dep_diameter": 0.7306056203124975,
+        "prop_spacing": 0.5680906472685167,
+        "cruise_airspeed": 52.402190374458755
+      },
+      "discrete": {
+        "prop_layout": "distributed",
+        "propeller_count": 4,
+        "parallel_strings": 40
+      }
+    },
+    "result": {
+      "objective": 41676.36897834537,
+      "solver_success": true,
+      "constraints": {
+        "current": -0.6801615573109738,
+        "packing": -1.3697117191569839,
+        "power": -0.8198111896201383,
+        "root_bending": -0.09033520779225712,
+        "soc": -0.009490978703167813,
+        "span": -0.15484032855310348,
+        "stall": -0.0045049912039039075,
+        "voltage": -0.26958316065587407
+      },
+      "status": "complete",
+      "metrics": {
+        "partial_observation_adapter": true
+      },
+      "elapsed_seconds": 7.270000003245514e-05
+    },
+    "feasible": true,
+    "phase": "bo",
+    "proposal": {
+      "source": "feasible_neighborhood_recovery",
+      "recovery_policy": "margin_ranked_anchor_backoff_v1",
+      "radius": 0.015,
+      "anchor_evaluation": 16,
+      "anchor_domain_margin": null,
+      "anchor_domain_metric": null,
+      "consecutive_failures_before": 2,
+      "failed_anchor_uses": 0,
+      "failed_branch_uses": 2
+    }
+  },
+  "rng_state": {
+    "bit_generator": "PCG64",
+    "state": {
+      "state": 233148164864044936821519002490752073071,
+      "inc": 317581818607967413367260221528801451047
+    },
+    "has_uint32": 1,
+    "uinteger": 4117388633
+  }
+}
