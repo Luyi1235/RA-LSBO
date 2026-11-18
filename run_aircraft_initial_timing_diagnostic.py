@@ -20,6 +20,30 @@ from run_aircraft_risk_timing_replay import MARGIN_SCALE, timing_feedback
 METHODS = ("timing_interval", "timing_sign", "original_probit")
 
 
+def completion_probabilities(problem, history, candidates, seed, methods=METHODS):
+    features = PrefixFeatures(problem, BASE, history, seed, latent=False)
+    x = features.transform([record.candidate for record in history])
+    query = features.transform(candidates)
+    history_records = [record.to_dict() for record in history]
+    evidence = {
+        use_interval: [timing_feedback(record, problem.settings, use_interval=use_interval,
+                                       allow_hidden_reserve_stop=True) for record in history_records]
+        for use_interval in (False, True)
+    }
+    predictions = {}
+    for name in methods:
+        if name not in METHODS:
+            raise ValueError(f"Unknown completion model {name}")
+        probit = name == "original_probit"
+        head = StableGroupedHead(x, evidence[name == "timing_interval"], seed=seed, name=name,
+                                 continuous_count=len(problem.space.continuous),
+                                 completion=probit, reference_scale=MARGIN_SCALE)
+        pred = head.predict(query)
+        variance = pred["variance"] + (1. if probit else 0.)
+        predictions[name] = ndtr(-pred["mean"] / np.sqrt(np.maximum(variance, 1e-14)))
+    return predictions, sum(obs.lower is not None for obs in evidence[True])
+
+
 def analyze_prefix(problem, history, panel, seed):
     cold = not any(row.usable_feasible for row in history)
     labels = [discovery_outcome(row.to_dict()) for row in panel]
@@ -31,26 +55,9 @@ def analyze_prefix(problem, history, panel, seed):
     if not panel:
         return row
 
-    features = PrefixFeatures(problem, BASE, history, seed, latent=False)
     candidates = [record.candidate for record in panel]
-    x = features.transform([record.candidate for record in history])
-    query = features.transform(candidates)
-    history_records = [record.to_dict() for record in history]
-    evidence = {
-        use_interval: [timing_feedback(record, problem.settings, use_interval=use_interval,
-                                       allow_hidden_reserve_stop=True) for record in history_records]
-        for use_interval in (False, True)
-    }
-    row["reserve_stops"] = sum(obs.lower is not None for obs in evidence[True])
-
-    for name in METHODS:
-        probit = name == "original_probit"
-        head = StableGroupedHead(x, evidence[name == "timing_interval"], seed=seed, name=name,
-                                 continuous_count=len(problem.space.continuous),
-                                 completion=probit, reference_scale=MARGIN_SCALE)
-        pred = head.predict(query)
-        variance = pred["variance"] + (1. if probit else 0.)
-        p = ndtr(-pred["mean"] / np.sqrt(np.maximum(variance, 1e-14)))
+    predictions, row["reserve_stops"] = completion_probabilities(problem, history, candidates, seed)
+    for name, p in predictions.items():
         row["scores"][name] = {
             **first_ranking(candidates, p, labels),
             "completion_brier": brier_by_configuration(p, panel, [y != "abort" for y in labels]),

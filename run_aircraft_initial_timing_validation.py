@@ -88,8 +88,7 @@ def summarize_cohort(rows):
             "exclusions": exclusions}
 
 
-def verify(folder, sha):
-    source_commit(sha)
+def load_validation(folder, sha):
     if read(folder / "seal.json") != evidence_hashes(folder):
         raise ValueError("Evidence seal mismatch")
     header = read(folder / "plan.json")
@@ -101,9 +100,11 @@ def verify(folder, sha):
     calls = read_ledger(folder, problem.contract_id)
     if len(calls) != spec["budget"]:
         raise ValueError("Evaluator call count differs from registered budget")
+    return spec, problem, calls
+
+
+def validated_seed_panels(spec, problem, calls):
     used = 0
-    rows = []
-    panel_counts = Counter()
     for seed in spec["seeds"]:
         records = {"initial": [], "heldout": []}
         for role, candidates in panels(problem, spec, seed).items():
@@ -113,18 +114,27 @@ def verify(folder, sha):
                 if number != used or record.candidate != candidate or actual_role != role:
                     raise ValueError("Recorded evaluation differs from the frozen seed design")
                 records[role].append(record)
-        screened = [record for record in records["heldout"] if passes_structural_screen(record)]
+        yield seed, records["initial"], records["heldout"]
+    if used != len(calls):
+        raise ValueError("Unregistered evaluator call")
+
+
+def verify(folder, sha):
+    source_commit(sha)
+    spec, problem, calls = load_validation(folder, sha)
+    rows = []
+    panel_counts = Counter()
+    for seed, history, panel in validated_seed_panels(spec, problem, calls):
+        screened = [record for record in panel if passes_structural_screen(record)]
         panel_counts.update({
-            "screened_out": len(records["heldout"]) - len(screened),
+            "screened_out": len(panel) - len(screened),
             "retained": len(screened),
             "retained_usable": sum(row.usable_feasible for row in screened),
             "retained_completed_violation": sum(discovery_outcome(row.to_dict()) == "violation"
                                                 for row in screened),
         })
-        rows.extend(score_prefix(problem, seed, records["initial"][:n], screened) for n in spec["initial"])
+        rows.extend(score_prefix(problem, seed, history[:n], screened) for n in spec["initial"])
         print(f"{spec['name']} {seed} verified", flush=True)
-    if used != len(calls):
-        raise ValueError("Unregistered evaluator call")
     by_initial = {
         str(n): {
             cohort: summarize_cohort([r for r in rows if r["initial"] == n
