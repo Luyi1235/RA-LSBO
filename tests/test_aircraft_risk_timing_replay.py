@@ -37,6 +37,19 @@ class TimingReplayTests(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertEqual((b.lower, b.upper), (None, 0.))
 
+    def test_commit_guarded_reserve_stop_in_pr122(self):
+        trace = record(130., complete=False)
+        trace["observation"].update(status="hidden_failure",
+                                    failure_cause="physical_soc_reserve_abort")
+        with self.assertRaises(ValueError):
+            timing_feedback(trace, SETTINGS, use_interval=True)
+        result = timing_feedback(trace, SETTINGS, use_interval=True,
+                                 allow_hidden_reserve_stop=True)
+        self.assertAlmostEqual(result.lower, .35)
+        trace["observation"]["failure_cause"] = "solver_error"
+        with self.assertRaises(ValueError):
+            timing_feedback(trace, SETTINGS, use_interval=True, allow_hidden_reserve_stop=True)
+
     def test_late_stop_remains_positive_and_bad_evidence_is_rejected(self):
         late_stop = record(200., complete=False)
         self.assertFalse(timing_feedback(late_stop, SETTINGS, use_interval=True).lower_inclusive)
