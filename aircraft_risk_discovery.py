@@ -105,7 +105,8 @@ def stage_joint_probabilities(heads, left, right, left_forecast, right_forecast)
     return joint
 
 
-def rollout_components(heads, query, probabilities, moments, z, indices):
+def rollout_branch_probabilities(heads, query, probabilities, moments, z, indices):
+    """Return joint failure-at-first and usability-at-second probabilities."""
     import numpy as np
 
     selected_probabilities = {name: value[indices] for name, value in probabilities.items()}
@@ -119,6 +120,12 @@ def rollout_components(heads, query, probabilities, moments, z, indices):
     after_violation = joint["mission"] * (f[None, :] - joint["feasible_given_mission"])
     after_abort[np.arange(len(indices)), indices] = 0.
     after_violation[np.arange(len(indices)), indices] = 0.
+    return after_abort, after_violation
+
+
+def rollout_components(heads, query, probabilities, moments, z, indices):
+    after_abort, after_violation = rollout_branch_probabilities(
+        heads, query, probabilities, moments, z, indices)
     return [[i, float(a), float(v), float(collapsed)] for i, a, v, collapsed in
             zip(indices, after_abort.max(axis=1), after_violation.max(axis=1),
                 (after_abort+after_violation).max(axis=1))]
