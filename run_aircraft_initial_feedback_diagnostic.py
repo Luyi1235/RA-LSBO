@@ -203,7 +203,7 @@ def summarize(rows):
     }
 
 
-def replay_profile(folder):
+def load_pr122_profile(folder):
     header = read(folder / "plan.json")
     spec = plan(header["experiment"]["name"])
     if (header["source_sha"] != SOURCE_SHA or header["experiment"] != spec
@@ -213,13 +213,23 @@ def replay_profile(folder):
     if problem.contract_id != header["contract"]:
         raise ValueError("Evaluator contract mismatch")
     calls = read_ledger(folder, header["contract"])
-    sizes = sorted({arm["initial"] for arm in spec["arms"]})
-    rows = []
+    return spec, problem, calls
+
+
+def archived_seed_panels(spec, calls, max_initial):
     for seed in spec["seeds"]:
-        history = [calls[f"{seed}/initial/{j}"][1] for j in range(max(sizes))]
+        history = [calls[f"{seed}/initial/{j}"][1] for j in range(max_initial)]
         panel = [calls[f"{seed}/heldout/{j}"][1] for j in range(spec["heldout"])]
         if {r.observation.design_id for r in history} & {r.observation.design_id for r in panel}:
             raise ValueError("Replay panel must be disjoint from the fit history")
+        yield seed, history, panel
+
+
+def replay_profile(folder):
+    spec, problem, calls = load_pr122_profile(folder)
+    sizes = sorted({arm["initial"] for arm in spec["arms"]})
+    rows = []
+    for seed, history, panel in archived_seed_panels(spec, calls, max(sizes)):
         eligible = [i for i, record in enumerate(panel) if passes_structural_screen(record)]
         rows.extend(diagnose_prefix(problem, history[:n], panel, seed, eligible) for n in sizes)
     return {

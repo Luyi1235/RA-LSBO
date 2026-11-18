@@ -28,7 +28,7 @@ MARGIN_SCALE = .25
 TIMING_TOLERANCE_S = 1e-7
 
 
-def timing_feedback(record, settings, *, use_interval):
+def timing_feedback(record, settings, *, use_interval, allow_hidden_reserve_stop=False):
     """Translate trustworthy completion records into intervals for a normalized deficit."""
     d = record["diagnostics"]
     packet = record["observation"]
@@ -36,7 +36,10 @@ def timing_feedback(record, settings, *, use_interval):
     if reason not in {"complete", "physical_soc_reserve_abort"}:
         raise ValueError("The sealed replay only supports reserve exhaustion and full completion")
     complete = reason == "complete"
-    if (packet["status"] != "completed" or d.get("numerical_failure")
+    trusted_status = packet["status"] == "completed" or (
+        allow_hidden_reserve_stop and not complete and packet["status"] == "hidden_failure"
+        and packet.get("failure_cause") == reason)
+    if (not trusted_status or d.get("numerical_failure")
             or d.get("mission_completed") is not complete
             or not d.get("trace") or settings["full_trajectory"]):
         raise ValueError("Incompatible completion timing evidence")
