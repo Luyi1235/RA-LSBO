@@ -1,6 +1,7 @@
 """Replay risk predictions and two-query decisions on sealed PR122 panels."""
 
 import argparse
+from collections import Counter
 import json
 from pathlib import Path
 from statistics import mean
@@ -17,6 +18,7 @@ from run_aircraft_risk_cold_start import discovery_outcome
 
 
 SOURCE_SHA = "ae4b9be8ef8fa09b7b45e4be7d40d8956edb59ab"
+STRUCTURAL_CONSTRAINTS = ("stall", "root_bending")
 
 
 def first_ranking(query, probabilities, outcomes):
@@ -64,7 +66,47 @@ def decision_replay(heads, x, query, forecast, outcomes):
     }
 
 
-def diagnose_prefix(problem, history, panel, seed):
+def passes_structural_screen(record):
+    """Read archived margins computed from the design before mission integration."""
+    constraints = dict(record.observation.constraints)
+    margins = [constraints[name] for name in STRUCTURAL_CONSTRAINTS]
+    if any(margin.kind != "exact" for margin in margins):
+        raise ValueError("The PR122 structural replay requires exact archived margins")
+    return all(margin.value <= 0. for margin in margins)
+
+
+def screen_counts(records):
+    counts = {"accepted": Counter(), "rejected": Counter()}
+    for record in records:
+        group = "accepted" if passes_structural_screen(record) else "rejected"
+        counts[group][discovery_outcome(record.to_dict())] += 1
+    return counts
+
+
+def screened_ranking(problem, history, panel, outcomes, probabilities, eligible):
+    """Keep the historical fit fixed and restrict every selector to the same points."""
+    if not eligible:
+        return {"candidates": 0, "usable": 0, "ranking": {}}
+    kept = [panel[i] for i in eligible]
+    query = [r.candidate for r in kept]
+    observed = [outcomes[i] for i in eligible]
+    coverage = coverage_index(problem, query, [r.candidate for r in history])
+    return {
+        "candidates": len(kept),
+        "usable": sum(outcome == "usable" for outcome in observed),
+        "coverage_first_usable": observed[coverage] == "usable",
+        "ranking": {
+            name: {
+                **first_ranking(query, probabilities[head][eligible], observed),
+                "usable_brier": brier_by_configuration(probabilities[head][eligible], kept,
+                                                        [y == "usable" for y in observed]),
+            } for name, head in (("factored", "usable_factored"),
+                                 ("direct", "usable_direct"), ("completion", "mission"))
+        },
+    }
+
+
+def diagnose_prefix(problem, history, panel, seed, eligible):
     features, heads = fit(problem, history, seed)
     query = [record.candidate for record in panel]
     outcomes = [discovery_outcome(record.to_dict()) for record in panel]
@@ -91,6 +133,34 @@ def diagnose_prefix(problem, history, panel, seed):
                                                    [y != "abort" for y in outcomes]),
         "coverage_first_usable": labels[coverage],
         "two_query_replay": decision_replay(heads, x, query, forecast, outcomes),
+        "common_structural_screen": screened_ranking(problem, history, panel, outcomes, p,
+                                                     eligible),
+    }
+
+
+def summarize_screen(rows):
+    screened = [r["common_structural_screen"] for r in rows]
+    ranked = [r for r in screened if r["candidates"]]
+    if not ranked:
+        return {"n": 0, "prefixes_without_candidate": len(screened)}
+    comparisons = {}
+    for control in ("completion", "direct"):
+        delta = {}
+        for key in ("top_one_usable", "top_five_usable_fraction", "usable_brier"):
+            values = [float(r["ranking"]["factored"][key]) - float(r["ranking"][control][key])
+                      for r in ranked]
+            delta[key] = {"mean": mean(values), "paired_95": paired_interval(values)}
+        comparisons[control] = delta
+    return {
+        "n": len(ranked),
+        "prefixes_without_candidate": len(screened) - len(ranked),
+        "prefixes_with_usable_candidate": sum(r["usable"] > 0 for r in ranked),
+        "first_usable": {
+            **{name: sum(r["ranking"][name]["top_one_usable"] for r in ranked)
+               for name in ("factored", "direct", "completion")},
+            "coverage": sum(r["coverage_first_usable"] for r in ranked),
+        },
+        "factored_minus_control": comparisons,
     }
 
 
@@ -129,6 +199,7 @@ def summarize(rows):
                          != r["two_query_replay"][control]["first_id"] for r in rows)
             for control in replay_deltas
         },
+        "common_structural_screen": summarize_screen(rows),
     }
 
 
@@ -149,9 +220,14 @@ def replay_profile(folder):
         panel = [calls[f"{seed}/heldout/{j}"][1] for j in range(spec["heldout"])]
         if {r.observation.design_id for r in history} & {r.observation.design_id for r in panel}:
             raise ValueError("Replay panel must be disjoint from the fit history")
-        rows.extend(diagnose_prefix(problem, history[:n], panel, seed) for n in sizes)
+        eligible = [i for i, record in enumerate(panel) if passes_structural_screen(record)]
+        rows.extend(diagnose_prefix(problem, history[:n], panel, seed, eligible) for n in sizes)
     return {
         "profile": spec["name"], "input_source_sha": SOURCE_SHA, "new_evaluator_calls": 0,
+        "structural_screen_counts": {
+            "heldout": screen_counts(row for _, row, role in calls.values() if role == "heldout"),
+            "optimization": screen_counts(row for _, row, role in calls.values() if role != "heldout"),
+        },
         "by_initial": {
             str(n): {key: summarize([r for r in rows if r["initial"] == n
                                     and (key == "all" or r["cold"])]) for key in ("all", "cold")}
