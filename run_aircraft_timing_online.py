@@ -72,9 +72,10 @@ def validate_margins(problem, record):
             raise ValueError("Static screen differs from the evaluator's exact margins")
 
 
-def roster(problem, spec, seed):
+def roster(problem, spec, seed, *, panel_size=None):
     pool = candidate_pool(problem, seed + 1, spec["geometry_pool_size"])[0]
-    panel = candidate_pool(problem, seed + 2, spec["online_panel_before_screen"], map(digest, pool))[0]
+    size = spec["online_panel_before_screen"] if panel_size is None else panel_size
+    panel = candidate_pool(problem, seed + 2, size, map(digest, pool))[0]
     order = nested_indices(problem, pool, INITIAL)
     screened = [candidate for candidate in panel
                 if all(value <= 0. for value in structural_margins(problem, candidate).values())]
