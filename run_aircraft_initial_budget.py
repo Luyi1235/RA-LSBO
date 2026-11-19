@@ -24,6 +24,14 @@ from run_aircraft_risk_cold_start import discovery_outcome, read, select, source
 
 
 METHODS = ("lsbo", "greedy", "lookahead")
+TIMING_METHODS = ("timing_sign", "timing_interval")
+TIMING_PROFILES = {
+    "timing-budget-smoke": (4., 0., 8, (4, 6), (28740000,), 64, 8),
+    "timing-budget-headwind": (4., 0., 48, (8, 16, 32),
+                             tuple(range(28740100, 28742500, 100)), 128, 24),
+    "timing-budget-payload": (0., 24., 48, (8, 16, 32),
+                             tuple(range(28740100, 28742500, 100)), 128, 24),
+}
 PROFILES = {
     "smoke": (4., 0., 10, (4, 6), (28470100, 28475000), 64, 8),
     **{f"pilot-{scenario}-{budget}": (
@@ -32,18 +40,40 @@ PROFILES = {
         (("headwind", 4., 0.), ("payload", 0., 24.)),
         ((48, (4, 8, 16, 32)), (96, (4, 8, 16, 32, 64))),
     )},
+    **TIMING_PROFILES,
 }
 
 
 def plan(name):
     wind, payload, budget, levels, seeds, pool, panel = PROFILES[name]
+    timing = name in TIMING_PROFILES
+    methods = ("lsbo", *TIMING_METHODS) if timing else METHODS
     arms = [{"name": f"{method}-{size}", "method": method, "initial": size}
-            for method, size in product(METHODS, levels)]
+            for method, size in product(methods, levels)]
     calls_per_seed = budget + panel + sum(budget - a["initial"] for a in arms)
-    return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload,
+    spec = {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload,
             "total_budget": budget, "pool": pool, "heldout": panel, "arms": arms,
             "checkpoints": [budget // 4, budget // 2, budget], "native_gp_steps": 45,
             "seeds": list(seeds), "max_calls": calls_per_seed * len(seeds)}
+    if timing:
+        spec["structural_screen"] = True
+        spec["primary"] = {"reference": f"timing_interval-{levels[0]}",
+                           "control": f"timing_sign-{levels[0]}",
+                           "metric": "capped_first", "undiscovered_score": budget+1}
+    return spec
+
+
+def candidate_roster(problem, spec, seed):
+    pool = candidate_pool(problem, seed + 1, spec["pool"])[0]
+    panel = candidate_pool(problem, seed + 2, spec["heldout"], map(digest, pool))[0]
+    if spec.get("structural_screen"):
+        from run_aircraft_timing_online import structural_margins
+
+        pool = [candidate for candidate in pool
+                if all(margin <= 0. for margin in structural_margins(problem, candidate).values())]
+        if len(pool) < spec["total_budget"]:
+            raise ValueError(f"Seed {seed} cannot supply the registered screened budget")
+    return pool, panel
 
 
 def coverage_index(problem, pool, previous):
@@ -78,6 +108,12 @@ def fit(problem, history, seed):
 
 
 def risk_index(problem, history, remaining, seed, method, calls_left):
+    if method in TIMING_METHODS:
+        from run_aircraft_timing_online import choose
+
+        index, reason, probability = choose(problem, history, remaining, seed, method)
+        return index, {"mode": method if reason == "greedy" else "coverage_fallback",
+                       "reason": reason, "completion_probability": probability}
     try:
         features, heads = fit(problem, history, seed)
         query = features.transform(remaining)
@@ -120,17 +156,17 @@ def run(spec, sha, output):
     root = Path(__file__).resolve().parent
     if root == output or root in output.parents:
         raise ValueError("Use an evidence directory outside the source worktree")
-    output.mkdir(parents=True)
     torch.set_num_threads(1)
     problem = BenchmarkAircraft(spec)
+    rosters = {seed: candidate_roster(problem, spec, seed) for seed in spec["seeds"]}
+    output.mkdir(parents=True)
     budget = spec["total_budget"]
     save(output / "plan.json", {"source_sha": sha, "experiment": spec,
                                 "contract": problem.contract_id})
     ledger = Ledger(output, spec["max_calls"])
     for seed in spec["seeds"]:
         unit = output / str(seed)
-        pool = candidate_pool(problem, seed + 1, spec["pool"])[0]
-        panel = candidate_pool(problem, seed + 2, spec["heldout"], map(digest, pool))[0]
+        pool, panel = rosters[seed]
         order = nested_indices(problem, pool, budget)
         save(unit / "roster.json", {"pool": pool, "initial_order": order, "heldout": panel})
         shared = [ledger.evaluate(problem, pool[i], f"{seed}/initial/{j}", "initial")
@@ -247,6 +283,16 @@ def comparison(rows, reference, control, budget):
             "heldout_comparisons": calibration}
 
 
+def cold_comparison(rows, reference, control, initial, budget):
+    relevant = [row for row in rows if row["arm"] in (reference, control)]
+    cold = [row for row in relevant if row["first_total"] is None or row["first_total"] > initial]
+    if len(cold) % 2 or any(count != 2 for count in Counter(r["seed"] for r in cold).values()):
+        raise ValueError("Matched policies must share the same initialization")
+    if not cold:
+        return {"reference": reference, "control": control, "initial": initial, "paired_n": 0}
+    return {"initial": initial, **comparison(cold, reference, control, budget)}
+
+
 def verify(folder, sha):
     source_commit(sha)
     if read(folder / "seal.json") != evidence_hashes(folder):
@@ -270,11 +316,14 @@ def verify(folder, sha):
 
     budget = spec["total_budget"]
     rows, modes = [], {}
+    timing = spec.get("structural_screen", False)
     for seed in spec["seeds"]:
         unit = folder / str(seed)
         roster = read(unit / "roster.json")
         pool, order, labels = (roster[key] for key in ("pool", "initial_order", "heldout"))
-        if (len(pool) != spec["pool"] or len(labels) != spec["heldout"]
+        registered = candidate_roster(problem, spec, seed) if timing else None
+        if ((registered != (pool, labels) if timing else len(pool) != spec["pool"])
+                or len(labels) != spec["heldout"]
                 or len(set(map(digest, pool+labels))) != len(pool)+len(labels)
                 or order != nested_indices(problem, pool, budget)):
             raise ValueError("Invalid common candidate or initialization roster")
@@ -298,12 +347,21 @@ def verify(folder, sha):
                 mode = receipt["mode"]
                 native = arm["method"] == "lsbo" or any(r.usable_feasible for r in history)
                 expected = "lsbo" if native else (
-                    "greedy" if step == budget-1 else arm["method"])
+                    "greedy" if step == budget-1 and arm["method"] == "lookahead" else arm["method"])
                 if mode != expected and (native or mode != "coverage_fallback"):
                     raise ValueError("Invalid acquisition or handoff phase")
                 if not native:
                     remaining = [raw for raw in pool if all(raw != r.candidate for r in history)]
-                    if mode == "coverage_fallback":
+                    if timing:
+                        selected, detail = risk_index(problem, history, remaining, seed,
+                                                      arm["method"], budget-step)
+                        p, q = detail["completion_probability"], receipt.get("completion_probability")
+                        matching = (p is q if p is None or q is None else
+                                    math.isclose(p, q, rel_tol=1e-8, abs_tol=1e-10))
+                        if (mode != detail["mode"] or receipt.get("reason") != detail["reason"]
+                                or not matching):
+                            raise ValueError("Timing acquisition differs from its replay")
+                    elif mode == "coverage_fallback":
                         selected = coverage_index(problem, remaining, [r.candidate for r in history])
                     else:
                         scores = receipt["usable"]
@@ -327,13 +385,21 @@ def verify(folder, sha):
     arms = [arm["name"] for arm in spec["arms"]]
     pairs = [(name, "coverage") for name in arms]
     sizes = [arm["initial"] for arm in spec["arms"] if arm["method"] == "lsbo"]
-    pairs += [(f"lookahead-{n}", f"{m}-{n}") for n, m in product(sizes, ("greedy", "lsbo"))]
-    pairs += [(f"{m}-{a}", f"{m}-{b}") for m in METHODS for a in sizes for b in sizes if a < b]
-    pairs += [(f"lookahead-{a}", f"lsbo-{b}") for a in sizes for b in sizes if a < b]
+    active, controls = (("timing_interval", ("timing_sign", "lsbo")) if timing else
+                        ("lookahead", ("greedy", "lsbo")))
+    prefixes = ("lsbo", *TIMING_METHODS) if timing else METHODS
+    pairs += [(f"{active}-{n}", f"{m}-{n}") for n, m in product(sizes, controls)]
+    pairs += [(f"{m}-{a}", f"{m}-{b}") for m in prefixes for a in sizes for b in sizes if a < b]
+    pairs += [(f"{active}-{a}", f"lsbo-{b}") for a in sizes for b in sizes if a < b]
+    if timing:
+        pairs += [(f"timing_sign-{n}", f"lsbo-{n}") for n in sizes]
+        cold = [cold_comparison(rows, f"{active}-{n}", f"{control}-{n}", n, budget)
+                for n, control in product(sizes, controls)]
     return {"status": "VERIFIED_INITIAL_BUDGET", "profile": spec["name"],
             "source_sha": sha, "actual_calls": len(used), "rcaide_mda_calls": 0,
             "total_per_policy": budget, "decision_counts": modes, "per_seed": rows,
-            "comparisons": [comparison(rows, a, b, budget) for a, b in pairs]}
+            "comparisons": [comparison(rows, a, b, budget) for a, b in pairs],
+            **({"primary": spec["primary"], "initially_unsolved_comparisons": cold} if timing else {})}
 
 
 def main():
