@@ -25,6 +25,14 @@ from run_aircraft_risk_cold_start import discovery_outcome, read, select, source
 
 METHODS = ("lsbo", "greedy", "lookahead")
 TIMING_METHODS = ("timing_sign", "timing_interval")
+INFORMATION_METHODS = ("timing_interval", "timing_information")
+INFORMATION_PROFILES = {
+    "timing-information-smoke": (4., 0., 8, (4, 6), (28740000,), 64, 8),
+    "timing-information-headwind": (4., 0., 48, (8, 16),
+                                  tuple(range(28760100, 28762500, 100)), 128, 24),
+    "timing-information-payload": (0., 24., 48, (8, 16),
+                                  tuple(range(28760100, 28762500, 100)), 128, 24),
+}
 TIMING_PROFILES = {
     "timing-budget-smoke": (4., 0., 8, (4, 6), (28740000,), 64, 8),
     "timing-budget-headwind": (4., 0., 48, (8, 16, 32),
@@ -41,13 +49,15 @@ PROFILES = {
         ((48, (4, 8, 16, 32)), (96, (4, 8, 16, 32, 64))),
     )},
     **TIMING_PROFILES,
+    **INFORMATION_PROFILES,
 }
 
 
 def plan(name):
     wind, payload, budget, levels, seeds, pool, panel = PROFILES[name]
-    timing = name in TIMING_PROFILES
-    methods = ("lsbo", *TIMING_METHODS) if timing else METHODS
+    information = name in INFORMATION_PROFILES
+    timing = name in TIMING_PROFILES or information
+    methods = INFORMATION_METHODS if information else ("lsbo", *TIMING_METHODS) if timing else METHODS
     arms = [{"name": f"{method}-{size}", "method": method, "initial": size}
             for method, size in product(methods, levels)]
     calls_per_seed = budget + panel + sum(budget - a["initial"] for a in arms)
@@ -60,6 +70,16 @@ def plan(name):
         spec["primary"] = {"reference": f"timing_interval-{levels[0]}",
                            "control": f"timing_sign-{levels[0]}",
                            "metric": "capped_first", "undiscovered_score": budget+1}
+    if information:
+        from aircraft_timing_information import PROBABILITY_FLOOR
+
+        spec["information_probability_floor"] = PROBABILITY_FLOOR
+        spec["prior_initial"] = levels[0]
+        spec["checkpoints"] = sorted({levels[0], *(n for n in spec["checkpoints"] if n >= levels[0])})
+        spec["primary"].update(reference=f"timing_information-{levels[0]}",
+                               control=f"timing_interval-{levels[0]}",
+                               risk_target="timing_completion_brier",
+                               risk_checkpoint=budget//2)
     return spec
 
 
@@ -108,6 +128,21 @@ def fit(problem, history, seed):
 
 
 def risk_index(problem, history, remaining, seed, method, calls_left):
+    if method == "timing_information":
+        from aircraft_timing_information import information_choice, supports_timing
+
+        if all(map(supports_timing, history)):
+            try:
+                index, probability, reduction = information_choice(problem, history, remaining, seed)
+                return index, {"mode": method, "reason": "information",
+                               "completion_probability": probability,
+                               "expected_brier_reduction": reduction}
+            except (ModelNumericalFailure, FloatingPointError):
+                reason = "model_numerical_failure"
+        else:
+            reason = "unsupported_termination"
+        return (coverage_index(problem, remaining, [row.candidate for row in history]),
+                {"mode": "coverage_fallback", "reason": reason, "completion_probability": None})
     if method in TIMING_METHODS:
         from run_aircraft_timing_online import choose
 
@@ -146,6 +181,22 @@ def trace(problem, spec, seed, records, panel):
                               "completion": p["mission"].tolist()})
         except ModelNumericalFailure as error:
             forecasts.append({"calls": count, "fit_failure": error.head})
+        if "information_probability_floor" in spec:
+            from aircraft_timing_information import supports_timing
+            from run_aircraft_initial_timing_diagnostic import completion_probabilities
+
+            initial = records[:spec["prior_initial"]]
+            prior = (1 + sum(row.diagnostics.get("mission_completed") is True for row in initial)
+                     ) / (2+len(initial))
+            compatible = [row for row in records[:count] if supports_timing(row)]
+            forecasts[-1].update(timing_prior=prior, timing_train_count=len(compatible))
+            if compatible:
+                try:
+                    p, _ = completion_probabilities(problem, compatible, panel, seed,
+                                                    methods=("timing_interval",))
+                    forecasts[-1]["timing_completion"] = p["timing_interval"].tolist()
+                except ModelNumericalFailure as error:
+                    forecasts[-1]["timing_fit_failure"] = error.head
     return forecasts
 
 
@@ -240,6 +291,16 @@ def summarize(history, forecasts, panel, seed, arm, budget):
             score["completion_brier"] = brier_by_configuration(
                 forecast["completion"], panel, [None if x == "unknown" else x != "abort"
                                                 for x in outcomes])
+        if "timing_prior" in forecast:
+            labels = [None if x == "unknown" else x != "abort" for x in outcomes]
+            prior_loss = brier_by_configuration([forecast["timing_prior"]]*len(panel), panel, labels)
+            score["timing_prior_brier"] = prior_loss
+            score["timing_train_count"] = forecast["timing_train_count"]
+            if "timing_completion" in forecast:
+                loss = brier_by_configuration(forecast["timing_completion"], panel, labels)
+                score["timing_completion_brier"] = loss
+                if prior_loss and loss is not None:
+                    score["timing_completion_bss"] = 1 - loss/prior_loss
         scores.append(score)
     return {"seed": seed, "arm": arm, "first_total": first, "capped_first": first or budget+1,
             "best_energy": energy, "heldout": scores}
@@ -264,7 +325,10 @@ def comparison(rows, reference, control, budget):
                  "win" if x < y else "loss"] += 1
     calibration = []
     for i, point in enumerate(pairs[0][0]["heldout"]):
-        for target in ("completion_brier", "usable_brier"):
+        targets = ("completion_brier", "usable_brier")
+        if "timing_prior_brier" in point:
+            targets += ("timing_completion_brier", "timing_completion_bss")
+        for target in targets:
             differences = []
             for a, b in pairs:
                 x, y = (row["heldout"][i].get(target) for row in (a, b))
@@ -317,6 +381,7 @@ def verify(folder, sha):
     budget = spec["total_budget"]
     rows, modes = [], {}
     timing = spec.get("structural_screen", False)
+    information = "information_probability_floor" in spec
     for seed in spec["seeds"]:
         unit = folder / str(seed)
         roster = read(unit / "roster.json")
@@ -361,6 +426,10 @@ def verify(folder, sha):
                         if (mode != detail["mode"] or receipt.get("reason") != detail["reason"]
                                 or not matching):
                             raise ValueError("Timing acquisition differs from its replay")
+                        if mode == "timing_information" and not math.isclose(
+                                detail["expected_brier_reduction"], receipt["expected_brier_reduction"],
+                                rel_tol=1e-8, abs_tol=1e-10):
+                            raise ValueError("Information score differs from its replay")
                     elif mode == "coverage_fallback":
                         selected = coverage_index(problem, remaining, [r.candidate for r in history])
                     else:
@@ -384,15 +453,19 @@ def verify(folder, sha):
         raise ValueError("Unexpected or missing charged calls")
     arms = [arm["name"] for arm in spec["arms"]]
     pairs = [(name, "coverage") for name in arms]
-    sizes = [arm["initial"] for arm in spec["arms"] if arm["method"] == "lsbo"]
-    active, controls = (("timing_interval", ("timing_sign", "lsbo")) if timing else
-                        ("lookahead", ("greedy", "lsbo")))
-    prefixes = ("lsbo", *TIMING_METHODS) if timing else METHODS
+    sizes = sorted({arm["initial"] for arm in spec["arms"]})
+    if information:
+        active, controls, prefixes = "timing_information", ("timing_interval",), INFORMATION_METHODS
+    elif timing:
+        active, controls, prefixes = "timing_interval", ("timing_sign", "lsbo"), ("lsbo", *TIMING_METHODS)
+    else:
+        active, controls, prefixes = "lookahead", ("greedy", "lsbo"), METHODS
     pairs += [(f"{active}-{n}", f"{m}-{n}") for n, m in product(sizes, controls)]
     pairs += [(f"{m}-{a}", f"{m}-{b}") for m in prefixes for a in sizes for b in sizes if a < b]
-    pairs += [(f"{active}-{a}", f"lsbo-{b}") for a in sizes for b in sizes if a < b]
+    pairs += [(f"{active}-{a}", f"{controls[-1]}-{b}") for a in sizes for b in sizes if a < b]
     if timing:
-        pairs += [(f"timing_sign-{n}", f"lsbo-{n}") for n in sizes]
+        if not information:
+            pairs += [(f"timing_sign-{n}", f"lsbo-{n}") for n in sizes]
         cold = [cold_comparison(rows, f"{active}-{n}", f"{control}-{n}", n, budget)
                 for n, control in product(sizes, controls)]
     return {"status": "VERIFIED_INITIAL_BUDGET", "profile": spec["name"],
