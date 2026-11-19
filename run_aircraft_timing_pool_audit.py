@@ -30,6 +30,7 @@ class SeedPanel:
     screened: list
     archived: dict
     discovered: dict
+    online: dict
 
     def missing(self):
         return [candidate for candidate in self.screened if digest(candidate) not in self.archived]
@@ -75,7 +76,7 @@ def load_archive(folder):
                 if previous.to_dict() != record.to_dict():
                     raise ValueError("Identical designs have conflicting archived outcomes")
         discovered = {method: any(row.usable_feasible for row in arms[method]) for method in METHODS}
-        seeds.append(SeedPanel(seed, history, screened, archived, discovered))
+        seeds.append(SeedPanel(seed, history, screened, archived, discovered, dict(arms)))
     return spec, problem, seeds
 
 
