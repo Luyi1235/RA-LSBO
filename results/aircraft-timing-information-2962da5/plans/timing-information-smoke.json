@@ -1,0 +1,50 @@
+{
+  "name": "timing-information-smoke",
+  "headwind_m_s": 4.0,
+  "payload_delta_kg": 0.0,
+  "total_budget": 8,
+  "pool": 64,
+  "heldout": 8,
+  "arms": [
+    {
+      "name": "timing_interval-4",
+      "method": "timing_interval",
+      "initial": 4
+    },
+    {
+      "name": "timing_interval-6",
+      "method": "timing_interval",
+      "initial": 6
+    },
+    {
+      "name": "timing_information-4",
+      "method": "timing_information",
+      "initial": 4
+    },
+    {
+      "name": "timing_information-6",
+      "method": "timing_information",
+      "initial": 6
+    }
+  ],
+  "checkpoints": [
+    4,
+    8
+  ],
+  "native_gp_steps": 45,
+  "seeds": [
+    28740000
+  ],
+  "max_calls": 28,
+  "structural_screen": true,
+  "primary": {
+    "reference": "timing_information-4",
+    "control": "timing_interval-4",
+    "metric": "capped_first",
+    "undiscovered_score": 9,
+    "risk_target": "timing_completion_brier",
+    "risk_checkpoint": 4
+  },
+  "information_probability_floor": 0.9,
+  "prior_initial": 4
+}
