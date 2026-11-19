@@ -6,10 +6,12 @@ from pathlib import Path
 from statistics import mean
 
 from aircraft_timing_information import PROBABILITY_FLOOR, score_information, supports_timing
+from aircraft_timing_decision_value import DECISION_ARMS, decision_choices
 from aircraft_timing_interval_value import deficit_edges
 from ra_lsbo.budget import digest
 from ra_lsbo.experiments.core.runner import Ledger, save
 from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import ModelNumericalFailure
+from ra_lsbo.partial_bo.problems import candidate_pool
 from run_aircraft_initial_budget import (
     BenchmarkAircraft, brier_by_configuration, candidate_roster, evidence_hashes, nested_indices,
     paired_interval, read_ledger,
@@ -27,18 +29,32 @@ PROFILES = {
     "timing-value-headwind": (4., 0., tuple(range(28780100, 28784900, 100)), 48),
     "timing-value-payload": (0., 24., tuple(range(28780100, 28784900, 100)), 48),
 }
+DECISION_PROFILES = {
+    # One agreeing seed and one separating the two-call score from greed.
+    "timing-decision-smoke": (4., 0., (28760300, 28780900), 16),
+    "timing-decision-headwind": (4., 0., tuple(range(28800100, 28809700, 100)), 48),
+    "timing-decision-payload": (0., 24., tuple(range(28800100, 28809700, 100)), 48),
+}
 
 
 def plan(name):
-    wind, payload, seeds, panel = PROFILES[name]
+    wind, payload, seeds, panel = {**PROFILES, **DECISION_PROFILES}[name]
     sizes = [8, 16]
-    return {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload,
+    decision = name in DECISION_PROFILES
+    arms = DECISION_ARMS if decision else ARMS
+    calls = 2 if decision else 1
+    spec = {"name": name, "headwind_m_s": wind, "payload_delta_kg": payload,
             "seeds": list(seeds), "pool": 128, "heldout": panel, "structural_screen": True,
-            "total_budget": max(sizes), "initial_sizes": sizes, "next_calls_per_arm": 1,
-            "arms": list(ARMS), "probability_floor": PROBABILITY_FLOOR,
-            "max_aircraft_calls": len(seeds)*(max(sizes)+panel+len(ARMS)*len(sizes)),
+            "total_budget": max(sizes), "initial_sizes": sizes, "next_calls_per_arm": calls,
+            "arms": list(arms), "probability_floor": PROBABILITY_FLOOR,
+            "max_aircraft_calls": len(seeds)*(max(sizes)+panel+len(arms)*len(sizes)*calls),
             "primary": {"initial": 8, "reference": "interval_value", "control": "sign_value",
                         "metric": "screened_heldout_brier_after_feedback"}}
+    if decision:
+        spec["second_pool"] = 64
+        spec["primary"] = {"initial": 8, "reference": "decision_value", "control": "greedy",
+                           "metric": "any_usable_by_two"}
+    return spec
 
 
 def select_arms(head, query, candidates, settings):
@@ -58,7 +74,7 @@ def select_arms(head, query, candidates, settings):
     return choices, len(eligible)
 
 
-def first_feedback(problem, seed, history, pool, panel, obtain):
+def first_feedback(problem, seed, history, pool, panel, obtain, second=()):
     initial = len(history)
     row = {"seed": seed, "initial": initial}
     if any(record.usable_feasible for record in history):
@@ -67,11 +83,17 @@ def first_feedback(problem, seed, history, pool, panel, obtain):
         return {**row, "state": "unsupported_initial_feedback"}
     used = {record.observation.design_id for record in history}
     candidates = [candidate for candidate in pool if digest(candidate) not in used]
+    targets = panel+list(second)
+    boundary = len(candidates)
     try:
-        heads, query, _ = fit_completion_heads(problem, history, candidates+panel, seed, methods=(HEAD,))
+        heads, query, _ = fit_completion_heads(problem, history, candidates+targets, seed, methods=(HEAD,))
         head = heads[HEAD]
-        choices, in_band = select_arms(head, query[:len(candidates)], candidates, problem.settings)
-        before = probability(head, query[len(candidates):]).tolist()
+        if second:
+            choices, in_band = decision_choices(head, query[:boundary], query[boundary+len(panel):],
+                                                candidates, problem.settings)
+        else:
+            choices, in_band = select_arms(head, query[:boundary], candidates, problem.settings)
+        before = probability(head, query[boundary:]).tolist()
     except (ModelNumericalFailure, FloatingPointError):
         return {**row, "state": "initial_selection_model_failure"}
     observed = {}
@@ -85,17 +107,32 @@ def first_feedback(problem, seed, history, pool, panel, obtain):
             update = "unsupported_feedback"
             if supports_timing(record):
                 try:
-                    predictions, _ = completion_probabilities(problem, history+[record], panel, seed,
+                    predictions, _ = completion_probabilities(problem, history+[record], targets, seed,
                                                                methods=(HEAD,))
                     after = predictions[HEAD].tolist()
                     update = "updated"
                 except ModelNumericalFailure:
                     update = "update_model_failure"
             observed[key] = {"design_id": key, "outcome": outcome, "usable": record.usable_feasible,
-                             "update": update, "forecast": after}
+                             "update": update, "forecast": after[:len(panel)]}
+            if second:
+                index = select(second, after[len(panel):])
+                observed[key]["second_choice"] = second[index]
+                observed[key]["second_probability"] = after[len(panel)+index]
         info.update(observed[key])
+    if second:
+        second_observed = {}
+        for arm, info in choices.items():
+            candidate = info.pop("second_choice")
+            key = digest(candidate)
+            if key not in second_observed:
+                record = obtain(candidate, f"{seed}/{initial}/{arm}/second", "second")
+                second_observed[key] = {"design_id": key, "outcome": discovery_outcome(record.to_dict()),
+                                        "usable": record.usable_feasible}
+            info["second"] = {**second_observed[key], "probability": info.pop("second_probability")}
+            info["any_usable_by_two"] = info["usable"] or info["second"]["usable"]
     return {**row, "state": "paired", "candidates": len(candidates), "in_band": in_band,
-            "before_forecast": before, "arms": choices}
+            "before_forecast": before[:len(panel)], "arms": choices}
 
 
 def evaluate_panel(problem, row, panel):
@@ -122,13 +159,22 @@ def campaign(spec, problem, obtain):
     rows = []
     for seed in spec["seeds"]:
         pool, panel = candidate_roster(problem, spec, seed)
+        second = []
+        if "second_pool" in spec:
+            raw = candidate_pool(problem, seed+3, spec["second_pool"], map(digest, pool+panel))[0]
+            second = [candidate for candidate in raw if all(
+                margin <= 0. for margin in structural_margins(problem, candidate).values())]
+            if not second:
+                raise ValueError("No structurally eligible follow-up candidate")
         order = nested_indices(problem, pool, max(spec["initial_sizes"]))
         initial = [obtain(pool[i], f"{seed}/initial/{j}", "initial") for j, i in enumerate(order)]
-        pairs = [first_feedback(problem, seed, initial[:n], pool, panel, obtain)
+        pairs = [first_feedback(problem, seed, initial[:n], pool, panel, obtain, second)
                  for n in spec["initial_sizes"]]
         labels = [obtain(candidate, f"{seed}/heldout/{j}", "heldout") for j, candidate in enumerate(panel)]
         for row in pairs:
             evaluate_panel(problem, row, labels)
+            if second:
+                row["second_pool_count"] = len(second)
         rows.extend(pairs)
         print(spec["name"], seed, [row["state"] for row in pairs], flush=True)
     return rows
@@ -146,10 +192,18 @@ def contrast(rows, reference, control):
         losses = [(left["heldout_brier_after"][target], right["heldout_brier_after"][target])
                   for left, right in pairs]
         brier[target] = effect([a-b for a, b in losses if a is not None and b is not None])
-    return {"reference": reference, "control": control,
+    result = {"reference": reference, "control": control,
             "changed_first": sum(a["design_id"] != b["design_id"] for a, b in pairs),
             "brier_after_delta": brier,
             "first_usable_delta": effect([int(a["usable"])-int(b["usable"]) for a, b in pairs])}
+    if pairs and "second" in pairs[0][0]:
+        result["changed_second"] = sum(a["second"]["design_id"] != b["second"]["design_id"]
+                                       for a, b in pairs)
+        result["second_usable_delta"] = effect([int(a["second"]["usable"])-int(b["second"]["usable"])
+                                                for a, b in pairs])
+        result["any_usable_by_two_delta"] = effect([int(a["any_usable_by_two"])-int(b["any_usable_by_two"])
+                                                    for a, b in pairs])
+    return result
 
 
 def run(spec, sha, folder):
@@ -189,6 +243,9 @@ def verify(folder, sha):
     if position != len(calls):
         raise ValueError("Unexpected calls outside the registered campaign")
     summary = {}
+    comparisons = (("decision_value", "greedy"), ("gated_decision", "greedy"),
+                   ("decision_value", "gated_decision")) if "second_pool" in spec else (
+                   ("interval_value", "sign_value"), ("interval_value", "greedy"), ("sign_value", "greedy"))
     for n in spec["initial_sizes"]:
         matching = [row for row in rows if row["initial"] == n]
         paired = [row for row in matching if row["state"] == "paired"]
@@ -196,16 +253,16 @@ def verify(folder, sha):
             "n": len(paired), "initially_solved": sum(row["state"] == "initially_solved" for row in matching),
             "unpaired_failures": sum(row["state"] not in ("paired", "initially_solved") for row in matching),
             "single_candidate_in_band": sum(row["in_band"] == 1 for row in paired),
-            "comparisons": [contrast(paired, a, b) for a, b in (
-                ("interval_value", "sign_value"), ("interval_value", "greedy"), ("sign_value", "greedy"))]}
-    return {"status": "VERIFIED_TIMING_INTERVAL_VALUE", "plan": spec, "source_sha": sha,
+            "comparisons": [contrast(paired, a, b) for a, b in comparisons]}
+    status = "VERIFIED_TIMING_DECISION_VALUE" if "second_pool" in spec else "VERIFIED_TIMING_INTERVAL_VALUE"
+    return {"status": status, "plan": spec, "source_sha": sha,
             "actual_calls": position, "rcaide_mda_calls": 0, "summary": summary, "per_seed": rows}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--task", choices=("plan", "run", "verify"), required=True)
-    parser.add_argument("--profile", choices=PROFILES)
+    parser.add_argument("--profile", choices=(*PROFILES, *DECISION_PROFILES))
     parser.add_argument("--expected-sha")
     parser.add_argument("--input", type=Path)
     parser.add_argument("--output", type=Path)
