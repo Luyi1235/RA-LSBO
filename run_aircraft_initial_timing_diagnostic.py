@@ -20,7 +20,7 @@ from run_aircraft_risk_timing_replay import MARGIN_SCALE, timing_feedback
 METHODS = ("timing_interval", "timing_sign", "original_probit")
 
 
-def completion_probabilities(problem, history, candidates, seed, methods=METHODS):
+def fit_completion_heads(problem, history, candidates, seed, methods=METHODS):
     features = PrefixFeatures(problem, BASE, history, seed, latent=False)
     x = features.transform([record.candidate for record in history])
     query = features.transform(candidates)
@@ -30,18 +30,25 @@ def completion_probabilities(problem, history, candidates, seed, methods=METHODS
                                        allow_hidden_reserve_stop=True) for record in history_records]
         for use_interval in (False, True)
     }
-    predictions = {}
+    heads = {}
     for name in methods:
         if name not in METHODS:
             raise ValueError(f"Unknown completion model {name}")
         probit = name == "original_probit"
-        head = StableGroupedHead(x, evidence[name == "timing_interval"], seed=seed, name=name,
-                                 continuous_count=len(problem.space.continuous),
-                                 completion=probit, reference_scale=MARGIN_SCALE)
+        heads[name] = StableGroupedHead(x, evidence[name == "timing_interval"], seed=seed, name=name,
+                                        continuous_count=len(problem.space.continuous),
+                                        completion=probit, reference_scale=MARGIN_SCALE)
+    return heads, query, sum(obs.lower is not None for obs in evidence[True])
+
+
+def completion_probabilities(problem, history, candidates, seed, methods=METHODS):
+    heads, query, stops = fit_completion_heads(problem, history, candidates, seed, methods)
+    predictions = {}
+    for name, head in heads.items():
         pred = head.predict(query)
-        variance = pred["variance"] + (1. if probit else 0.)
+        variance = pred["variance"] + (1. if name == "original_probit" else 0.)
         predictions[name] = ndtr(-pred["mean"] / np.sqrt(np.maximum(variance, 1e-14)))
-    return predictions, sum(obs.lower is not None for obs in evidence[True])
+    return predictions, stops
 
 
 def analyze_prefix(problem, history, panel, seed):

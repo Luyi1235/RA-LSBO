@@ -134,14 +134,19 @@ def audit_panel(unit, problem, panel):
     }
 
 
-def verify(protocol, problem, seeds, folder, sha):
-    source_commit(sha)
+def load_supplement(protocol, problem, folder, sha):
     if (read(folder / "plan.json") != {"source_sha": sha, "experiment": protocol}
             or read(folder / "seal.json") != evidence_hashes(folder)):
         raise ValueError("Output plan, source or evidence seal differs")
     calls = read_ledger(folder, problem.contract_id) if protocol["extra_aircraft_calls"] else {}
     if len(calls) != protocol["extra_aircraft_calls"]:
         raise ValueError("Pool-completion call count differs from the fixed budget")
+    return calls
+
+
+def verify(protocol, problem, seeds, folder, sha):
+    source_commit(sha)
+    calls = load_supplement(protocol, problem, folder, sha)
     rows, used = [], 0
     for unit in seeds:
         panel, used = reconcile(unit, problem, calls, used)
