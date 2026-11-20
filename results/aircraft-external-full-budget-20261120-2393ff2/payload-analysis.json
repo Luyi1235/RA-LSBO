@@ -1,0 +1,683 @@
+{
+  "paid_calls": 376,
+  "rcaide_mda_calls": 0,
+  "rows": [
+    {
+      "by_initial": {
+        "16": {
+          "arms": {
+            "archsbo_screened": {
+              "best_usable_Wh": 36346.46405397811,
+              "capped_first": 5,
+              "fallback_proposals": 0,
+              "first_usable": 5,
+              "trained_proposals": 32,
+              "usable_count": 28
+            },
+            "interval_active": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "interval_greedy": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "logcei_sign": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "sign_greedy": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            }
+          },
+          "cold": false
+        },
+        "8": {
+          "arms": {
+            "archsbo_screened": {
+              "best_usable_Wh": 39727.80066989314,
+              "capped_first": 5,
+              "fallback_proposals": 16,
+              "first_usable": 5,
+              "trained_proposals": 24,
+              "usable_count": 22
+            },
+            "interval_active": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "interval_greedy": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "logcei_sign": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            },
+            "sign_greedy": {
+              "best_usable_Wh": 38594.33039025177,
+              "capped_first": 5,
+              "first_usable": 5,
+              "usable_count": 8
+            }
+          },
+          "cold": false
+        }
+      },
+      "paid_calls": 376,
+      "seed": 29060100,
+      "versions": {
+        "botorch": "0.10.0",
+        "numba": "0.68.1",
+        "numpy": "2.5.5",
+        "pymoo": "0.6.2",
+        "sb-arch-opt": "1.7.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "smt": "2.15.1",
+        "torch": "2.15.0"
+      }
+    }
+  ],
+  "source_sha": "2393ff261e39e461ac1b68e15b2a9458791a2f6d",
+  "spec": {
+    "analysis_role": "full-pilot",
+    "arms": [
+      "sign_greedy",
+      "interval_greedy",
+      "interval_active",
+      "logcei_sign",
+      "archsbo_screened"
+    ],
+    "calls_per_seed": 376,
+    "cell_current_limit_fraction": 1.0,
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "headwind_m_s": 0.0,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8,
+      16
+    ],
+    "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+    "name": "full-pilot-payload",
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 24.0,
+    "pool_policy": "same fixed covered roster for pooled arms; ArchSBO searches the screened design space",
+    "pooled_arms": [
+      "sign_greedy",
+      "interval_greedy",
+      "interval_active",
+      "logcei_sign"
+    ],
+    "post_feasible_policy": "all pooled arms use the same logCEI implementation with all their records",
+    "primary": {
+      "cohort": "cold",
+      "contrast": "interval_greedy_minus_sign_greedy",
+      "endpoint": "first_usable_total_call_capped_at_budget_plus_one",
+      "initial": 8,
+      "scenario": "payload"
+    },
+    "scenario": "payload",
+    "seeds": [
+      29060100
+    ],
+    "shared_initial_prefixes": true,
+    "total_budget": 48
+  },
+  "status": "VERIFIED_FULL_BUDGET_EXTERNAL_COMPARISON",
+  "summary": {
+    "16": {
+      "all": {
+        "contrasts": {
+          "interval_active_minus_interval_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_archsbo_screened": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": 1.0,
+              "losses": 1,
+              "mean": 2247.8663362736625,
+              "n": 1,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 1,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_logcei_sign": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_sign_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          }
+        },
+        "hits": {
+          "archsbo_screened": 1,
+          "interval_active": 1,
+          "interval_greedy": 1,
+          "logcei_sign": 1,
+          "sign_greedy": 1
+        },
+        "n": 1
+      },
+      "cold": {
+        "contrasts": {
+          "interval_active_minus_interval_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_archsbo_screened": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_logcei_sign": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_sign_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          }
+        },
+        "hits": {
+          "archsbo_screened": 0,
+          "interval_active": 0,
+          "interval_greedy": 0,
+          "logcei_sign": 0,
+          "sign_greedy": 0
+        },
+        "n": 0
+      }
+    },
+    "8": {
+      "all": {
+        "contrasts": {
+          "interval_active_minus_interval_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_archsbo_screened": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": 1.0,
+              "losses": 0,
+              "mean": -1133.4702796413694,
+              "n": 1,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 1
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 1
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_logcei_sign": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_sign_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0.0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 1,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": 0,
+              "n": 1,
+              "paired_95": null,
+              "ties": 1,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": 0,
+              "n": 1,
+              "paired_95": null
+            }
+          }
+        },
+        "hits": {
+          "archsbo_screened": 1,
+          "interval_active": 1,
+          "interval_greedy": 1,
+          "logcei_sign": 1,
+          "sign_greedy": 1
+        },
+        "n": 1
+      },
+      "cold": {
+        "contrasts": {
+          "interval_active_minus_interval_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_archsbo_screened": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_logcei_sign": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          },
+          "interval_greedy_minus_sign_greedy": {
+            "energy_Wh_delta_both_usable": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "feasibility_first_terminal_order": {
+              "losses": 0,
+              "ties": 0,
+              "wins": 0
+            },
+            "first_capped_delta": {
+              "exact_sign_p_two_sided": null,
+              "losses": 0,
+              "mean": null,
+              "n": 0,
+              "paired_95": null,
+              "ties": 0,
+              "wins": 0
+            },
+            "hit_rate_delta": {
+              "mean": null,
+              "n": 0,
+              "paired_95": null
+            }
+          }
+        },
+        "hits": {
+          "archsbo_screened": 0,
+          "interval_active": 0,
+          "interval_greedy": 0,
+          "logcei_sign": 0,
+          "sign_greedy": 0
+        },
+        "n": 0
+      }
+    }
+  }
+}
