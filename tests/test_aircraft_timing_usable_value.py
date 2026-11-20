@@ -33,9 +33,10 @@ class UsableValueTests(unittest.TestCase):
         self.assertAlmostEqual(static, .65)
 
     def test_unobserved_endpoint_is_excluded_from_paired_comparison(self):
-        known = {"first": {"id": "first", "outcome": "abort"}, "second": None,
+        known = {"first": {"id": "first", "outcome": "abort", "usable": False},
+                 "second": {"id": "second", "outcome": "abort", "usable": False},
                  "any_usable_by_two": False}
-        missing = {"first": {"id": "other", "outcome": None}, "second": None,
+        missing = {"first": {"id": "other", "outcome": None, "usable": None}, "second": None,
                    "any_usable_by_two": None}
         report = summarize([{"state": "paired", "arms": {
             "interval_greedy": known, "usable_greedy": known, "usable_lookahead": missing}}])
