@@ -99,9 +99,9 @@ def rosters(problem, spec, seed):
 class FixedTimingHead:
     scale = MARGIN_SCALE
 
-    def __init__(self, problem, inputs, history, seed):
+    def __init__(self, problem, inputs, history, seed, *, use_interval=True):
         self.divisor = group_divisors(inputs.shape[1], len(problem.space.continuous), *LENGTHS)
-        evidence = [timing_feedback(record.to_dict(), problem.settings, use_interval=True,
+        evidence = [timing_feedback(record.to_dict(), problem.settings, use_interval=use_interval,
                                     allow_hidden_reserve_stop=True) for record in history]
         normalized = [replace(o, lower=None if o.lower is None else o.lower/self.scale,
                               upper=None if o.upper is None else o.upper/self.scale) for o in evidence]
@@ -113,16 +113,16 @@ class FixedTimingHead:
         return {"mean": self.scale*result["mean"], "variance": self.scale**2*result["variance"]}
 
 
-def choose(problem, seed, history, remaining, policy):
+def choose(problem, seed, history, remaining, policy, *, fit_interval=True, score_interval=True):
     if all(map(supports_timing, history)):
         try:
             features = PrefixFeatures(problem, BASE, history, seed, latent=False)
             inputs = features.transform([record.candidate for record in history])
             query = features.transform(remaining)
-            head = FixedTimingHead(problem, inputs, history, seed)
+            head = FixedTimingHead(problem, inputs, history, seed, use_interval=fit_interval)
             if policy == "active":
-                p, _, eligible, gains = score_information(
-                    head, query, remaining, [deficit_edges(x, problem.settings) for x in remaining])
+                edges = [deficit_edges(x, problem.settings) for x in remaining] if score_interval else None
+                p, _, eligible, gains = score_information(head, query, remaining, edges)
                 shortlisted = [remaining[i] for i in eligible]
                 offset = select(shortlisted, gains)
                 index = int(eligible[offset])
@@ -140,13 +140,15 @@ def choose(problem, seed, history, remaining, policy):
     return index, {"rule": "coverage_fallback", "reason": reason}
 
 
-def play(problem, seed, history, pool, budget, policy, acquire):
+def play(problem, seed, history, pool, budget, policy, acquire, *, selector=None):
+    if selector is None:
+        selector = choose
     history = list(history)
     remaining = list(pool)
     first = next((i for i, r in enumerate(history, 1) if r.usable_feasible), None)
     trace = []
     while first is None and len(history) < budget and remaining:
-        index, decision = choose(problem, seed, history, remaining, policy)
+        index, decision = selector(problem, seed, history, remaining, policy)
         point = remaining.pop(index)
         record = acquire(point, len(history)+1)
         history.append(record)
