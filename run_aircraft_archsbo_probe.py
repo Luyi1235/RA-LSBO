@@ -21,12 +21,12 @@ from run_aircraft_timing_usable_value import UsableAircraft
 
 
 class SealedAircraft(ArchOptProblemBase):
-    def __init__(self, aircraft):
+    def __init__(self, aircraft, *, constraints=None):
         self.space = aircraft.space
         self.candidate_class = aircraft.candidate_class
         self.discrete = aircraft.space.discrete
         self.continuous = aircraft.space.continuous
-        self.constraint_names = aircraft.required_constraints
+        self.constraint_names = aircraft.required_constraints if constraints is None else tuple(constraints)
         variables = [
             Choice(options=list(range(len(v.values)))) if v.kind == "nominal"
             else Integer(bounds=(0, len(v.values)-1))
@@ -65,8 +65,7 @@ class SealedAircraft(ArchOptProblemBase):
         return [obs.objective.value], [constraints[name].value for name in self.constraint_names]
 
 
-def ask(aircraft, records, seed):
-    problem = SealedAircraft(aircraft)
+def warm_start(problem, records, seed, *, factory=get_arch_sbo_gp, followups=1):
     candidates = [record.candidate for record in records]
     x, active = problem.correct_x(np.asarray([problem.encode(candidate) for candidate in candidates]))
     if any(problem.decode(vector) != candidate for vector, candidate in zip(x, candidates)):
@@ -75,12 +74,20 @@ def ask(aircraft, records, seed):
     population = Population.new(X=x, F=f, G=g, H=np.empty((len(x), 0)), is_active=active)
     for individual in population:
         individual.evaluated.update(("F", "G", "H"))
-    algorithm = get_arch_sbo_gp(problem, init_size=len(x), init_sampling=population, kpls_n_dim=None)
-    algorithm.setup(problem, seed=seed, termination=("n_gen", 2))
+    algorithm = factory(problem, init_size=len(x), init_sampling=population, kpls_n_dim=None)
+    algorithm.setup(problem, seed=seed, termination=("n_gen", followups+1))
     initial = algorithm.ask()
     if len(initial) != len(x) or not np.array_equal(initial.get("X"), x):
         raise ValueError("ArchSBO warm start differs from the shared prefix")
     algorithm.tell(infills=initial)
+    algorithm.evaluator.n_eval = len(records)
+    return algorithm
+
+
+def ask(aircraft, records, seed):
+    problem = SealedAircraft(aircraft)
+    candidates = [record.candidate for record in records]
+    algorithm = warm_start(problem, records, seed)
     proposal = algorithm.ask()
     if proposal is None or len(proposal) != 1:
         raise ValueError("ArchSBO did not return one native proposal")
