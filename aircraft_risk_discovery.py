@@ -36,7 +36,7 @@ def label(result, head):
     return result == "usable"
 
 
-def fit_stage_heads(history, past_x, outcomes, seed, continuous_count, *, sharing=None):
+def fit_stage_head(name, history, past_x, outcomes, seed, continuous_count, *, sharing=None):
     from ra_lsbo.experiments.simplified_aircraft.dualview_optimizer import StableGroupedHead
 
     kwargs = {}
@@ -45,22 +45,24 @@ def fit_stage_heads(history, past_x, outcomes, seed, continuous_count, *, sharin
         from aircraft_risk_prior import SharedRiskEvidenceGP
 
         kwargs["gp_factory"] = partial(SharedRiskEvidenceGP, sharing=sharing)
-    heads = {}
-    for name in ("mission", "feasible_given_mission", "usable_direct"):
-        observations = []
-        for row, result in zip(history, outcomes):
-            evidence = row.observation.evidence_id + ":" + name
-            target = label(result, name)
-            if target is None:
-                obs = OutputObservation("missing", evidence, reason="stage_label_unobserved")
-            elif target:
-                obs = OutputObservation("interval", evidence, upper=0.)
-            else:
-                obs = OutputObservation("interval", evidence, lower=0., lower_inclusive=False)
-            observations.append(obs)
-        heads[name] = StableGroupedHead(past_x, observations, seed=seed, name=name,
-                                       continuous_count=continuous_count, completion=True, **kwargs)
-    return heads
+    observations = []
+    for row, result in zip(history, outcomes):
+        evidence = row.observation.evidence_id + ":" + name
+        target = label(result, name)
+        if target is None:
+            obs = OutputObservation("missing", evidence, reason="stage_label_unobserved")
+        elif target:
+            obs = OutputObservation("interval", evidence, upper=0.)
+        else:
+            obs = OutputObservation("interval", evidence, lower=0., lower_inclusive=False)
+        observations.append(obs)
+    return StableGroupedHead(past_x, observations, seed=seed, name=name,
+                             continuous_count=continuous_count, completion=True, **kwargs)
+
+
+def fit_stage_heads(history, past_x, outcomes, seed, continuous_count, *, sharing=None):
+    return {name: fit_stage_head(name, history, past_x, outcomes, seed, continuous_count, sharing=sharing)
+            for name in ("mission", "feasible_given_mission", "usable_direct")}
 
 
 def stage_forecast(heads, query):
