@@ -19,7 +19,7 @@ class FeedbackReplicationTests(unittest.TestCase):
         bound = OutputObservation("interval", "smoke", lower=0.)
         with patch.object(coverage, "timing_feedback", return_value=bound) as labels, \
                 patch.object(coverage, "EvidenceGP"):
-            coverage.FixedTimingHead(problem, np.zeros((1, 2)), [record], 11, use_interval=False)
+            coverage.FixedTimingHead(problem, np.zeros((1, 3)), [record], 11, use_interval=False)
         self.assertFalse(labels.call_args.kwargs["use_interval"])
 
     def test_campaign_passes_each_arm_its_declared_feedback_modes(self):
