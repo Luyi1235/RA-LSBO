@@ -1,0 +1,73 @@
+{
+  "headwind_m_s": 4.0,
+  "payload_delta_kg": 0.0,
+  "initial_sizes": [
+    8,
+    16
+  ],
+  "initial_proposals": 128,
+  "online_proposals": 256,
+  "online_size": 48,
+  "name": "confirmation-headwind",
+  "analysis_role": "confirmation",
+  "cell_current_limit_fraction": 1.0,
+  "seeds": [
+    29070200,
+    29070300,
+    29070400,
+    29070500,
+    29070600,
+    29070700,
+    29070800,
+    29070900,
+    29071000,
+    29071100,
+    29071200,
+    29071300,
+    29071400,
+    29071500,
+    29071600,
+    29071700,
+    29071800,
+    29071900,
+    29072000,
+    29072100,
+    29072200,
+    29072300,
+    29072400,
+    29072500
+  ],
+  "total_budget": 48,
+  "arms": [
+    "sign_greedy",
+    "interval_greedy",
+    "interval_active",
+    "logcei_sign",
+    "archsbo_screened"
+  ],
+  "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+  "endpoints": [
+    "first_usable_total_call_capped_at_budget_plus_one",
+    "hit_within_budget",
+    "terminal_best_usable_Wh",
+    "feasibility_first_terminal_order"
+  ],
+  "scenario": "headwind",
+  "calls_per_seed": 376,
+  "shared_initial_prefixes": true,
+  "pooled_arms": [
+    "sign_greedy",
+    "interval_greedy",
+    "interval_active",
+    "logcei_sign"
+  ],
+  "pool_policy": "same fixed covered roster for pooled arms; ArchSBO searches the screened design space",
+  "post_feasible_policy": "all pooled arms use the same logCEI implementation with all their records",
+  "primary": {
+    "scenario": "payload",
+    "initial": 8,
+    "cohort": "cold",
+    "contrast": "interval_greedy_minus_sign_greedy",
+    "endpoint": "first_usable_total_call_capped_at_budget_plus_one"
+  }
+}
