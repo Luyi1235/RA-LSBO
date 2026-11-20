@@ -55,6 +55,18 @@ class FeedbackReplicationTests(unittest.TestCase):
         scoring = comparisons["interval_active_minus_interval_fit_sign_score"]["mean"]
         self.assertEqual(total, fit+scoring)
 
+    def test_nominal_design_restores_current_rating_and_compares_both_sign_controls(self):
+        spec = trial.plan("nominal-payload")
+        self.assertEqual(spec["cell_current_limit_fraction"], 1.)
+        self.assertEqual(spec["primary"]["initial"], 8)
+        self.assertEqual(spec["primary"]["contrast"], "interval_greedy_minus_sign_greedy")
+        self.assertEqual(spec["analysis_role"], "primary")
+        self.assertEqual(trial.plan("nominal-headwind")["headwind_m_s"], 4.)
+        self.assertNotIn("interval_fit_sign_score", spec["arms"])
+        contrasts = trial.summarize([], spec["arms"])["differences"]
+        self.assertIn("interval_greedy_minus_sign_active", contrasts)
+        self.assertNotIn("interval_fit_sign_score_minus_sign_active", contrasts)
+
 
 if __name__ == "__main__":
     unittest.main()

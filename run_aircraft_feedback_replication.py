@@ -27,21 +27,33 @@ ARMS = {
 PROFILES = {
     "smoke": ((28800100,), 18),
     "payload": (tuple(range(29020100, 29024900, 100)), 48),
+    "nominal-smoke": ((28803700,), 18),
+    "nominal-payload": (tuple(range(29030100, 29033300, 100)), 48),
+    "nominal-headwind": (tuple(range(29033300, 29036500, 100)), 48),
 }
+NOMINAL_SCENARIOS = {"nominal-smoke": "payload", "nominal-payload": "payload",
+                     "nominal-headwind": "headwind"}
 
 
 def plan(name):
     seeds, budget = PROFILES[name]
-    spec = coverage_plan("payload")
+    nominal = name in NOMINAL_SCENARIOS
+    spec = coverage_plan(NOMINAL_SCENARIOS.get(name, "payload"))
+    arm_names = tuple(arm for arm in ARMS if not nominal or arm != "interval_fit_sign_score")
     spec.pop("audit_seeds")
     spec.pop("max_audit_calls")
     spec.update(name=name, seeds=list(seeds), total_budget=budget, arms={
-        arm: {"policy": policy, "fit_interval": fit, "score_interval": score}
-        for arm, (policy, fit, score) in ARMS.items()
+        arm: {"policy": ARMS[arm][0], "fit_interval": ARMS[arm][1], "score_interval": ARMS[arm][2]}
+        for arm in arm_names
     }, max_optimizer_calls=len(seeds)*(max(SIZES)+spec["online_size"]),
-        primary={"initial": 16, "cohort": "unsolved_at_initial",
+        primary={"initial": 8 if nominal else 16, "cohort": "unsolved_at_initial",
                  "endpoint": "first_usable_total_call_capped_at_budget_plus_one",
-                 "contrast": "interval_active_minus_interval_greedy"})
+                 "contrast": ("interval_greedy_minus_sign_greedy" if nominal
+                              else "interval_active_minus_interval_greedy")})
+    if nominal:
+        spec["cell_current_limit_fraction"] = 1.
+        spec["analysis_role"] = {"nominal-smoke": "smoke", "nominal-payload": "primary",
+                                 "nominal-headwind": "secondary"}[name]
     return spec
 
 
@@ -66,6 +78,8 @@ def campaign(spec, problem, obtain):
         for size in spec["initial_sizes"]:
             arms = {}
             for name, (policy, fit, score) in ARMS.items():
+                if name not in spec["arms"]:
+                    continue
                 selector = partial(choose, fit_interval=fit, score_interval=score)
                 arms[name] = play(problem, seed, history[:size], covered, spec["total_budget"], policy,
                                   lambda point, i: acquire(point, f"{size}/{name}/{i}"), selector=selector)
@@ -85,23 +99,25 @@ def paired(values):
             "exact_sign_p_two_sided": float(binomtest(wins, wins+losses).pvalue) if wins+losses else None}
 
 
-def summarize(rows):
+def summarize(rows, arm_names=ARMS):
     arms = [row["arms"] for row in rows]
     times = [{name: v["capped_first"] for name, v in row.items()} for row in arms]
     differences = {
         f"{a}_minus_{b}": paired([t[a]-t[b] for t in times])
         for a, b in (("interval_active", "interval_greedy"), ("sign_active", "sign_greedy"),
                      ("interval_greedy", "sign_greedy"), ("interval_active", "sign_active"),
-                     ("interval_fit_sign_score", "sign_active"), ("interval_active", "interval_fit_sign_score"))
+                     ("interval_greedy", "sign_active"), ("interval_fit_sign_score", "sign_active"),
+                     ("interval_active", "interval_fit_sign_score"))
+        if a in arm_names and b in arm_names
     }
     differences["feedback_by_policy_interaction"] = paired([
         (t["interval_active"]-t["interval_greedy"])-(t["sign_active"]-t["sign_greedy"]) for t in times])
     return {
-        "n": len(rows), "hits": {name: sum(r[name]["first_usable"] is not None for r in arms) for name in ARMS},
+        "n": len(rows), "hits": {name: sum(r[name]["first_usable"] is not None for r in arms) for name in arm_names},
         "differences": differences,
-        "mean_capped_first": {name: effect([t[name] for t in times]) for name in ARMS},
+        "mean_capped_first": {name: effect([t[name] for t in times]) for name in arm_names},
         "fallbacks": {name: sum(x["rule"] == "coverage_fallback" for r in arms for x in r[name]["trace"])
-                      for name in ARMS},
+                      for name in arm_names},
     }
 
 
@@ -136,11 +152,13 @@ def verify(folder, sha):
     if position != len(calls) or position > spec["max_optimizer_calls"]:
         raise ValueError("Ledger count differs from the registered budget")
     summary = {}
+    arm_names = spec["arms"]
     for n in map(str, SIZES):
         groups = [r["by_initial"][n] for r in rows]
-        summary[n] = {"all": summarize(groups), "cold": summarize([r for r in groups if r["cold"]]),
+        summary[n] = {"all": summarize(groups, arm_names),
+                      "cold": summarize([r for r in groups if r["cold"]], arm_names),
                       "cold_at_16": summarize([r["by_initial"][n] for r in rows
-                                               if r["by_initial"]["16"]["cold"]])}
+                                               if r["by_initial"]["16"]["cold"]], arm_names)}
     return {"status": "VERIFIED_AIRCRAFT_FEEDBACK_REPLICATION", "source_sha": sha,
             "plan": spec, "physical_calls": dict(Counter(role for _, _, role in calls.values())),
             "rcaide_mda_calls": 0, "summary": summary, "rows": rows}
