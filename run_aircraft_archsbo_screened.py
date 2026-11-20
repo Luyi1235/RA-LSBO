@@ -116,11 +116,10 @@ def screened_algorithm(problem, init_size, init_sampling, kpls_n_dim, *, screen)
                                 infill_size=batch, init_size=init_size, init_sampling=init_sampling)
 
 
-def run_prefix(aircraft, records, seed, *, ledger=None):
+def screened_trajectory(aircraft, records, seed, followups, evaluate=None):
     remaining = tuple(name for name in aircraft.required_constraints if name not in STATIC)
     problem = SealedAircraft(aircraft, constraints=remaining)
     screen = AircraftScreen(aircraft, problem)
-    followups = 1 if ledger is None else ledger.maximum
     algorithm = warm_start(problem, records, seed, factory=partial(screened_algorithm, screen=screen),
                            followups=followups)
     seen = {digest(record.candidate) for record in records}
@@ -139,23 +138,32 @@ def run_prefix(aircraft, records, seed, *, ledger=None):
         entry = {"step": step, "candidate": candidate, "candidate_id": key, "margins": margins,
                  "screen_counts": dict(screen.counts-previous),
                  "native_surrogate_trained": bool(algorithm.infill_obj.was_trained)}
-        if ledger is not None:
-            record = ledger.evaluate(aircraft, candidate, f"followup/{step}", "online")
+        if evaluate is not None:
+            record = evaluate(candidate, step)
             f, g = problem.outputs(record)
             proposal.set("X", x, "F", np.asarray([f]), "G", np.asarray([g]), "H", np.empty((1, 0)),
                          "is_active", active)
             proposal[0].evaluated.update(("F", "G", "H"))
             algorithm.evaluator.n_eval += 1
             algorithm.tell(infills=proposal)
-            if algorithm.evaluator.n_eval != len(records)+ledger.count:
+            if algorithm.evaluator.n_eval != len(records)+step:
                 raise RuntimeError("Mission evaluation count differs from the native ledger")
             entry.update(outcome=discovery_outcome(record.to_dict()), usable=record.usable_feasible,
-                         paid_calls=ledger.count)
+                         paid_calls=step)
         seen.add(key)
         steps.append(entry)
     return {"seed": seed, "initial": len(records),
             "initial_exact_rows": int(sum(np.isfinite(problem.outputs(r)[0][0]) for r in records)),
             "steps": steps}
+
+
+def run_prefix(aircraft, records, seed, *, ledger=None):
+    if ledger is None:
+        return screened_trajectory(aircraft, records, seed, 1)
+    return screened_trajectory(
+        aircraft, records, seed, ledger.maximum,
+        lambda candidate, step: ledger.evaluate(aircraft, candidate, f"followup/{step}", "online"),
+    )
 
 
 def qualification(folder, sha, output, *, online):
