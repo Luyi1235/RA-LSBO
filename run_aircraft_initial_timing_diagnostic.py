@@ -20,8 +20,9 @@ from run_aircraft_risk_timing_replay import MARGIN_SCALE, timing_feedback
 METHODS = ("timing_interval", "timing_sign", "original_probit")
 
 
-def fit_completion_heads(problem, history, candidates, seed, methods=METHODS):
-    features = PrefixFeatures(problem, BASE, history, seed, latent=False)
+def fit_completion_heads(problem, history, candidates, seed, methods=METHODS, *, features=None):
+    if features is None:
+        features = PrefixFeatures(problem, BASE, history, seed, latent=False)
     x = features.transform([record.candidate for record in history])
     query = features.transform(candidates)
     history_records = [record.to_dict() for record in history]
