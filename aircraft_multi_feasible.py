@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import ndtr
 
 from aircraft_risk_discovery import label as outcome_label
-from aircraft_structured_risk import STRUCTURED_ARMS, HierarchicalTimingHead, with_configuration
+from aircraft_structured_risk import STRUCTURED_ARMS, STRUCTURED_SIGN_GREEDY, HierarchicalTimingHead, with_configuration
 from aircraft_timing_information import supports_timing
 from ra_lsbo.budget import digest
 from ra_lsbo.experiments.core.protocol import BASE
@@ -66,7 +66,7 @@ def score_audit(panel, labels, probabilities):
 
 
 def completion_audit(problem, seed, histories, heldout, checkpoints, initial):
-    """Assess histories with the same explicit feature map and interval GP."""
+    """Assess histories on a common explicit feature map using each arm's evidence model."""
     common = next(iter(histories.values()))[:initial]
     features = PrefixFeatures(problem, BASE, common, seed, latent=False)
     results = {}
@@ -90,7 +90,8 @@ def completion_audit(problem, seed, histories, heldout, checkpoints, initial):
                 inputs = features.transform([row.candidate for row in trusted])
                 if arm in STRUCTURED_ARMS:
                     inputs = with_configuration(inputs, [row.candidate for row in trusted])
-                    head = HierarchicalTimingHead(problem, inputs, trusted, seed, use_interval=True)
+                    head = HierarchicalTimingHead(problem, inputs, trusted, seed,
+                                                  use_interval=arm != STRUCTURED_SIGN_GREEDY)
                     moments = head.predict(with_configuration(query, panel))
                 else:
                     head = FixedTimingHead(problem, inputs, trusted, seed, use_interval=True)

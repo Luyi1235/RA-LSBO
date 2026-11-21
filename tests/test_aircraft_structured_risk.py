@@ -2,12 +2,14 @@ from shutil import copyfile
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
-from aircraft_structured_risk import (LATENT_DECISION, PROFILE, STRUCTURED_ARMS, STRUCTURED_DECISION,
+from aircraft_structured_risk import (CONFIRMATION_PROFILE, LATENT_DECISION, PROFILE, STRUCTURED_ARMS,
+                                      STRUCTURED_DECISION, STRUCTURED_SIGN_GREEDY,
                                       HierarchicalTimingGP, choose_completion_with_lookahead, with_configuration)
 from ra_lsbo.risk_core.observations import OutputObservation
 from run_aircraft_native_risk_lsbo import UsableAircraft, run, verify
-from run_aircraft_refinement_confirmation import PAPER_ARMS, registration, shard_plan
+from run_aircraft_refinement_confirmation import CONFIRMATION_ARMS, ORIGINAL, PAPER_ARMS, registration, shard_plan
 
 
 def test_hierarchical_kernel_preserves_variance_and_learns_from_other_layouts():
@@ -39,10 +41,11 @@ def test_zero_correlation_lookahead_keeps_greedy_order():
     np.testing.assert_allclose(info["adaptive_two_call_completion"], info["fixed_second_completion"])
 
 
-def test_five_arm_run_accepts_only_shared_and_online_evaluation_evidence(tmp_path, monkeypatch):
-    seed = registration(PROFILE)["scenarios"]["headwind"]["seeds"][0]
-    spec = shard_plan(PROFILE, "headwind", seed)
-    assert spec["arms"] == list(PAPER_ARMS)
+@pytest.mark.parametrize("profile,arms", [(PROFILE, PAPER_ARMS), (CONFIRMATION_PROFILE, CONFIRMATION_ARMS)])
+def test_five_arm_run_accepts_only_shared_and_online_evaluation_evidence(tmp_path, monkeypatch, profile, arms):
+    seed = registration(profile)["scenarios"]["headwind"]["seeds"][0]
+    spec = shard_plan(profile, "headwind", seed)
+    assert spec["arms"] == list(arms)
     assert spec["calls_per_seed"] == 144
     spec.update(total_budget=10, horizon=2, calls_per_seed=22, quality_budgets=[10],
                 completion_audit_size=4, completion_audit_checkpoints=[8, 10])
@@ -80,7 +83,11 @@ def test_five_arm_run_accepts_only_shared_and_online_evaluation_evidence(tmp_pat
     assert paid == report["paid_calls"] == 22
     assert report["cold"]
     assert report["completion_audit"]["8"][STRUCTURED_ARMS[0]] == report["completion_audit"]["8"][STRUCTURED_DECISION]
-    assert report["completion_audit"]["8"][LATENT_DECISION]["n"] == 4
-    for arm in PAPER_ARMS:
-        assert report["arms"][arm]["cold_risk_calls"] == 2
+    if profile == CONFIRMATION_PROFILE:
+        assert ORIGINAL not in report["completion_audit"]["8"]
+        assert report["completion_audit"]["8"][STRUCTURED_SIGN_GREEDY] != report["completion_audit"]["8"][STRUCTURED_DECISION]
+    else:
+        assert report["completion_audit"]["8"][LATENT_DECISION]["n"] == 4
+    for arm in arms:
+        assert report["arms"][arm]["cold_risk_calls"] == (0 if arm == ORIGINAL else 2)
         assert report["arms"][arm]["accumulation"]["capped_target_call"] == 11

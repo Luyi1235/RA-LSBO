@@ -13,7 +13,8 @@ from scipy.special import ndtr
 
 from aircraft_multi_feasible import accumulation_metrics, acquisition_stage, completion_audit
 from aircraft_structured_risk import (
-    DECISION_ARMS, PROFILE as PAPER_PROFILE, STRUCTURED_ARMS, HierarchicalTimingHead,
+    CONFIRMATION_PROFILE, DECISION_ARMS, PROFILE as PAPER_PROFILE, STRUCTURED_ARMS, STRUCTURED_SIGN_GREEDY,
+    HierarchicalTimingHead,
     choose_completion_with_lookahead, with_configuration,
 )
 from aircraft_timing_energy_value import energy_evidence, target_choice, target_marks
@@ -92,7 +93,7 @@ def plan(scenario, profile, study="discovery"):
 
 
 def cold_policy(arm):
-    feedback = "sign" if arm in ("ra_sign_greedy", COLD_SIGN) else "interval"
+    feedback = "sign" if arm in ("ra_sign_greedy", COLD_SIGN, STRUCTURED_SIGN_GREEDY) else "interval"
     if arm in DECISION_ARMS:
         policy = "completion_lookahead"
     else:
@@ -247,7 +248,7 @@ class RiskAwareLSBO(FullBudgetLSBO):
 
 
 def seed_evidence(folder, spec):
-    if spec.get("analysis_role") == PAPER_PROFILE:
+    if spec.get("analysis_role") in (PAPER_PROFILE, CONFIRMATION_PROFILE):
         files = ["plan.json", "calls.jsonl", *(arm+".json" for arm in spec["arms"])]
         return {name: file_hash(folder/name) for name in files}
     return evidence_hashes(folder)
@@ -412,7 +413,7 @@ def verify(folder, spec, sha):
                         if receipt["feedback"] != REFINEMENT_FEEDBACK[arm]:
                             raise ValueError("Incorrect refinement feedback")
                         refinement_calls += 1
-                if usable_target > 1:
+                if usable_target > 1 and arm != ORIGINAL:
                     if acquisition_stage(history, usable_target):
                         if proposal["source"] != "lsbo_latent_completion_risk" and "risk_fallback" not in proposal:
                             raise ValueError("The accumulation policy is missing from the receipt")
@@ -443,7 +444,8 @@ def verify(folder, spec, sha):
         heldout = [settled(f"risk_audit/{i}", "heldout") for i in range(1, len(panel)+1)]
         if [record.candidate for record in heldout] != panel:
             raise ValueError("Unexpected held-out candidate panel")
-        row["completion_audit"] = completion_audit(problem, seed, histories, heldout,
+        audited_histories = {arm: history for arm, history in histories.items() if arm != ORIGINAL}
+        row["completion_audit"] = completion_audit(problem, seed, audited_histories, heldout,
                                                   spec["completion_audit_checkpoints"], INITIAL)
     if position != len(calls):
         raise ValueError("The run contains unaccounted evaluations")

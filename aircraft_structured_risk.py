@@ -10,10 +10,12 @@ from run_aircraft_risk_cold_start import select
 
 
 PROFILE = "structured-risk-paper"
+CONFIRMATION_PROFILE = "structured-risk-confirmation"
 STRUCTURED_GREEDY = "ra_structured_greedy"
+STRUCTURED_SIGN_GREEDY = "ra_structured_sign_greedy"
 STRUCTURED_DECISION = "ra_structured_decision"
 LATENT_DECISION = "ra_interval_decision"
-STRUCTURED_ARMS = (STRUCTURED_GREEDY, STRUCTURED_DECISION)
+STRUCTURED_ARMS = (STRUCTURED_GREEDY, STRUCTURED_DECISION, STRUCTURED_SIGN_GREEDY)
 DECISION_ARMS = (LATENT_DECISION, STRUCTURED_DECISION)
 
 
