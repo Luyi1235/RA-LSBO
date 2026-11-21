@@ -18,11 +18,12 @@ from run_aircraft_native_risk_lsbo import (
     COLD_ARMS, COLD_CONTRASTS, ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_GREEDY, ENERGY_LOOKAHEAD,
     INITIAL, REFINEMENT_CONTRASTS, plan, run, verify,
 )
+from run_aircraft_refinement_fork import ARMS as FORK_ARMS, FORK_FEASIBLE, PROFILE as FORK_PROFILE, run_fork, verify_fork
 from run_aircraft_risk_cold_start import source_commit
 
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot")
+PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE)
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
@@ -32,6 +33,9 @@ COLD_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
 ENERGY_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
                   "contrast": f"{ENERGY_LOOKAHEAD}_minus_{ENERGY_GREEDY}",
                   "endpoint": "feasibility_first_terminal_order"}
+FORK_PRIMARY = {"scenario": "headwind", "cohort": "cold_forked", "budget": 48,
+                "contrast": f"{FORK_ARMS[1]}_minus_{FORK_ARMS[0]}",
+                "endpoint": "feasibility_first_terminal_order"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -43,7 +47,8 @@ WORKER_ENTRY = (
 def seed_registry(profile):
     if profile in ("smoke", "cold-smoke"):
         return {scenario: plan(scenario, "smoke", "refinement")["seeds"] for scenario in SCENARIOS}
-    base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6)}.get(profile, (29300100, 24))
+    base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6),
+                  FORK_PROFILE: (29460100, 6)}.get(profile, (29300100, 24))
     return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
             for i, scenario in enumerate(SCENARIOS)}
 
@@ -53,7 +58,13 @@ def shard_plan(profile, scenario, seed):
         raise ValueError("Seed is outside the registered cohort")
     spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
-    if profile.startswith("cold-") or profile == "energy-pilot":
+    if profile == FORK_PROFILE:
+        spec.update(arms=list(FORK_ARMS), contrasts=[list(reversed(FORK_ARMS))],
+                    calls_per_seed=INITIAL+len(FORK_ARMS)*spec["horizon"],
+                    fork_feasible=FORK_FEASIBLE, shared_policy="native interval RA-LSBO",
+                    post_feasible_policy="same native risk acquisition with exact-plus-censored / exact-only correction",
+                    quality_budgets=[24, 32, 48], primary=FORK_PRIMARY)
+    elif profile.startswith("cold-") or profile == "energy-pilot":
         arms, contrasts, primary = ((ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_PRIMARY) if profile == "energy-pilot"
                                     else (COLD_ARMS, COLD_CONTRASTS, COLD_PRIMARY))
         spec.update(arms=list(arms), contrasts=[list(pair) for pair in contrasts],
@@ -66,9 +77,10 @@ def shard_plan(profile, scenario, seed):
 def registration(profile):
     scenarios = seed_registry(profile)
     primary = {"cold-smoke": COLD_PRIMARY, "cold-pilot": COLD_PRIMARY,
-               "energy-pilot": ENERGY_PRIMARY}.get(profile, PRIMARY)
+               "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY}.get(profile, PRIMARY)
+    budget_field = "maximum_calls_per_seed" if profile == FORK_PROFILE else "calls_per_seed"
     return {"profile": profile, "primary": primary, "scenarios": {
-        scenario: {"seeds": seeds, "calls_per_seed": shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
+        scenario: {"seeds": seeds, budget_field: shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
         for scenario, seeds in scenarios.items()}}
 
 
@@ -148,6 +160,9 @@ def cohort_summary(rows, spec):
                    if arm in (ENERGY_GREEDY, ENERGY_LOOKAHEAD) else {}),
                 **({"energy_adaptive_calls": sum(row["arms"][arm]["energy_adaptive_calls"] for row in rows)}
                    if arm == ENERGY_LOOKAHEAD else {}),
+                **({key: sum(row["arms"][arm][key] for row in rows)
+                    for key in ("energy_update_calls", "energy_update_fallbacks")}
+                   if spec["analysis_role"] == FORK_PROFILE else {}),
                 "feasible_at_checkpoints": {
                     str(b): sum(row["arms"][arm]["quality_by_budget"][str(b)] is not None for row in rows)
                     for b in spec["quality_budgets"]},
@@ -170,7 +185,8 @@ def analyze(root, profile, sha):
         rows = []
         for seed in seeds:
             spec = shard_plan(profile, scenario, seed)
-            row = verify(root/scenario/str(seed), spec, sha)
+            verify_one = verify_fork if profile == FORK_PROFILE else verify
+            row = verify_one(root/scenario/str(seed), spec, sha)
             if versions is None:
                 versions = row["versions"]
             if row["versions"] != versions:
@@ -183,7 +199,22 @@ def analyze(root, profile, sha):
                 ("initially_usable", [row for row in rows if not row["cold"]]))},
             "rows": rows,
         }
-    if profile == "energy-pilot":
+        if profile == FORK_PROFILE:
+            forked = [row for row in rows if row["fork_evaluation"] is not None]
+            cold_forked = [row for row in forked if row["cold"]]
+            pending = [row for row in cold_forked if not row["shared_target_reached"]]
+            data[scenario]["summary"].update(forked=cohort_summary(forked, spec),
+                                             cold_forked=cohort_summary(cold_forked, spec),
+                                             cold_forked_target_pending=cohort_summary(pending, spec))
+            # Subtract the common prefix from both arms and cap a miss at remaining budget + 1.
+            post_fork_delta = []
+            for row in pending:
+                times = [row["arms"][arm]["first_energy_target"] or spec["total_budget"]+1 for arm in FORK_ARMS]
+                post_fork_delta.append(times[1]-times[0])
+            data[scenario]["post_fork_target_time_delta_cold_target_pending"] = paired(post_fork_delta)
+    if profile == FORK_PROFILE:
+        status = "VERIFIED_CENSORED_ENERGY_REFINEMENT_FORK"
+    elif profile == "energy-pilot":
         status = "VERIFIED_COLD_ENERGY_VALUE_PILOT"
     elif profile.startswith("cold-"):
         status = "VERIFIED_COLD_ACQUISITION_TO_ENERGY"
@@ -223,7 +254,8 @@ def main():
         if args.scenario is None or args.seed is None or output.exists():
             parser.error("Supply a registered scenario and seed and a new output directory")
         spec = shard_plan(args.profile, args.scenario, args.seed)
-        run(spec, args.seed, sha, output)
+        runner = run_fork if args.profile == FORK_PROFILE else run
+        runner(spec, args.seed, sha, output)
     else:
         if args.input is None or args.input.resolve() in (output, *output.parents):
             parser.error("Provide a sealed input root and write its report outside it")

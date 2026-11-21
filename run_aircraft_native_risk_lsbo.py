@@ -135,6 +135,9 @@ class RiskAwareLSBO(FullBudgetLSBO):
         super().__init__(*args, **kwargs)
         self.arm = arm
 
+    def _refinement_energy(self, surrogate, inputs, trusted, head, state):
+        return surrogate
+
     def _propose(self, history):
         if any(record.usable_feasible for record in history):
             if self.arm in REFINEMENT_FEEDBACK:
@@ -161,7 +164,8 @@ class RiskAwareLSBO(FullBudgetLSBO):
             completion = IntervalCompletionProbability(head)
             state.update(mode="risk_weighted_native_search", feedback=feedback, timing_observations=len(trusted),
                          representation_version=representation.version)
-            return RiskWeightedRefinement(baseline, completion)
+            return self._refinement_energy(RiskWeightedRefinement(baseline, completion),
+                                           inputs, trusted, head, state)
 
         candidate, metadata = native.propose(phase, refine_surrogate=risk_surrogate)
         return candidate, {**metadata, "refinement_risk": state}
