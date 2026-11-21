@@ -1,4 +1,4 @@
-"""Render the paper's end-to-end evidence from two fixed result commits."""
+"""Render the paper's end-to-end and external benchmark evidence from fixed commits."""
 
 import argparse
 import json
@@ -9,6 +9,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parent
+EXTERNAL_BATCH = "External comparison"
 ARCHIVES = {
     "Independent confirmation": (
         "ff076555615150a3885611dbf0d288906fca1767",
@@ -24,16 +25,26 @@ ARCHIVES = {
         "c0151e4238d5acf3f56e56b1f6343d5844ab6263",
         "VERIFIED_STRUCTURED_RISK_OPTIMIZATION", 3840,
     ),
+    EXTERNAL_BATCH: (
+        "30d63fbc42498166d537e651053181b8d2c859c3",
+        "results/aircraft-structured-risk-external-20261121-62750a5",
+        "ra-lsbo-structured-external-62750a5-analysis.json",
+        "62750a562a868bc208568b30b65c08b848d2c2fb",
+        "VERIFIED_STRUCTURED_RISK_EXTERNAL", 3840,
+    ),
 }
 STRUCTURED = "ra_structured_greedy"
 CONTROLS = {"lsbo_native": "Original LSBO", "ra_refine_interval": "Interval-risk greedy"}
-LABELS = {STRUCTURED: "Structured-risk greedy", **CONTROLS}
+EXTERNAL_CONTROLS = {"archsbo_screened": "Screened ArchSBO", "logcei_screened_online": "Adapted LogCEI"}
+LABELS = {STRUCTURED: "Structured-risk greedy", **CONTROLS, **EXTERNAL_CONTROLS}
 STYLES = {STRUCTURED: ("#00796B", "-"), "lsbo_native": ("#394B59", "--"),
-          "ra_refine_interval": ("#B75D00", "-.")}
+          "ra_refine_interval": ("#B75D00", "-."), "archsbo_screened": ("#394B59", "--"),
+          "logcei_screened_online": ("#B75D00", "-.")}
 INITIAL, BUDGET = 8, 32
 TARGETS = {"headwind": 40000., "payload": 38000.}
 REPORT = "AIRCRAFT_STRUCTURED_RISK_OPTIMIZATION_EVIDENCE_20261121.md"
 FIGURE = "aircraft-structured-risk-attainment.pdf"
+EXTERNAL_FIGURE = "aircraft-structured-risk-external-attainment.pdf"
 
 
 def load_archive(batch, spec):
@@ -94,10 +105,12 @@ def display_interval(result, scale=1., places=2):
 def write_report(data, output):
     text = [
         "# Structured RA-LSBO cold-start and optimization evidence", "",
-        "The two batches use independent seeds and the same evaluation budget. Cold-start seeds have no "
-        "usable design among the eight shared initial evaluations. Only the end-to-end confirmation "
-        "designated the two optimization endpoints as primary. Its primary population is headwind cold-start "
-        "seeds and its primary comparator is original LSBO. Payload and interval-risk greedy are additional comparisons.",
+        "The three batches use independent seeds and the same evaluation budget. Cold-start seeds have no "
+        "usable design among the eight shared initial evaluations. The end-to-end confirmation designates "
+        "both optimization endpoints as primary in headwind cold-start seeds versus original LSBO. The "
+        "external comparison designates the same endpoints and population versus screened ArchSBO. External "
+        "arms share the engineering screen and evaluation budget, and use their own candidate search.",
+        "", f"[Internal target-attainment curves]({FIGURE}) · [External target-attainment curves]({EXTERNAL_FIGURE})",
         "", "## Optimization outcomes", "",
         "Differences are structured-risk greedy minus the named comparator. Times include the initial evaluations "
         "and assign 33 evaluations to a seed that does not reach its prespecified target by 32. Terminal energy "
@@ -110,10 +123,11 @@ def write_report(data, output):
         "|---|---|---|---|---:|---:|---:|---:|",
     ]
     for batch, archive in data.items():
+        controls = EXTERNAL_CONTROLS if batch == EXTERNAL_BATCH else CONTROLS
         for scenario in TARGETS:
             section = archive["scenarios"][scenario]
             rows, summary = cold_cases(scenario, section)
-            for comparator, label in CONTROLS.items():
+            for comparator, label in controls.items():
                 time, at_budget, _, hits = paired_endpoints(section, rows, summary, comparator)
                 energy = at_budget["energy_Wh_delta_both_usable"]
                 order = at_budget["feasibility_first_order"]
@@ -127,6 +141,11 @@ def write_report(data, output):
         "and one tie (exact sign test p=0.289). Payload has favorable target-time and terminal-energy mean "
         "intervals against original LSBO. The incremental optimization effect against interval-risk greedy "
         "varies by scenario and endpoint.", "",
+        "In the external headwind primary comparison against screened ArchSBO, the mean target-time difference "
+        "is −6.90 evaluations, with six wins, three losses, and one tie (exact sign test p=0.508). Terminal "
+        "feasibility-first order gives nine wins and one loss (p=0.0215). In payload, terminal mean energy "
+        "is lower in point estimate against ArchSBO and the interval includes zero. The adapted LogCEI "
+        "comparison favors the structured method in both scenarios on both mean endpoints.", "",
         "## Cold-start evidence", "",
         "| Scenario | Δ Brier at evaluation 12, independent confirmation | Independent Δ evaluations to "
         "third usable | End-to-end Δ evaluations to third usable |",
@@ -144,62 +163,75 @@ def write_report(data, output):
     text.extend(["", "These endpoints compare structured-risk with interval-risk greedy. The Brier score uses the "
                  "independent held-out panel from the independent-confirmation batch.", "",
                  "## Archive correction", ""])
-    end_archive = data["End-to-end confirmation"]
-    source = ARCHIVES["End-to-end confirmation"]
-    archive_url = f"https://github.com/Luyi1235/RA-LSBO/blob/{source[0]}/{source[1]}"
-    text.append(f"The [archived README]({archive_url}/README.md) labels the evaluation count to the third usable "
-                "design as time to the energy target. The same labeling error affects its all-seed summary.")
-    text.extend(["", "| Scenario | Cohort | Comparator | README values (third usable) | Correct energy-target Δ evaluations |",
-                 "|---|---|---|---:|---:|"])
-    for scenario in TARGETS:
-        section = end_archive["scenarios"][scenario]
-        cold_rows, _ = cold_cases(scenario, section)
-        cohorts = (("cold", "Cold start", cold_rows), ("all", "All seeds", [row["arms"] for row in section["rows"]]))
-        for cohort, name, rows in cohorts:
-            for comparator, label in CONTROLS.items():
-                time, _, third, _ = paired_endpoints(section, rows, section["summary"][cohort], comparator, cohort=cohort)
-                text.append(f"| {scenario.title()} | {name} | {label} | {display_interval(third)} | {display_interval(time)} |")
+    for batch, controls in (("End-to-end confirmation", CONTROLS), (EXTERNAL_BATCH, EXTERNAL_CONTROLS)):
+        source = ARCHIVES[batch]
+        archive_url = f"https://github.com/Luyi1235/RA-LSBO/blob/{source[0]}/{source[1]}"
+        text.append(f"The [{batch} README]({archive_url}/README.md) labels the evaluation count to the third usable "
+                    "design as time to the energy target in its cold-start and all-seed summaries.")
+        text.extend(["", "| Scenario | Cohort | Comparator | README values (third usable) | Correct energy-target Δ evaluations |",
+                     "|---|---|---|---:|---:|"])
+        for scenario in TARGETS:
+            section = data[batch]["scenarios"][scenario]
+            cold_rows, _ = cold_cases(scenario, section)
+            cohorts = (("cold", "Cold start", cold_rows), ("all", "All seeds", [row["arms"] for row in section["rows"]]))
+            for cohort, name, rows in cohorts:
+                for comparator, label in controls.items():
+                    time, _, third, _ = paired_endpoints(section, rows, section["summary"][cohort], comparator, cohort=cohort)
+                    text.append(f"| {scenario.title()} | {name} | {label} | {display_interval(third)} | {display_interval(time)} |")
+        text.append("")
     text.extend(["", "## Fixed sources", ""])
     for batch, (commit, folder, filename, *_rest) in ARCHIVES.items():
         text.append(f"- [{batch} analysis JSON](https://github.com/Luyi1235/RA-LSBO/blob/{commit}/{folder}/{filename})")
     (output/REPORT).write_bytes(("\n".join(text)+"\n").encode("utf-8"))
 
 
-def write_figure(data, output):
+def write_figures(data, output):
     import matplotlib
     matplotlib.use("Agg")
     from matplotlib import pyplot as plt
     from matplotlib.ticker import PercentFormatter
 
     plt.rcParams.update({"pdf.fonttype": 42, "font.size": 9, "axes.spines.top": False, "axes.spines.right": False})
+    budgets = range(INITIAL, BUDGET+1)
+
+    def draw_panel(axis, archive, scenario, controls):
+        cases, _ = cold_cases(scenario, archive["scenarios"][scenario])
+        for arm in (STRUCTURED, *controls):
+            times = [case[arm]["first_energy_target"] for case in cases]
+            attained = [sum(time is not None and time <= budget for time in times)/len(times)
+                        for budget in budgets]
+            color, line = STYLES[arm]
+            axis.step(budgets, attained, where="post", label=LABELS[arm], color=color, linestyle=line, linewidth=1.8)
+        axis.set_title(f"{scenario.title()} | ≤ {TARGETS[scenario]/1000:.0f} kWh | n = {len(cases)}")
+        axis.grid(axis="y", alpha=.25, linewidth=.6)
+        axis.set_xlim(INITIAL, BUDGET)
+        axis.set_ylim(0., 1.04)
+        axis.set_xticks([8, 12, 16, 20, 24, 28, 32])
+        axis.set_yticks([0., .25, .5, .75, 1.])
+        axis.yaxis.set_major_formatter(PercentFormatter(xmax=1., decimals=0))
+
+    def finish(fig, axis, name, ylabel):
+        fig.supylabel(ylabel, x=.015)
+        fig.supxlabel("Cumulative aircraft evaluations", y=.113)
+        handles, labels = axis.get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(.52, .018))
+        fig.savefig(output/name, metadata={"CreationDate": None, "ModDate": None})
+        plt.close(fig)
+
     fig, axes = plt.subplots(2, 2, figsize=(7.1, 5.2), sharex=True, sharey=True)
     fig.subplots_adjust(left=.125, right=.975, bottom=.21, top=.855, wspace=.14, hspace=.32)
-    budgets = range(INITIAL, BUDGET+1)
-    for column, (batch, archive) in enumerate(data.items()):
+    for column, batch in enumerate(("Independent confirmation", "End-to-end confirmation")):
         for row, scenario in enumerate(TARGETS):
-            axis = axes[row, column]
-            cases, _ = cold_cases(scenario, archive["scenarios"][scenario])
-            for arm, label in LABELS.items():
-                times = [case[arm]["first_energy_target"] for case in cases]
-                attained = [sum(time is not None and time <= budget for time in times)/len(times)
-                            for budget in budgets]
-                color, line = STYLES[arm]
-                axis.step(budgets, attained, where="post", label=label, color=color, linestyle=line, linewidth=1.8)
-            axis.set_title(f"{scenario.title()} | ≤ {TARGETS[scenario]/1000:.0f} kWh | n = {len(cases)}")
-            axis.grid(axis="y", alpha=.25, linewidth=.6)
-            axis.set_xlim(INITIAL, BUDGET)
-            axis.set_ylim(0., 1.04)
-            axis.set_xticks([8, 12, 16, 20, 24, 28, 32])
-            axis.set_yticks([0., .25, .5, .75, 1.])
-            axis.yaxis.set_major_formatter(PercentFormatter(xmax=1., decimals=0))
+            draw_panel(axes[row, column], data[batch], scenario, CONTROLS)
         bounds = axes[0, column].get_position()
         fig.text((bounds.x0+bounds.x1)/2, .93, batch, ha="center", fontsize=11, weight="bold")
-    fig.supylabel("Cold-start seeds reaching the feasible energy target", x=.015)
-    fig.supxlabel("Cumulative aircraft evaluations", y=.113)
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(.52, .018))
-    fig.savefig(output/FIGURE, metadata={"CreationDate": None, "ModDate": None})
-    plt.close(fig)
+    finish(fig, axes[0, 0], FIGURE, "Cold-start seeds reaching the feasible energy target")
+
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.0), sharex=True, sharey=True)
+    fig.subplots_adjust(left=.125, right=.975, bottom=.27, top=.875, wspace=.14)
+    for axis, scenario in zip(axes, TARGETS):
+        draw_panel(axis, data[EXTERNAL_BATCH], scenario, EXTERNAL_CONTROLS)
+    finish(fig, axes[0], EXTERNAL_FIGURE, "Cold-start target attainment")
 
 
 def main():
@@ -209,7 +241,7 @@ def main():
     data = {batch: load_archive(batch, spec) for batch, spec in ARCHIVES.items()}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_report(data, args.output_dir)
-    write_figure(data, args.output_dir)
+    write_figures(data, args.output_dir)
 
 
 if __name__ == "__main__":
