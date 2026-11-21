@@ -64,12 +64,15 @@ def passes_exact_screen(problem, candidate):
     return all(np.isfinite(value) and value <= 0. for value in margins)
 
 
-def play_pool(problem, seed, prefix, pool, arm, horizon, evaluate):
+def play_pool(problem, seed, prefix, pool, arm, horizon, evaluate, *, stop_after_discovery=False):
     history, remaining = list(prefix), list(pool)
     logcei = ExternalOptimizer(problem, seed, "logcei", {"horizon": horizon, "pool": len(pool)})
     trace = []
     for step in range(1, horizon+1):
-        use_logcei = arm == "logcei_sign" or any(record.usable_feasible for record in history)
+        has_usable = any(record.usable_feasible for record in history)
+        if stop_after_discovery and has_usable:
+            break
+        use_logcei = arm == "logcei_sign" or has_usable
         if use_logcei:
             candidate, info = logcei.propose(history, remaining, logcei.next_iteration)
             entry = {"rule": info["phase"]}
