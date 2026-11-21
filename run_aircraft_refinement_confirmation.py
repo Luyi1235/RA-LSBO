@@ -11,11 +11,12 @@ import sys
 
 from scipy.stats import binomtest
 
+from aircraft_multi_feasible import AUDIT_CHECKPOINTS, AUDIT_SIZE, PROFILE as MULTI_PROFILE, TARGET, compare_accumulation
 from ra_lsbo.experiments.core.runner import save
 from run_aircraft_external_full_budget import SCENARIOS, compare, effect
 from run_aircraft_feedback_replication import paired
 from run_aircraft_native_risk_lsbo import (
-    COLD_ARMS, COLD_CONTRASTS, ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_GREEDY, ENERGY_LOOKAHEAD,
+    COLD_ACTIVE, COLD_ARMS, COLD_CONTRASTS, ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_GREEDY, ENERGY_LOOKAHEAD,
     INITIAL, REFINEMENT_CONTRASTS, plan, run, verify,
 )
 from run_aircraft_refinement_fork import ARMS as FORK_ARMS, FORK_FEASIBLE, PROFILE as FORK_PROFILE, run_fork, verify_fork
@@ -23,7 +24,7 @@ from run_aircraft_risk_cold_start import source_commit
 
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE)
+PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE, MULTI_PROFILE)
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
@@ -36,6 +37,10 @@ ENERGY_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
 FORK_PRIMARY = {"scenario": "headwind", "cohort": "cold_forked", "budget": 48,
                 "contrast": f"{FORK_ARMS[1]}_minus_{FORK_ARMS[0]}",
                 "endpoint": "feasibility_first_terminal_order"}
+MULTI_CONTROL = "ra_refine_interval"
+MULTI_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
+                 "contrast": f"{COLD_ACTIVE}_minus_{MULTI_CONTROL}",
+                 "endpoint": "capped_target_call_to_three_usable_designs"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -48,7 +53,7 @@ def seed_registry(profile):
     if profile in ("smoke", "cold-smoke"):
         return {scenario: plan(scenario, "smoke", "refinement")["seeds"] for scenario in SCENARIOS}
     base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6),
-                  FORK_PROFILE: (29460100, 6)}.get(profile, (29300100, 24))
+                  FORK_PROFILE: (29460100, 6), MULTI_PROFILE: (29560100, 12)}.get(profile, (29300100, 24))
     return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
             for i, scenario in enumerate(SCENARIOS)}
 
@@ -58,7 +63,13 @@ def shard_plan(profile, scenario, seed):
         raise ValueError("Seed is outside the registered cohort")
     spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
-    if profile == FORK_PROFILE:
+    if profile == MULTI_PROFILE:
+        spec.update(arms=[MULTI_CONTROL, COLD_ACTIVE], contrasts=[[COLD_ACTIVE, MULTI_CONTROL]],
+                    calls_per_seed=INITIAL+2*spec["horizon"]+AUDIT_SIZE, usable_acquisition_target=TARGET,
+                    completion_audit_size=AUDIT_SIZE, completion_audit_checkpoints=list(AUDIT_CHECKPOINTS),
+                    post_feasible_policy="common interval-informed LSBO refinement after three usable designs",
+                    primary=MULTI_PRIMARY)
+    elif profile == FORK_PROFILE:
         spec.update(arms=list(FORK_ARMS), contrasts=[list(reversed(FORK_ARMS))],
                     calls_per_seed=INITIAL+len(FORK_ARMS)*spec["horizon"],
                     fork_feasible=FORK_FEASIBLE, shared_policy="native interval RA-LSBO",
@@ -77,11 +88,16 @@ def shard_plan(profile, scenario, seed):
 def registration(profile):
     scenarios = seed_registry(profile)
     primary = {"cold-smoke": COLD_PRIMARY, "cold-pilot": COLD_PRIMARY,
-               "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY}.get(profile, PRIMARY)
+               "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY, MULTI_PROFILE: MULTI_PRIMARY}.get(profile, PRIMARY)
     budget_field = "maximum_calls_per_seed" if profile == FORK_PROFILE else "calls_per_seed"
-    return {"profile": profile, "primary": primary, "scenarios": {
+    registration = {"profile": profile, "primary": primary, "scenarios": {
         scenario: {"seeds": seeds, budget_field: shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
         for scenario, seeds in scenarios.items()}}
+    if profile == MULTI_PROFILE:
+        registration.update(initial_evaluations=INITIAL, usable_acquisition_target=TARGET,
+                            heldout_evaluations_per_seed=AUDIT_SIZE,
+                            completion_audit_checkpoints=list(AUDIT_CHECKPOINTS))
+    return registration
 
 
 def launch(root, profile, sha, jobs):
@@ -212,7 +228,14 @@ def analyze(root, profile, sha):
                 times = [row["arms"][arm]["first_energy_target"] or spec["total_budget"]+1 for arm in FORK_ARMS]
                 post_fork_delta.append(times[1]-times[0])
             data[scenario]["post_fork_target_time_delta_cold_target_pending"] = paired(post_fork_delta)
-    if profile == FORK_PROFILE:
+        if profile == MULTI_PROFILE:
+            data[scenario]["accumulation"] = {
+                name: compare_accumulation(group, COLD_ACTIVE, MULTI_CONTROL, AUDIT_CHECKPOINTS)
+                for name, group in (("all", rows), ("cold", [row for row in rows if row["cold"]]))
+            }
+    if profile == MULTI_PROFILE:
+        status = "VERIFIED_MULTI_FEASIBLE_COLD_START"
+    elif profile == FORK_PROFILE:
         status = "VERIFIED_CENSORED_ENERGY_REFINEMENT_FORK"
     elif profile == "energy-pilot":
         status = "VERIFIED_COLD_ENERGY_VALUE_PILOT"

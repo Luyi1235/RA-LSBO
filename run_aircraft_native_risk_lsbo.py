@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from scipy.special import ndtr
 
+from aircraft_multi_feasible import accumulation_metrics, acquisition_stage, completion_audit
 from aircraft_timing_energy_value import energy_evidence, target_choice, target_marks
 from aircraft_timing_information import score_information, supports_timing
 from aircraft_timing_interval_value import deficit_edges
@@ -139,7 +140,7 @@ class RiskAwareLSBO(FullBudgetLSBO):
         return surrogate
 
     def _propose(self, history):
-        if any(record.usable_feasible for record in history):
+        if not acquisition_stage(history, self.profile.get("usable_acquisition_target", 1)):
             if self.arm in REFINEMENT_FEEDBACK:
                 return self.engine.propose(selection=partial(self._refinement_proposal, history=history))
             return self.engine.propose()
@@ -225,16 +226,20 @@ class RiskAwareLSBO(FullBudgetLSBO):
 
 
 def run(spec, seed, sha, output):
-    from run_aircraft_archsbo_screened import ARCHSBO_VERSION, screened_trajectory
+    if EXTERNAL in spec["arms"]:
+        from run_aircraft_archsbo_screened import ARCHSBO_VERSION, screened_trajectory
 
-    if version("sb-arch-opt") != ARCHSBO_VERSION:
-        raise ValueError("Unexpected screened ArchSBO version")
+        if version("sb-arch-opt") != ARCHSBO_VERSION:
+            raise ValueError("Unexpected screened ArchSBO version")
     torch.set_num_threads(1)
     problem = UsableAircraft(spec)
-    initial = rosters(problem, spec, seed)[0][:INITIAL]
+    initial, pools = rosters(problem, spec, seed)
+    initial = initial[:INITIAL]
     output.mkdir(parents=True)
-    versions = {name: version(name) for name in ("botorch", "gpytorch", "numpy", "scipy", "sb-arch-opt",
-                                                 "pymoo", "smt", "scikit-learn", "numba")}
+    packages = ("botorch", "gpytorch", "numpy", "scipy")
+    if "completion_audit_size" not in spec or EXTERNAL in spec["arms"]:
+        packages += ("sb-arch-opt", "pymoo", "smt", "scikit-learn", "numba")
+    versions = {name: version(name) for name in packages}
     versions["torch_runtime"] = str(torch.__version__)
     save(output/"plan.json", {"spec": spec, "seed": seed, "source_sha": sha, "contract": problem.contract_id,
                              "versions": versions})
@@ -266,6 +271,8 @@ def run(spec, seed, sha, output):
                 history.append(record)
         save(output/(arm+".json"), trace)
         print(spec["name"], seed, arm, len(trace), ledger.count, flush=True)
+    for index, point in enumerate(pools["covered"][:spec.get("completion_audit_size", 0)], 1):
+        pay(point, f"risk_audit/{index}", "heldout")
     if ledger.count != spec["calls_per_seed"]:
         raise ValueError("Evaluation budget differs from the registered plan")
     save(output/"seal.json", evidence_hashes(output))
@@ -292,9 +299,11 @@ def verify(folder, spec, sha):
         return record
 
     prefix = [settled(f"initial/{i}", "initial") for i in range(1, INITIAL+1)]
-    if [record.candidate for record in prefix] != rosters(problem, spec, seed)[0][:INITIAL]:
+    initial, pools = rosters(problem, spec, seed)
+    if [record.candidate for record in prefix] != initial[:INITIAL]:
         raise ValueError("Unexpected shared initialization")
-    arms, candidate_lists = {}, {}
+    arms, candidate_lists, histories = {}, {}, {}
+    usable_target = spec.get("usable_acquisition_target", 1)
     refinement = spec.get("study") == "refinement"
     for arm in spec["arms"]:
         history = list(prefix)
@@ -317,7 +326,7 @@ def verify(folder, spec, sha):
             else:
                 proposal = step["proposal"]
                 if proposal["source"] == "lsbo_latent_completion_risk":
-                    if arm in (ORIGINAL, EXTERNAL) or any(old.usable_feasible for old in history):
+                    if arm in (ORIGINAL, EXTERNAL) or not acquisition_stage(history, usable_target):
                         raise ValueError("A cold completion policy used an unregistered phase")
                     feedback, policy = cold_policy(arm)
                     if (proposal["feedback"], proposal["policy"]) != (feedback, policy):
@@ -357,18 +366,26 @@ def verify(folder, spec, sha):
                     risk_calls += 1
                 fallbacks += int("risk_fallback" in proposal)
                 if "refinement_risk" in proposal:
-                    if arm not in REFINEMENT_FEEDBACK or not any(
-                            old.usable_feasible for old in history):
+                    if arm not in REFINEMENT_FEEDBACK or acquisition_stage(history, usable_target):
                         raise ValueError("Risk refinement applied outside the registered phase")
                     receipt = proposal["refinement_risk"]
                     if receipt["mode"] == "risk_weighted_native_search":
                         if receipt["feedback"] != REFINEMENT_FEEDBACK[arm]:
                             raise ValueError("Incorrect refinement feedback")
                         refinement_calls += 1
+                if usable_target > 1:
+                    if acquisition_stage(history, usable_target):
+                        if proposal["source"] != "lsbo_latent_completion_risk" and "risk_fallback" not in proposal:
+                            raise ValueError("The accumulation policy is missing from the receipt")
+                    elif "refinement_risk" not in proposal:
+                        raise ValueError("The shared refinement policy is missing from the receipt")
             seen.add(key)
             history.append(record)
         arms[arm] = {**trajectory_metrics(history, spec["total_budget"]),
                      "cold_risk_calls": risk_calls, "cold_risk_fallbacks": fallbacks}
+        histories[arm] = history
+        if usable_target > 1:
+            arms[arm]["accumulation"] = accumulation_metrics(history, INITIAL, usable_target)
         if arm in ENERGY_POLICIES:
             arms[arm].update(energy_policy_calls=energy_calls, energy_policy_fallbacks=energy_fallbacks,
                              energy_bounds_only_calls=bounds_only_calls)
@@ -381,6 +398,16 @@ def verify(folder, spec, sha):
                              quality_by_budget={str(b): trajectory_metrics(history[:b], b)["best_usable_Wh"]
                                                 for b in spec["quality_budgets"]})
     row = {"arms": arms, "cold": not any(record.usable_feasible for record in prefix)}
+    if "completion_audit_size" in spec:
+        row["initial_usable"] = sum(r.usable_feasible for r in prefix)
+        panel = pools["covered"][:spec["completion_audit_size"]]
+        heldout = [settled(f"risk_audit/{i}", "heldout") for i in range(1, len(panel)+1)]
+        if [record.candidate for record in heldout] != panel:
+            raise ValueError("Unexpected held-out candidate panel")
+        row["completion_audit"] = completion_audit(problem, seed, histories, heldout,
+                                                  spec["completion_audit_checkpoints"], INITIAL)
+    if position != len(calls):
+        raise ValueError("The run contains unaccounted evaluations")
     status = "VERIFIED_RISK_AWARE_LSBO_REFINEMENT" if refinement else "VERIFIED_NATIVE_RISK_LSBO"
     contrasts = spec.get("contrasts", REFINEMENT_CONTRASTS if refinement else CONTRASTS)
     report = {"status": status, "source_sha": sha, "spec": spec, "seed": seed,
