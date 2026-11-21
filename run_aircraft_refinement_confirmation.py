@@ -1,0 +1,207 @@
+"""Run and aggregate the independent PR153 confirmation over sealed seed shards."""
+
+import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+from scipy.stats import binomtest
+
+from ra_lsbo.experiments.core.runner import save
+from run_aircraft_external_full_budget import SCENARIOS, compare, effect
+from run_aircraft_feedback_replication import paired
+from run_aircraft_native_risk_lsbo import REFINEMENT_CONTRASTS, plan, run, verify
+from run_aircraft_risk_cold_start import source_commit
+
+
+ROOT = Path(__file__).resolve().parent
+PROFILES = ("smoke", "confirmation")
+PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
+           "contrast": "ra_refine_interval_minus_ra_interval_greedy",
+           "endpoint": "feasibility_first_energy_order"}
+THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+                 "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
+WORKER_ENTRY = (
+    "import sys; sys.path.insert(0, sys.argv.pop(1)); "
+    "from run_aircraft_refinement_confirmation import main; main()"
+)
+
+
+def seed_registry(profile):
+    return {
+        scenario: (plan(scenario, "smoke", "refinement")["seeds"] if profile == "smoke" else
+                   list(range(29300100+10_000*offset, 29302500+10_000*offset, 100)))
+        for offset, scenario in enumerate(SCENARIOS)
+    }
+
+
+def shard_plan(profile, scenario, seed):
+    if seed not in seed_registry(profile)[scenario]:
+        raise ValueError("Seed is outside the registered cohort")
+    spec = plan(scenario, "smoke" if profile == "smoke" else "full-pilot", "refinement")
+    spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
+    return spec
+
+
+def registration(profile):
+    scenarios = seed_registry(profile)
+    return {"profile": profile, "primary": PRIMARY, "scenarios": {
+        scenario: {"seeds": seeds, "calls_per_seed": shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
+        for scenario, seeds in scenarios.items()}}
+
+
+def launch(root, profile, sha, jobs):
+    registry = seed_registry(profile)
+    root.mkdir(parents=True, exist_ok=True)
+    log_root = root/"logs"/datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S-%fZ")
+    log_root.mkdir(parents=True)
+    env = {**os.environ, **dict.fromkeys(THREAD_LIMITS, "1"), "PYTHONUNBUFFERED": "1"}
+
+    def worker(scenario, seed):
+        folder = root/scenario/str(seed)
+        if (folder/"seal.json").is_file():
+            return "sealed"
+        if folder.exists():
+            return "partial directory preserved"
+        command = [sys.executable, "-c", WORKER_ENTRY, str(ROOT), "--task", "seed",
+                   "--profile", profile, "--scenario", scenario, "--seed", str(seed),
+                   "--expected-sha", sha, "--output", str(folder)]
+        log = log_root/f"{scenario}-{seed}.log"
+        with log.open("xb") as stream:
+            process = subprocess.run(command, cwd=ROOT, env=env, stdout=stream,
+                                     stderr=subprocess.STDOUT, check=False)
+        if process.returncode or not (folder/"seal.json").is_file():
+            return f"failed (exit {process.returncode}, see {log})"
+        return "completed"
+
+    tasks = [(scenario, seed) for group in zip(*(registry[s] for s in SCENARIOS))
+             for scenario, seed in zip(SCENARIOS, group)]
+    failed = []
+    with ThreadPoolExecutor(max_workers=min(jobs, len(tasks))) as executor:
+        pending = {executor.submit(worker, scenario, seed): (scenario, seed) for scenario, seed in tasks}
+        for future in as_completed(pending):
+            scenario, seed = pending[future]
+            status = future.result()
+            print(scenario, seed, status, flush=True)
+            if status not in ("completed", "sealed"):
+                failed.append(f"{scenario}/{seed}")
+    if failed:
+        raise RuntimeError("Unsealed registered tasks: "+", ".join(sorted(failed)))
+
+
+def quality_contrast(rows, left, right, budget):
+    pairs = [(row["arms"][left]["quality_by_budget"][str(budget)],
+              row["arms"][right]["quality_by_budget"][str(budget)]) for row in rows]
+    wins = sum(a is not None and (b is None or a < b) for a, b in pairs)
+    losses = sum(b is not None and (a is None or b < a) for a, b in pairs)
+    return {
+        "feasibility_first_order": {
+            "wins": wins, "losses": losses, "ties": len(rows)-wins-losses,
+            "exact_sign_p_two_sided": float(binomtest(wins, wins+losses).pvalue) if wins+losses else None,
+        },
+        "energy_Wh_delta_both_usable": paired([a-b for a, b in pairs if a is not None and b is not None]),
+    }
+
+
+def target_contrast(rows, left, right, budget):
+    times = [(row["arms"][left]["first_energy_target"], row["arms"][right]["first_energy_target"])
+             for row in rows]
+    return {
+        "attainment_rate_delta": effect([int(a is not None)-int(b is not None) for a, b in times]),
+        "capped_time_delta": paired([(a if a is not None else budget+1)-(b if b is not None else budget+1)
+                                     for a, b in times]),
+    }
+
+
+def cohort_summary(rows, spec):
+    return {
+        "n": len(rows),
+        "arms": {
+            arm: {
+                "found_usable": sum(row["arms"][arm]["first_usable"] is not None for row in rows),
+                "hit_energy_target": sum(row["arms"][arm]["first_energy_target"] is not None for row in rows),
+                "refinement_risk_calls": sum(row["arms"][arm]["refinement_risk_calls"] for row in rows),
+                "feasible_at_checkpoints": {
+                    str(b): sum(row["arms"][arm]["quality_by_budget"][str(b)] is not None for row in rows)
+                    for b in spec["quality_budgets"]},
+            } for arm in spec["arms"]},
+        "contrasts": {
+            f"{a}_minus_{b}": {
+                **compare(rows, a, b),
+                "quality_by_budget": {str(t): quality_contrast(rows, a, b, t)
+                                      for t in spec["quality_budgets"]},
+                "energy_target": target_contrast(rows, a, b, spec["total_budget"]),
+            }
+            for a, b in REFINEMENT_CONTRASTS},
+    }
+
+
+def analyze(root, profile, sha):
+    data = {}
+    versions = None
+    for scenario, seeds in seed_registry(profile).items():
+        rows = []
+        for seed in seeds:
+            spec = shard_plan(profile, scenario, seed)
+            row = verify(root/scenario/str(seed), spec, sha)
+            if versions is None:
+                versions = row["versions"]
+            if row["versions"] != versions:
+                raise ValueError("All registered shards must use the same model runtime")
+            rows.append(row)
+        data[scenario] = {
+            "energy_target_Wh": spec["energy_target_Wh"],
+            "summary": {name: cohort_summary(group, spec) for name, group in (
+                ("all", rows), ("cold", [row for row in rows if row["cold"]]),
+                ("initially_usable", [row for row in rows if not row["cold"]]))},
+            "rows": rows,
+        }
+    return {"status": "VERIFIED_RISK_AWARE_LSBO_CONFIRMATION", "source_sha": sha,
+            "plan": registration(profile), "versions": versions, "scenarios": data,
+            "paid_calls": sum(row["paid_calls"] for section in data.values() for row in section["rows"]),
+            "rcaide_mda_calls": 0}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--task", choices=("plan", "run", "seed", "verify"), required=True)
+    parser.add_argument("--profile", choices=PROFILES, default="confirmation")
+    parser.add_argument("--expected-sha")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--jobs", type=int, default=12)
+    parser.add_argument("--scenario", choices=SCENARIOS)
+    parser.add_argument("--seed", type=int)
+    args = parser.parse_args()
+    if args.task == "plan":
+        print(json.dumps(registration(args.profile), indent=2))
+        return
+    if not args.expected_sha or args.output is None:
+        parser.error("--expected-sha and --output are required")
+    output = args.output.resolve()
+    if ROOT in (output, *output.parents):
+        parser.error("--output must be outside the code worktree")
+    sha = source_commit(args.expected_sha, clean=True)
+    if args.task == "run":
+        if not 1 <= args.jobs <= 12:
+            parser.error("Use between 1 and 12 independent workers")
+        launch(output, args.profile, sha, args.jobs)
+    elif args.task == "seed":
+        if args.scenario is None or args.seed is None or output.exists():
+            parser.error("Supply a registered scenario and seed and a new output directory")
+        spec = shard_plan(args.profile, args.scenario, args.seed)
+        run(spec, args.seed, sha, output)
+    else:
+        if args.input is None or args.input.resolve() in (output, *output.parents):
+            parser.error("Provide a sealed input root and write its report outside it")
+        result = analyze(args.input.resolve(), args.profile, sha)
+        save(output, result)
+        print(result["status"], args.profile, result["paid_calls"], flush=True)
+
+
+if __name__ == "__main__":
+    main()
