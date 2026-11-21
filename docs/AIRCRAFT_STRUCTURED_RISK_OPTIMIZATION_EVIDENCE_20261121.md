@@ -1,6 +1,6 @@
 # Structured RA-LSBO cold-start and optimization evidence
 
-The three batches use independent seeds and the same evaluation budget. Cold-start seeds have no usable design among the eight shared initial evaluations. The end-to-end confirmation designates both optimization endpoints as primary in headwind cold-start seeds versus original LSBO. The external comparison designates the same endpoints and population versus screened ArchSBO. External arms share the engineering screen and evaluation budget, and use their own candidate search.
+The three 32-evaluation batches use independent seeds and the same evaluation budget. Cold-start seeds have no usable design among the eight shared initial evaluations. The end-to-end confirmation designates both optimization endpoints as primary in headwind cold-start seeds versus original LSBO. The external comparison designates the same endpoints and population versus screened ArchSBO. External arms share the engineering screen and evaluation budget, and use their own candidate search.
 
 [Internal target-attainment curves](aircraft-structured-risk-attainment.pdf) · [External target-attainment curves](aircraft-structured-risk-external-attainment.pdf)
 
@@ -65,8 +65,44 @@ The [External comparison README](https://github.com/Luyi1235/RA-LSBO/blob/30d63f
 | Payload | All seeds | Adapted LogCEI | −3.79 [−6.71, −1.08] | −3.83 [−6.92, −0.67] |
 
 
+## External budget sensitivity at 64 evaluations
+
+The 64-evaluation run used the same 24 seeds per scenario, eight shared initial designs, targets (40 kWh headwind and 38 kWh payload), and algorithm variants as the original external comparison. It reran each arm with its full 64-evaluation budget from initialization. All checkpoints below refer to trajectories from this rerun. The 48 matched seed shards account for 8,448 reduced-model evaluations and zero RCAIDE/MDA calls. All 294 manifest entries verified, and the pinned verifier reproduced the published analysis JSON exactly from the sealed ledgers.
+
+**Best feasible energy.** Differences are RA-LSBO minus the comparator in kWh with paired 95% bootstrap intervals. The checkpoint means use seeds where both arms had a feasible design. At checkpoints 48 and 64 all 24 pairs in each comparison had one.
+
+| Scenario | Comparator | At 32 | At 48 | At 64 |
+|---|---|---:|---:|---:|
+| Headwind | Screened ArchSBO | −1.074 [−1.661, −0.505] | −0.497 [−0.940, −0.112] | −0.293 [−0.617, −0.001] |
+| Headwind | Adapted LogCEI | −0.773 [−1.583, −0.014] | −0.500 [−1.291, −0.051] | −0.241 [−0.537, −0.068] |
+| Payload | Screened ArchSBO | −0.305 [−0.918, 0.310] | −0.124 [−0.424, 0.042] | −0.110 [−0.409, 0.054] |
+| Payload | Adapted LogCEI | −0.568 [−1.466, 0.149] | −0.204 [−0.343, −0.100] | −0.157 [−0.301, −0.053] |
+
+**Energy-target hits among all 24 seeds per scenario.** Values are RA-LSBO versus comparator.
+
+| Scenario | Comparator | At 32 | At 48 | At 64 |
+|---|---|---:|---:|---:|
+| Headwind | Screened ArchSBO | 22/24 vs 14/24 | 24/24 vs 19/24 | 24/24 vs 21/24 |
+| Headwind | Adapted LogCEI | 22/24 vs 16/24 | 24/24 vs 23/24 | 24/24 vs 23/24 |
+| Payload | Screened ArchSBO | 23/24 vs 21/24 | 24/24 vs 23/24 | 24/24 vs 23/24 |
+| Payload | Adapted LogCEI | 23/24 vs 21/24 | 24/24 vs 24/24 | 24/24 vs 24/24 |
+
+**Cold-start results at evaluation 64.** Capped timing assigns 65 to a run that misses the threshold. Terminal order uses the registered 1 Wh tie threshold.
+
+| Scenario (cold pairs) | Comparator | Target hits (RA-LSBO vs comparator) | Δ capped evaluations [95% CI] | Δ best feasible energy, kWh [95% CI] | Terminal W/L/T |
+|---|---|---:|---:|---:|---:|
+| Headwind (10) | Screened ArchSBO | 10/10 vs 9/10 | −9.40 [−21.30, 1.60] | −0.249 [−0.730, 0.003] | 7/1/2 |
+| Headwind (10) | Adapted LogCEI | 10/10 vs 9/10 | −13.50 [−22.90, −3.60] | −0.362 [−0.971, −0.036] | 9/0/1 |
+| Payload (7) | Screened ArchSBO | 7/7 vs 6/7 | −12.29 [−24.14, −3.14] | −0.454 [−1.454, 0.088] | 4/3/0 |
+| Payload (7) | Adapted LogCEI | 7/7 vs 7/7 | −11.00 [−16.29, −3.86] | −0.052 [−0.087, −0.024] | 7/0/0 |
+
+The prespecified headwind cold-start comparison against screened ArchSBO favors RA-LSBO in point estimates. The timing interval crosses zero and the terminal-order sign test gives p = 0.0703. Across all headwind seeds the capped time differences against screened ArchSBO and adapted LogCEI are −14.71 [−22.67, −7.38] and −7.58 [−12.67, −2.88] evaluations. Among the 21 headwind seeds where both RA-LSBO and screened ArchSBO reached the target, the descriptive mean difference is −10.24 evaluations. In payload the corresponding all-seed capped differences are −4.38 [−9.33, −0.38] and −5.00 [−8.58, −1.38]. The lower-energy gap diminishes with budget in the headwind all-seed comparison, and the remaining payload energy difference against ArchSBO is uncertain.
+
+The [64-evaluation archive README](https://github.com/Luyi1235/RA-LSBO/blob/cbd6a03cdebd09d32561bac061db31b3801586f4/results/aircraft-structured-risk-external-64-20261121-fddfe2e/README.md) cites −6.50 evaluations for the headwind cold-start comparison against screened ArchSBO. That value measures time to the **third usable design**, under both external budgets. The capped **energy-target** differences are −6.90 [−12.80, −0.50] at 32 in the original run and −9.40 [−21.30, +1.60] at 64 in the rerun. The README's energy win/loss counts also use strict energy differences. The registered feasibility-first terminal order uses the 1 Wh tie threshold.
+
 ## Fixed sources
 
 - [Independent confirmation analysis JSON](https://github.com/Luyi1235/RA-LSBO/blob/ff076555615150a3885611dbf0d288906fca1767/results/aircraft-structured-risk-confirmation-20261121-956b595/ra-lsbo-structured-confirmation-956b595-analysis.json)
 - [End-to-end confirmation analysis JSON](https://github.com/Luyi1235/RA-LSBO/blob/236c3262230215b5644495ade9d576a478457982/results/aircraft-structured-risk-optimization-20261121-c0151e4/ra-lsbo-structured-optimization-c0151e4-analysis.json)
 - [External comparison analysis JSON](https://github.com/Luyi1235/RA-LSBO/blob/30d63fbc42498166d537e651053181b8d2c859c3/results/aircraft-structured-risk-external-20261121-62750a5/ra-lsbo-structured-external-62750a5-analysis.json)
+- [External 64-evaluation analysis JSON](https://github.com/Luyi1235/RA-LSBO/blob/cbd6a03cdebd09d32561bac061db31b3801586f4/results/aircraft-structured-risk-external-64-20261121-fddfe2e/structured-external-64-fddfe2e-analysis.json)
