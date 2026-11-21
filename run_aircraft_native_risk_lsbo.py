@@ -13,8 +13,7 @@ from scipy.special import ndtr
 
 from aircraft_multi_feasible import accumulation_metrics, acquisition_stage, completion_audit
 from aircraft_structured_risk import (
-    CONFIRMATION_PROFILE, DECISION_ARMS, PROFILE as PAPER_PROFILE, STRUCTURED_ARMS, STRUCTURED_SIGN_GREEDY,
-    HierarchicalTimingHead,
+    COMPACT_PROFILES, DECISION_ARMS, STRUCTURED_ARMS, STRUCTURED_SIGN_GREEDY, HierarchicalTimingHead,
     choose_completion_with_lookahead, with_configuration,
 )
 from aircraft_timing_energy_value import energy_evidence, target_choice, target_marks
@@ -248,7 +247,7 @@ class RiskAwareLSBO(FullBudgetLSBO):
 
 
 def seed_evidence(folder, spec):
-    if spec.get("analysis_role") in (PAPER_PROFILE, CONFIRMATION_PROFILE):
+    if spec.get("analysis_role") in COMPACT_PROFILES:
         files = ["plan.json", "calls.jsonl", *(arm+".json" for arm in spec["arms"])]
         return {name: file_hash(folder/name) for name in files}
     return evidence_hashes(folder)
@@ -266,7 +265,8 @@ def run(spec, seed, sha, output):
     initial = initial[:INITIAL]
     output.mkdir(parents=True)
     packages = ("botorch", "gpytorch", "numpy", "scipy")
-    if "completion_audit_size" not in spec or EXTERNAL in spec["arms"]:
+    if EXTERNAL in spec["arms"] or (spec.get("analysis_role") not in COMPACT_PROFILES
+                                   and "completion_audit_size" not in spec):
         packages += ("sb-arch-opt", "pymoo", "smt", "scikit-learn", "numba")
     versions = {name: version(name) for name in packages}
     versions["torch_runtime"] = str(torch.__version__)
@@ -437,9 +437,11 @@ def verify(folder, spec, sha):
             arms[arm].update(refinement_risk_calls=refinement_calls, first_energy_target=target_hit,
                              quality_by_budget={str(b): trajectory_metrics(history[:b], b)["best_usable_Wh"]
                                                 for b in spec["quality_budgets"]})
-    row = {"arms": arms, "cold": not any(record.usable_feasible for record in prefix)}
+    initial_usable = sum(record.usable_feasible for record in prefix)
+    row = {"arms": arms, "cold": initial_usable == 0}
+    if usable_target > 1:
+        row["initial_usable"] = initial_usable
     if "completion_audit_size" in spec:
-        row["initial_usable"] = sum(r.usable_feasible for r in prefix)
         panel = pools["covered"][:spec["completion_audit_size"]]
         heldout = [settled(f"risk_audit/{i}", "heldout") for i in range(1, len(panel)+1)]
         if [record.candidate for record in heldout] != panel:
@@ -451,9 +453,10 @@ def verify(folder, spec, sha):
         raise ValueError("The run contains unaccounted evaluations")
     status = "VERIFIED_RISK_AWARE_LSBO_REFINEMENT" if refinement else "VERIFIED_NATIVE_RISK_LSBO"
     contrasts = spec.get("contrasts", REFINEMENT_CONTRASTS if refinement else CONTRASTS)
+    tie_Wh = spec.get("energy_order_tie_Wh", 0.)
     report = {"status": status, "source_sha": sha, "spec": spec, "seed": seed,
               "paid_calls": position, "rcaide_mda_calls": 0, **row, "versions": header["versions"],
-              "contrasts": {f"{a}_minus_{b}": compare([row], a, b) for a, b in contrasts}}
+              "contrasts": {f"{a}_minus_{b}": compare([row], a, b, tie_Wh=tie_Wh) for a, b in contrasts}}
     if refinement:
         report["quality_contrasts"] = {}
         for budget in map(str, spec["quality_budgets"]):
@@ -461,7 +464,7 @@ def verify(folder, spec, sha):
                               for arm, item in arms.items()}}
             report["quality_contrasts"][budget] = {}
             for left, right in contrasts:
-                paired = compare([state], left, right)
+                paired = compare([state], left, right, tie_Wh=tie_Wh)
                 report["quality_contrasts"][budget][f"{left}_minus_{right}"] = {
                     name: paired[name] for name in ("energy_Wh_delta_both_usable",
                                                    "feasibility_first_terminal_order")}

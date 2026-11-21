@@ -214,21 +214,21 @@ def verify(folder, sha):
     return {"seed": seed, "by_initial": rows, "paid_calls": position, "versions": header["versions"]}
 
 
-def compare(rows, left, right):
+def feasibility_first_counts(energies, *, tie_Wh=0.):
+    wins = sum(a is not None and (b is None or b-a > tie_Wh) for a, b in energies)
+    losses = sum(b is not None and (a is None or a-b > tie_Wh) for a, b in energies)
+    return {"wins": wins, "losses": losses, "ties": len(energies)-wins-losses}
+
+
+def compare(rows, left, right, *, tie_Wh=0.):
     pair = [(row["arms"][left], row["arms"][right]) for row in rows]
     first = paired([a["capped_first"]-b["capped_first"] for a, b in pair])
     hits = [int(a["first_usable"] is not None)-int(b["first_usable"] is not None) for a, b in pair]
     energies = [(a["best_usable_Wh"], b["best_usable_Wh"]) for a, b in pair]
     common = [a-b for a, b in energies if a is not None and b is not None]
-    def feasibility_first(value):
-        return value is None, 0. if value is None else value
-
-    order = [(feasibility_first(a), feasibility_first(b)) for a, b in energies]
     return {"first_capped_delta": first, "hit_rate_delta": effect(hits),
             "energy_Wh_delta_both_usable": paired(common),
-            "feasibility_first_terminal_order": {"wins": sum(a<b for a, b in order),
-                                                 "losses": sum(a>b for a, b in order),
-                                                 "ties": sum(a==b for a, b in order)}}
+            "feasibility_first_terminal_order": feasibility_first_counts(energies, tie_Wh=tie_Wh)}
 
 
 def analyze(spec, folders, sha):
