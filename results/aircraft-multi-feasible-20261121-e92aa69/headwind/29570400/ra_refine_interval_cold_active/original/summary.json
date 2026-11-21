@@ -1,0 +1,331 @@
+{
+  "status": "running",
+  "problem": "Extended reduced electric-aircraft (sparse)",
+  "settings": {
+    "budget": 48,
+    "initial": 8,
+    "seed": 29570400,
+    "latent_dim": 4,
+    "pretrain_epochs": 60,
+    "update_epochs": 20,
+    "update_every": 8,
+    "gp_steps": 45,
+    "branches": 12,
+    "points_per_branch": 10,
+    "restarts": 4,
+    "raw_samples": 64,
+    "local_branches": 2,
+    "refinement_fraction": 0.2,
+    "exploration_probability": 0.1,
+    "use_prior": true,
+    "max_proposal_attempts": 3000,
+    "max_consecutive_solver_failures": 5,
+    "initial_local_fraction": 0.0,
+    "initial_local_radius": 0.03,
+    "stratified_initialization": true,
+    "coverage_interval": 5,
+    "use_solver_domain": true,
+    "refinement_radius": 0.03,
+    "adaptive_refinement": true,
+    "refinement_min_radius": 0.001,
+    "screen_solver_risk": true,
+    "bo_domain_probability": 0.8,
+    "refinement_domain_probability": 0.95,
+    "bo_success_probability": 0.5,
+    "refinement_success_probability": 0.7,
+    "proposal_pool_size": 512,
+    "coverage_min_evaluations": 4,
+    "refinement_challenger_patience": 8,
+    "refinement_challenger_interval": 5,
+    "constrained_local_search": true
+  },
+  "method": "lsbo",
+  "initial_design_sha256": null,
+  "recovery_policy": "margin_ranked_anchor_backoff_v1",
+  "consecutive_solver_failures": 0,
+  "resume_failure_limit": null,
+  "continuation": null,
+  "last_representation_update": 40,
+  "coverage": [
+    {
+      "stratum": {
+        "prop_layout": "wingtip"
+      },
+      "evaluations": 39
+    },
+    {
+      "stratum": {
+        "prop_layout": "distributed"
+      },
+      "evaluations": 9
+    }
+  ],
+  "evaluations": 48,
+  "feasible_evaluations": 33,
+  "precheck_rejections": {
+    "root_bending": 4902,
+    "stall": 5844,
+    "span": 798,
+    "packing": 426
+  },
+  "proposal_sources": {
+    "unspecified": 8,
+    "lsbo_latent_completion_risk": 3,
+    "latent_decode_rescore": 26,
+    "global_exploration": 3,
+    "elite_local_rescore": 8
+  },
+  "best": {
+    "evaluation": 39,
+    "candidate": {
+      "continuous": {
+        "wing_area": 11.129234894139042,
+        "aspect_ratio": 13.5,
+        "tip_diameter": 1.898617540696224,
+        "dep_diameter": 0.8,
+        "prop_spacing": 0.7,
+        "cruise_airspeed": 44.0
+      },
+      "discrete": {
+        "prop_layout": "wingtip",
+        "propeller_count": 2,
+        "parallel_strings": 40
+      }
+    },
+    "result": {
+      "objective": 38163.49383361501,
+      "solver_success": true,
+      "constraints": {
+        "current": -0.706338441100643,
+        "packing": -1.0,
+        "power": -0.8624244552752895,
+        "root_bending": -0.08165962935160365,
+        "soc": -0.08420313046645622,
+        "span": -0.15465977250683116,
+        "stall": -8.962185891492336e-05,
+        "voltage": -0.3192772649117288
+      },
+      "status": "complete",
+      "metrics": {
+        "partial_observation_adapter": true
+      },
+      "elapsed_seconds": 6.44999963697046e-05
+    },
+    "feasible": true,
+    "phase": "bo",
+    "proposal": {
+      "source": "latent_decode_rescore",
+      "score": -4.9010692105899905,
+      "coverage_target": null,
+      "refinement_radius": null,
+      "solver_risk_screen": {
+        "mode": "screened_acquisition",
+        "passing_candidates": 152,
+        "finite_candidates": 514,
+        "thresholds": {
+          "success": 0.5
+        },
+        "selected_probabilities": {
+          "success": 0.9897952016449465
+        },
+        "interpretation": "uncalibrated_advisory_not_physical_feasibility"
+      },
+      "representation_version": 4,
+      "candidate_count": 514,
+      "search_policy_version": "exact_precheck_local_search_20261012_v2",
+      "raw_pool_count": 512,
+      "raw_pool_limit": 512,
+      "structured_candidates": 154,
+      "local_optimized_candidates": 2,
+      "local_search_reports": [
+        {
+          "discrete": {
+            "prop_layout": "distributed",
+            "propeller_count": 4,
+            "parallel_strings": 32
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "span": -0.2997871233583177,
+            "packing": -1.5116887678787632,
+            "stall": -0.013282434866912607,
+            "root_bending": -0.28917480205109203
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 4,
+          "raw_checks": {
+            "span": -0.18344194820789628,
+            "packing": -2.4780412879434772,
+            "stall": 3.019806626980426e-14,
+            "root_bending": -0.17215674971351114
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 0.9999999897671693,
+          "final_checks": {
+            "span": -0.18344194927973712,
+            "packing": -2.478041278458604,
+            "stall": -1.38828393225765e-10,
+            "root_bending": -0.17215675078901083
+          },
+          "acquisition_before": -2.986371561506447,
+          "acquisition_after": -2.7681343863671306,
+          "acquisition_evaluations": 6
+        },
+        {
+          "discrete": {
+            "prop_layout": "distributed",
+            "propeller_count": 2,
+            "parallel_strings": 40
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "span": -0.1666253770371635,
+            "packing": -3.7117877207031844,
+            "stall": -0.003012353091928488,
+            "root_bending": -0.10558870280157784
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 3,
+          "raw_checks": {
+            "span": -0.1599158442513523,
+            "packing": -3.781549116259926,
+            "stall": 3.946662996412442e-10,
+            "root_bending": -0.09852165791344791
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 0.9999998596148408,
+          "final_checks": {
+            "span": -0.15991584518147384,
+            "packing": -3.7815491064905618,
+            "stall": -3.0417668384075114e-11,
+            "root_bending": -0.09852165889312958
+          },
+          "acquisition_before": -2.9867470179649254,
+          "acquisition_after": -2.9194541664925686,
+          "acquisition_evaluations": 5
+        }
+      ],
+      "local_optimization_events": [
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "wing_area": 10.384279460190848,
+              "aspect_ratio": 13.499999960627832,
+              "tip_diameter": 1.72,
+              "dep_diameter": 1.0999999999441064,
+              "prop_spacing": 0.8999999995603245,
+              "cruise_airspeed": 44.00000000181129
+            },
+            "discrete": {
+              "prop_layout": "distributed",
+              "propeller_count": 4,
+              "parallel_strings": 32
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "wing_area": 10.991268674944326,
+              "aspect_ratio": 13.49999995835321,
+              "tip_diameter": 1.72,
+              "dep_diameter": 1.0999999970796752,
+              "prop_spacing": 0.8999999989129748,
+              "cruise_airspeed": 44.00000030235204
+            },
+            "discrete": {
+              "prop_layout": "distributed",
+              "propeller_count": 2,
+              "parallel_strings": 40
+            }
+          }
+        }
+      ],
+      "refinement_challenger": false,
+      "global_stagnation": 1,
+      "head_y_mean": 39322.038106624044,
+      "head_y_std": 1039.3637139661075,
+      "gp_diagnostics": {
+        "objective": {
+          "name": "objective",
+          "attempts": 1,
+          "noise_variance": 0.003501504625731319,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "stall": {
+          "name": "stall",
+          "attempts": 1,
+          "noise_variance": 0.0015150248244817908,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "root_bending": {
+          "name": "root_bending",
+          "attempts": 1,
+          "noise_variance": 0.002635647840558735,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "soc": {
+          "name": "soc",
+          "attempts": 1,
+          "noise_variance": 0.010736871657986386,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "current": {
+          "name": "current",
+          "attempts": 1,
+          "noise_variance": 0.014643102178621716,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "voltage": {
+          "name": "voltage",
+          "attempts": 1,
+          "noise_variance": 0.007628074090009714,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        },
+        "power": {
+          "name": "power",
+          "attempts": 1,
+          "noise_variance": 0.0076048651934563245,
+          "learning_rate": 0.04,
+          "training_points": 23,
+          "previous_errors": []
+        }
+      },
+      "refinement_risk": {
+        "mode": "risk_weighted_native_search",
+        "feedback": "interval",
+        "timing_observations": 38,
+        "representation_version": 4
+      }
+    }
+  },
+  "rng_state": {
+    "bit_generator": "PCG64",
+    "state": {
+      "state": 223095585933462555963182970079343138041,
+      "inc": 65570554330235095373843219364542447259
+    },
+    "has_uint32": 1,
+    "uinteger": 4048510848
+  }
+}

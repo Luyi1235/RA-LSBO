@@ -1,0 +1,76 @@
+{
+  "contract": "99f3e8c6f70b0b72d109959f7e70c83043d1e3779b066fe0d175618154d00492",
+  "seed": 29560900,
+  "source_sha": "e92aa69fc8f23590c4084ac0b25487578e1a13d5",
+  "spec": {
+    "analysis_role": "multi-feasible-pilot",
+    "arms": [
+      "ra_refine_interval",
+      "ra_refine_interval_cold_active"
+    ],
+    "calls_per_seed": 104,
+    "cell_current_limit_fraction": 1.0,
+    "completion_audit_checkpoints": [
+      8,
+      12,
+      16
+    ],
+    "completion_audit_size": 16,
+    "contrasts": [
+      [
+        "ra_refine_interval_cold_active",
+        "ra_refine_interval"
+      ]
+    ],
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "energy_target_Wh": 38000.0,
+    "energy_target_basis": "rounded reduced-model landmarks from the earlier PR151 pilot",
+    "headwind_m_s": 0.0,
+    "horizon": 40,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8
+    ],
+    "name": "multi-feasible-pilot-refinement-payload",
+    "native_gp_steps": 45,
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 24.0,
+    "pool_policy": "LSBO grammar-decoded plus native mixed proposals in the risk-aware cold stage",
+    "post_feasible_policy": "common interval-informed LSBO refinement after three usable designs",
+    "primary": {
+      "budget": 48,
+      "cohort": "cold",
+      "contrast": "ra_refine_interval_cold_active_minus_ra_refine_interval",
+      "endpoint": "capped_target_call_to_three_usable_designs",
+      "scenario": "headwind"
+    },
+    "quality_budgets": [
+      16,
+      24,
+      32,
+      48
+    ],
+    "risk_candidate_count": 64,
+    "scenario": "payload",
+    "seeds": [
+      29560900
+    ],
+    "shared_initial_prefixes": true,
+    "study": "refinement",
+    "total_budget": 48,
+    "usable_acquisition_target": 3
+  },
+  "versions": {
+    "botorch": "0.10.0",
+    "gpytorch": "1.11",
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "torch_runtime": "2.8.0+cpu"
+  }
+}
