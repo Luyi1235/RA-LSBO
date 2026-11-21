@@ -16,6 +16,7 @@ from aircraft_timing_interval_value import deficit_edges
 from ra_lsbo.budget import digest
 from ra_lsbo.experiments.core.protocol import BASE
 from ra_lsbo.experiments.core.runner import Ledger, save
+from ra_lsbo.risk_core.completion_refinement import IntervalCompletionProbability, RiskWeightedRefinement
 from run_aircraft_coverage_factorial import FixedTimingHead
 from run_aircraft_external_full_budget import (
     SCENARIOS, UsableAircraft, compare, discovery_outcome, evidence_hashes, passes_exact_screen,
@@ -30,18 +31,25 @@ CANDIDATES = 64
 ORIGINAL = "lsbo_native"
 EXTERNAL = "archsbo_screened"
 ARMS = (ORIGINAL, "ra_sign_greedy", "ra_interval_greedy", "ra_interval_active", EXTERNAL)
-RISK_ARMS = ARMS[1:-1]
 CONTRASTS = (("ra_interval_greedy", "ra_sign_greedy"), ("ra_interval_active", "ra_interval_greedy"),
              ("ra_interval_greedy", ORIGINAL), ("ra_interval_greedy", EXTERNAL))
 PROFILES = ("smoke", "full-pilot")
+STUDIES = ("discovery", "refinement")
+REFINEMENT_ARMS = (ORIGINAL, "ra_interval_greedy", "ra_refine_sign", "ra_refine_interval", EXTERNAL)
+REFINEMENT_CONTRASTS = (
+    ("ra_refine_interval", "ra_interval_greedy"), ("ra_refine_interval", "ra_refine_sign"),
+    ("ra_refine_interval", ORIGINAL), ("ra_refine_interval", EXTERNAL),
+)
+QUALITY_BUDGETS = (16, 24, 32, 48)
+ENERGY_TARGET_WH = {"payload": 38000., "headwind": 40000.}
 
 
-def plan(scenario, profile):
+def plan(scenario, profile, study="discovery"):
     offset = 0 if scenario == "payload" else 10_000
     seed, budget = (29060100+offset, 12) if profile == "smoke" else (29200100+offset, 48)
     base = full_budget_plan(scenario, "full-pilot")
     del base["pooled_arms"], base["logcei_adapter"]
-    return {**base, "name": f"{profile}-{scenario}", "analysis_role": profile, "seeds": [seed],
+    spec = {**base, "name": f"{profile}-{scenario}", "analysis_role": profile, "seeds": [seed],
             "initial_sizes": [INITIAL], "total_budget": budget, "horizon": budget-INITIAL,
             "calls_per_seed": INITIAL+len(ARMS)*(budget-INITIAL), "arms": list(ARMS),
             "native_gp_steps": 45, "risk_candidate_count": CANDIDATES,
@@ -50,6 +58,19 @@ def plan(scenario, profile):
             "primary": {"scenario": "headwind", "initial": INITIAL, "cohort": "cold",
                         "contrast": "ra_interval_greedy_minus_ra_sign_greedy",
                         "endpoint": "first_usable_total_call_capped_at_budget_plus_one"}}
+    if study == "refinement":
+        seed, budget = (29060100+offset, 16) if profile == "smoke" else (29220100+offset, 48)
+        spec.update(study=study, name=f"{profile}-refinement-{scenario}", seeds=[seed],
+                    arms=list(REFINEMENT_ARMS), total_budget=budget, horizon=budget-INITIAL,
+                    calls_per_seed=INITIAL+len(REFINEMENT_ARMS)*(budget-INITIAL),
+                    energy_target_Wh=ENERGY_TARGET_WH[scenario],
+                    energy_target_basis="rounded reduced-model landmarks from the earlier PR151 pilot",
+                    quality_budgets=[b for b in QUALITY_BUDGETS if b <= budget],
+                    post_feasible_policy="matched native LSBO; refinement variants replace the completion term in the acquisition",
+                    primary={"scenario": "headwind", "budget": 24, "cohort": "all",
+                             "contrast": "ra_refine_interval_minus_ra_interval_greedy",
+                             "endpoint": "feasibility_first_terminal_order"})
+    return spec
 
 
 def engineering_screen(problem, point):
@@ -63,8 +84,34 @@ class RiskAwareLSBO(FullBudgetLSBO):
 
     def _propose(self, history):
         if any(record.usable_feasible for record in history):
+            if self.arm in ("ra_refine_sign", "ra_refine_interval"):
+                return self.engine.propose(selection=partial(self._refinement_proposal, history=history))
             return self.engine.propose()
         return self.engine.propose(selection=partial(self._cold_proposal, history=history))
+
+    def _refinement_proposal(self, native, phase, *, history):
+        trusted = [record for record in history if supports_timing(record)]
+        state = {"mode": "native_recovery_or_exploration"}
+
+        def risk_surrogate(baseline, representation):
+            feedback = "interval" if self.arm == "ra_refine_interval" else "sign"
+            if not trusted:
+                state.update(mode="native_fallback", reason="no_supported_completion_feedback")
+                return baseline
+            inputs = representation.features([
+                self.problem.candidate_class(**record.candidate) for record in trusted]).numpy()
+            try:
+                head = FixedTimingHead(self.problem, inputs, trusted, self.seed, use_interval=feedback == "interval")
+            except (np.linalg.LinAlgError, FloatingPointError, RuntimeError):
+                state.update(mode="native_fallback", reason="invalid_completion_posterior")
+                return baseline
+            completion = IntervalCompletionProbability(head)
+            state.update(mode="risk_weighted_native_search", feedback=feedback, timing_observations=len(trusted),
+                         representation_version=representation.version)
+            return RiskWeightedRefinement(baseline, completion)
+
+        candidate, metadata = native.propose(phase, refine_surrogate=risk_surrogate)
+        return candidate, {**metadata, "refinement_risk": state}
 
     def _cold_proposal(self, native, phase, *, history):
         trusted = [record for record in history if supports_timing(record)]
@@ -152,7 +199,7 @@ def run(spec, seed, sha, output):
         return ledger.evaluate(problem, point, tag, role)
 
     prefix = [pay(point, f"initial/{i}", "initial") for i, point in enumerate(initial, 1)]
-    for arm in ARMS:
+    for arm in spec["arms"]:
         def acquire(point, step):
             return pay(point, f"{arm}/{step}", "online")
         if arm == EXTERNAL:
@@ -201,13 +248,14 @@ def verify(folder, spec, sha):
     if [record.candidate for record in prefix] != rosters(problem, spec, seed)[0][:INITIAL]:
         raise ValueError("Unexpected shared initialization")
     arms, candidate_lists = {}, {}
-    for arm in ARMS:
+    refinement = spec.get("study") == "refinement"
+    for arm in spec["arms"]:
         history = list(prefix)
         seen = {record.observation.design_id for record in prefix}
         trace = read(folder/(arm+".json"))
         if len(trace) != spec["horizon"]:
             raise ValueError("An arm did not spend its registered budget")
-        risk_calls, fallbacks = 0, 0
+        risk_calls, fallbacks, refinement_calls = 0, 0, 0
         for i, step in enumerate(trace, 1):
             record = settled(f"{arm}/{i}", "online")
             key = record.observation.design_id
@@ -221,7 +269,7 @@ def verify(folder, spec, sha):
             else:
                 proposal = step["proposal"]
                 if proposal["source"] == "lsbo_latent_completion_risk":
-                    if arm not in RISK_ARMS or any(old.usable_feasible for old in history):
+                    if arm in (ORIGINAL, EXTERNAL) or any(old.usable_feasible for old in history):
                         raise ValueError("A cold completion policy used an unregistered phase")
                     feedback = "sign" if arm == "ra_sign_greedy" else "interval"
                     policy = "information" if arm == "ra_interval_active" else "greedy"
@@ -233,14 +281,43 @@ def verify(folder, spec, sha):
                         raise ValueError("Feedback ablations generated different lists for the same history")
                     risk_calls += 1
                 fallbacks += int("risk_fallback" in proposal)
+                if "refinement_risk" in proposal:
+                    if arm not in ("ra_refine_sign", "ra_refine_interval") or not any(
+                            old.usable_feasible for old in history):
+                        raise ValueError("Risk refinement applied outside the registered phase")
+                    receipt = proposal["refinement_risk"]
+                    if receipt["mode"] == "risk_weighted_native_search":
+                        if receipt["feedback"] != arm.removeprefix("ra_refine_"):
+                            raise ValueError("Incorrect refinement feedback")
+                        refinement_calls += 1
             seen.add(key)
             history.append(record)
         arms[arm] = {**trajectory_metrics(history, spec["total_budget"]),
                      "cold_risk_calls": risk_calls, "cold_risk_fallbacks": fallbacks}
+        if refinement:
+            target_hit = next((i for i, record in enumerate(history, 1) if record.usable_feasible
+                               and record.observation.objective.value <= spec["energy_target_Wh"]), None)
+            arms[arm].update(refinement_risk_calls=refinement_calls, first_energy_target=target_hit,
+                             quality_by_budget={str(b): trajectory_metrics(history[:b], b)["best_usable_Wh"]
+                                                for b in spec["quality_budgets"]})
     row = {"arms": arms, "cold": not any(record.usable_feasible for record in prefix)}
-    return {"status": "VERIFIED_NATIVE_RISK_LSBO", "source_sha": sha, "spec": spec, "seed": seed,
-            "paid_calls": position, "rcaide_mda_calls": 0, **row, "versions": header["versions"],
-            "contrasts": {f"{a}_minus_{b}": compare([row], a, b) for a, b in CONTRASTS}}
+    status = "VERIFIED_RISK_AWARE_LSBO_REFINEMENT" if refinement else "VERIFIED_NATIVE_RISK_LSBO"
+    contrasts = REFINEMENT_CONTRASTS if refinement else CONTRASTS
+    report = {"status": status, "source_sha": sha, "spec": spec, "seed": seed,
+              "paid_calls": position, "rcaide_mda_calls": 0, **row, "versions": header["versions"],
+              "contrasts": {f"{a}_minus_{b}": compare([row], a, b) for a, b in contrasts}}
+    if refinement:
+        report["quality_contrasts"] = {}
+        for budget in map(str, spec["quality_budgets"]):
+            state = {"arms": {arm: {**item, "best_usable_Wh": item["quality_by_budget"][budget]}
+                              for arm, item in arms.items()}}
+            report["quality_contrasts"][budget] = {}
+            for left, right in contrasts:
+                paired = compare([state], left, right)
+                report["quality_contrasts"][budget][f"{left}_minus_{right}"] = {
+                    name: paired[name] for name in ("energy_Wh_delta_both_usable",
+                                                   "feasibility_first_terminal_order")}
+    return report
 
 
 def main():
@@ -248,11 +325,12 @@ def main():
     parser.add_argument("--task", choices=("plan", "run", "verify"), required=True)
     parser.add_argument("--scenario", choices=SCENARIOS, required=True)
     parser.add_argument("--profile", choices=PROFILES, required=True)
+    parser.add_argument("--study", choices=STUDIES, default="discovery")
     parser.add_argument("--expected-sha")
     parser.add_argument("--input", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    spec = plan(args.scenario, args.profile)
+    spec = plan(args.scenario, args.profile, args.study)
     if args.task == "plan":
         print(json.dumps(spec, indent=2))
         return

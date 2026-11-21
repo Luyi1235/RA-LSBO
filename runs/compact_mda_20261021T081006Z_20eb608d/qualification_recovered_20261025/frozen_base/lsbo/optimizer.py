@@ -429,7 +429,7 @@ class Optimizer:
                                     options={"maxiter": 60, "batch_limit": self.settings.restarts})
         return point[0].detach()
 
-    def propose(self, phase):
+    def propose(self, phase, *, refine_surrogate=None):
         usable = sum(o.result.has_objective() for o in self.observations)
         elites = self.elites()
         if elites and self.solver_failures >= 2:
@@ -462,6 +462,8 @@ class Optimizer:
                               analytical_constraints=getattr(self.problem, 'analytical_constraints', ()),
                               solver_domain_metric=(getattr(self.problem, 'solver_domain_metric', None)
                                                     if self.settings.use_solver_domain else None))
+        if refine_surrogate is not None:
+            surrogate = refine_surrogate(surrogate, rep)
         print(f"[LSBO] Surrogates ready ({time.perf_counter() - started:.1f}s); searching latent/continuous space", flush=True)
         print("[LSBO] GP checks: " + ", ".join(
             f"{name}: noise={info['noise_variance']:.3g}, attempts={info['attempts']}"
