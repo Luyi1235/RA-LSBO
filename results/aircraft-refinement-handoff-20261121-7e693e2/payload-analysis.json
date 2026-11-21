@@ -1,0 +1,487 @@
+{
+  "paid_calls": 416,
+  "rcaide_mda_calls": 0,
+  "rows": [
+    {
+      "arms": {
+        "archsbo_screened": {
+          "best_usable_Wh": 36326.48558933521,
+          "capped_first": 1,
+          "first_usable": 1,
+          "handoff_after_call": null,
+          "open_outside_pool": 40,
+          "open_paid_calls": 40,
+          "usable_count": 27
+        },
+        "interval_fixed": {
+          "best_usable_Wh": 40080.61173155836,
+          "capped_first": 1,
+          "first_usable": 1,
+          "handoff_after_call": null,
+          "open_outside_pool": 0,
+          "open_paid_calls": 0,
+          "usable_count": 10
+        },
+        "interval_open": {
+          "best_usable_Wh": 36326.48558933521,
+          "capped_first": 1,
+          "first_usable": 1,
+          "handoff_after_call": 8,
+          "open_outside_pool": 40,
+          "open_paid_calls": 40,
+          "usable_count": 27
+        },
+        "sign_fixed": {
+          "best_usable_Wh": 40080.61173155836,
+          "capped_first": 1,
+          "first_usable": 1,
+          "handoff_after_call": null,
+          "open_outside_pool": 0,
+          "open_paid_calls": 0,
+          "usable_count": 10
+        },
+        "sign_open": {
+          "best_usable_Wh": 36326.48558933521,
+          "capped_first": 1,
+          "first_usable": 1,
+          "handoff_after_call": 8,
+          "open_outside_pool": 40,
+          "open_paid_calls": 40,
+          "usable_count": 27
+        }
+      },
+      "cold": false,
+      "paid_calls": 208,
+      "seed": 29100100,
+      "versions": {
+        "botorch": "0.10.0",
+        "numba": "0.68.1",
+        "numpy": "2.5.5",
+        "pymoo": "0.6.2",
+        "sb-arch-opt": "1.7.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "smt": "2.15.1",
+        "torch": "2.15.0",
+        "torch_runtime": "2.8.0+cpu"
+      }
+    },
+    {
+      "arms": {
+        "archsbo_screened": {
+          "best_usable_Wh": 36335.80570439047,
+          "capped_first": 20,
+          "first_usable": 20,
+          "handoff_after_call": null,
+          "open_outside_pool": 40,
+          "open_paid_calls": 40,
+          "usable_count": 26
+        },
+        "interval_fixed": {
+          "best_usable_Wh": 38605.99585240273,
+          "capped_first": 9,
+          "first_usable": 9,
+          "handoff_after_call": null,
+          "open_outside_pool": 0,
+          "open_paid_calls": 0,
+          "usable_count": 2
+        },
+        "interval_open": {
+          "best_usable_Wh": 36324.481665378706,
+          "capped_first": 9,
+          "first_usable": 9,
+          "handoff_after_call": 9,
+          "open_outside_pool": 39,
+          "open_paid_calls": 39,
+          "usable_count": 25
+        },
+        "sign_fixed": {
+          "best_usable_Wh": 38605.99585240273,
+          "capped_first": 24,
+          "first_usable": 24,
+          "handoff_after_call": null,
+          "open_outside_pool": 0,
+          "open_paid_calls": 0,
+          "usable_count": 2
+        },
+        "sign_open": {
+          "best_usable_Wh": 39968.85585438409,
+          "capped_first": 24,
+          "first_usable": 24,
+          "handoff_after_call": 24,
+          "open_outside_pool": 24,
+          "open_paid_calls": 24,
+          "usable_count": 21
+        }
+      },
+      "cold": true,
+      "paid_calls": 208,
+      "seed": 29100200,
+      "versions": {
+        "botorch": "0.10.0",
+        "numba": "0.68.1",
+        "numpy": "2.5.5",
+        "pymoo": "0.6.2",
+        "sb-arch-opt": "1.7.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "smt": "2.15.1",
+        "torch": "2.15.0",
+        "torch_runtime": "2.8.0+cpu"
+      }
+    }
+  ],
+  "source_sha": "7e693e2190b44a5b1737028d46cecfe78f43aac2",
+  "spec": {
+    "analysis_role": "full-pilot",
+    "arms": [
+      "sign_fixed",
+      "interval_fixed",
+      "sign_open",
+      "interval_open",
+      "archsbo_screened"
+    ],
+    "calls_per_seed": 208,
+    "cell_current_limit_fraction": 1.0,
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "headwind_m_s": 0.0,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8
+    ],
+    "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+    "name": "full-pilot-payload",
+    "native_control": "screened ArchSBO throughout, starting from the same initial records",
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 24.0,
+    "pool_policy": "shared fixed roster during discovery; it remains fixed for the two _fixed arms",
+    "pooled_arms": [
+      "sign_fixed",
+      "interval_fixed"
+    ],
+    "post_feasible_policy": "fixed arms use logCEI; open arms both start screened ArchSBO with all evaluated records",
+    "primary": {
+      "cohort": "cold",
+      "contrast": "interval_open_minus_sign_open",
+      "endpoint": "feasibility_first_terminal_order",
+      "initial": 8,
+      "scenario": "headwind"
+    },
+    "scenario": "payload",
+    "seeds": [
+      29100100,
+      29100200
+    ],
+    "shared_initial_prefixes": true,
+    "total_budget": 48
+  },
+  "status": "VERIFIED_AIRCRAFT_REFINEMENT_HANDOFF",
+  "summary": {
+    "all": {
+      "contrasts": {
+        "interval_open_minus_archsbo_screened": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -5.662019505882199,
+            "n": 2,
+            "paired_95": [
+              -11.324039011764398,
+              0.0
+            ],
+            "ties": 1,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 1,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -5.5,
+            "n": 2,
+            "paired_95": [
+              -11.0,
+              0.0
+            ],
+            "ties": 1,
+            "wins": 1
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "interval_open_minus_interval_fixed": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 0.5,
+            "losses": 0,
+            "mean": -3017.8201646235902,
+            "n": 2,
+            "paired_95": [
+              -3754.1261422231546,
+              -2281.514187024026
+            ],
+            "ties": 0,
+            "wins": 2
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 0,
+            "wins": 2
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": null,
+            "losses": 0,
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ],
+            "ties": 2,
+            "wins": 0
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "interval_open_minus_sign_open": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -1822.187094502693,
+            "n": 2,
+            "paired_95": [
+              -3644.374189005386,
+              0.0
+            ],
+            "ties": 1,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 1,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -7.5,
+            "n": 2,
+            "paired_95": [
+              -15.0,
+              0.0
+            ],
+            "ties": 1,
+            "wins": 1
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "sign_open_minus_sign_fixed": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 1,
+            "mean": -1195.6330701208972,
+            "n": 2,
+            "paired_95": [
+              -3754.1261422231546,
+              1362.8600019813603
+            ],
+            "ties": 0,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 1,
+            "ties": 0,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": null,
+            "losses": 0,
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ],
+            "ties": 2,
+            "wins": 0
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 2,
+            "paired_95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "hits": {
+        "archsbo_screened": 2,
+        "interval_fixed": 2,
+        "interval_open": 2,
+        "sign_fixed": 2,
+        "sign_open": 2
+      },
+      "n": 2
+    },
+    "cold": {
+      "contrasts": {
+        "interval_open_minus_archsbo_screened": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -11.324039011764398,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 0,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -11,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 1
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 1,
+            "paired_95": null
+          }
+        },
+        "interval_open_minus_interval_fixed": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -2281.514187024026,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 0,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": null,
+            "losses": 0,
+            "mean": 0,
+            "n": 1,
+            "paired_95": null,
+            "ties": 1,
+            "wins": 0
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 1,
+            "paired_95": null
+          }
+        },
+        "interval_open_minus_sign_open": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -3644.374189005386,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 1
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 0,
+            "ties": 0,
+            "wins": 1
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 0,
+            "mean": -15,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 1
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 1,
+            "paired_95": null
+          }
+        },
+        "sign_open_minus_sign_fixed": {
+          "energy_Wh_delta_both_usable": {
+            "exact_sign_p_two_sided": 1.0,
+            "losses": 1,
+            "mean": 1362.8600019813603,
+            "n": 1,
+            "paired_95": null,
+            "ties": 0,
+            "wins": 0
+          },
+          "feasibility_first_terminal_order": {
+            "losses": 1,
+            "ties": 0,
+            "wins": 0
+          },
+          "first_capped_delta": {
+            "exact_sign_p_two_sided": null,
+            "losses": 0,
+            "mean": 0,
+            "n": 1,
+            "paired_95": null,
+            "ties": 1,
+            "wins": 0
+          },
+          "hit_rate_delta": {
+            "mean": 0,
+            "n": 1,
+            "paired_95": null
+          }
+        }
+      },
+      "hits": {
+        "archsbo_screened": 1,
+        "interval_fixed": 1,
+        "interval_open": 1,
+        "sign_fixed": 1,
+        "sign_open": 1
+      },
+      "n": 1
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "contract": "99f3e8c6f70b0b72d109959f7e70c83043d1e3779b066fe0d175618154d00492",
+  "seed": 29100200,
+  "source_sha": "7e693e2190b44a5b1737028d46cecfe78f43aac2",
+  "spec": {
+    "analysis_role": "full-pilot",
+    "arms": [
+      "sign_fixed",
+      "interval_fixed",
+      "sign_open",
+      "interval_open",
+      "archsbo_screened"
+    ],
+    "calls_per_seed": 208,
+    "cell_current_limit_fraction": 1.0,
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "headwind_m_s": 0.0,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8
+    ],
+    "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+    "name": "full-pilot-payload",
+    "native_control": "screened ArchSBO throughout, starting from the same initial records",
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 24.0,
+    "pool_policy": "shared fixed roster during discovery; it remains fixed for the two _fixed arms",
+    "pooled_arms": [
+      "sign_fixed",
+      "interval_fixed"
+    ],
+    "post_feasible_policy": "fixed arms use logCEI; open arms both start screened ArchSBO with all evaluated records",
+    "primary": {
+      "cohort": "cold",
+      "contrast": "interval_open_minus_sign_open",
+      "endpoint": "feasibility_first_terminal_order",
+      "initial": 8,
+      "scenario": "headwind"
+    },
+    "scenario": "payload",
+    "seeds": [
+      29100100,
+      29100200
+    ],
+    "shared_initial_prefixes": true,
+    "total_budget": 48
+  },
+  "versions": {
+    "botorch": "0.10.0",
+    "numba": "0.68.1",
+    "numpy": "2.5.5",
+    "pymoo": "0.6.2",
+    "sb-arch-opt": "1.7.1",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "smt": "2.15.1",
+    "torch": "2.15.0",
+    "torch_runtime": "2.8.0+cpu"
+  }
+}
