@@ -14,15 +14,18 @@ from scipy.stats import binomtest
 from ra_lsbo.experiments.core.runner import save
 from run_aircraft_external_full_budget import SCENARIOS, compare, effect
 from run_aircraft_feedback_replication import paired
-from run_aircraft_native_risk_lsbo import REFINEMENT_CONTRASTS, plan, run, verify
+from run_aircraft_native_risk_lsbo import COLD_ARMS, COLD_CONTRASTS, INITIAL, REFINEMENT_CONTRASTS, plan, run, verify
 from run_aircraft_risk_cold_start import source_commit
 
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = ("smoke", "confirmation")
+PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot")
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
+COLD_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
+                "contrast": "ra_refine_interval_cold_active_minus_ra_refine_interval",
+                "endpoint": "capped_time_to_energy_target"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -32,24 +35,29 @@ WORKER_ENTRY = (
 
 
 def seed_registry(profile):
-    return {
-        scenario: (plan(scenario, "smoke", "refinement")["seeds"] if profile == "smoke" else
-                   list(range(29300100+10_000*offset, 29302500+10_000*offset, 100)))
-        for offset, scenario in enumerate(SCENARIOS)
-    }
+    if profile in ("smoke", "cold-smoke"):
+        return {scenario: plan(scenario, "smoke", "refinement")["seeds"] for scenario in SCENARIOS}
+    base, size = (29400100, 3) if profile == "cold-pilot" else (29300100, 24)
+    return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
+            for i, scenario in enumerate(SCENARIOS)}
 
 
 def shard_plan(profile, scenario, seed):
     if seed not in seed_registry(profile)[scenario]:
         raise ValueError("Seed is outside the registered cohort")
-    spec = plan(scenario, "smoke" if profile == "smoke" else "full-pilot", "refinement")
+    spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
+    if profile.startswith("cold-"):
+        spec.update(arms=list(COLD_ARMS), contrasts=[list(pair) for pair in COLD_CONTRASTS],
+                    calls_per_seed=INITIAL+len(COLD_ARMS)*spec["horizon"],
+                    post_feasible_policy="common interval-informed risk refinement within native LSBO",
+                    primary=COLD_PRIMARY)
     return spec
 
 
 def registration(profile):
     scenarios = seed_registry(profile)
-    return {"profile": profile, "primary": PRIMARY, "scenarios": {
+    return {"profile": profile, "primary": COLD_PRIMARY if profile.startswith("cold-") else PRIMARY, "scenarios": {
         scenario: {"seeds": seeds, "calls_per_seed": shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
         for scenario, seeds in scenarios.items()}}
 
@@ -136,7 +144,7 @@ def cohort_summary(rows, spec):
                                       for t in spec["quality_budgets"]},
                 "energy_target": target_contrast(rows, a, b, spec["total_budget"]),
             }
-            for a, b in REFINEMENT_CONTRASTS},
+            for a, b in spec.get("contrasts", REFINEMENT_CONTRASTS)},
     }
 
 
@@ -160,7 +168,9 @@ def analyze(root, profile, sha):
                 ("initially_usable", [row for row in rows if not row["cold"]]))},
             "rows": rows,
         }
-    return {"status": "VERIFIED_RISK_AWARE_LSBO_CONFIRMATION", "source_sha": sha,
+    status = ("VERIFIED_COLD_ACQUISITION_TO_ENERGY" if profile.startswith("cold-") else
+              "VERIFIED_RISK_AWARE_LSBO_CONFIRMATION")
+    return {"status": status, "source_sha": sha,
             "plan": registration(profile), "versions": versions, "scenarios": data,
             "paid_calls": sum(row["paid_calls"] for section in data.values() for row in section["rows"]),
             "rcaide_mda_calls": 0}

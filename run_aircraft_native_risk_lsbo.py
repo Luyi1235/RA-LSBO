@@ -40,6 +40,11 @@ REFINEMENT_CONTRASTS = (
     ("ra_refine_interval", "ra_interval_greedy"), ("ra_refine_interval", "ra_refine_sign"),
     ("ra_refine_interval", ORIGINAL), ("ra_refine_interval", EXTERNAL),
 )
+COLD_SIGN = "ra_refine_interval_cold_sign"
+COLD_ACTIVE = "ra_refine_interval_cold_active"
+COLD_ARMS = (COLD_SIGN, "ra_refine_interval", COLD_ACTIVE)
+COLD_CONTRASTS = (("ra_refine_interval", COLD_SIGN), (COLD_ACTIVE, "ra_refine_interval"))
+REFINEMENT_FEEDBACK = {"ra_refine_sign": "sign", **dict.fromkeys(COLD_ARMS, "interval")}
 QUALITY_BUDGETS = (16, 24, 32, 48)
 ENERGY_TARGET_WH = {"payload": 38000., "headwind": 40000.}
 
@@ -73,6 +78,12 @@ def plan(scenario, profile, study="discovery"):
     return spec
 
 
+def cold_policy(arm):
+    feedback = "sign" if arm in ("ra_sign_greedy", COLD_SIGN) else "interval"
+    policy = "information" if arm in ("ra_interval_active", COLD_ACTIVE) else "greedy"
+    return feedback, policy
+
+
 def engineering_screen(problem, point):
     return {**problem.precheck(point), **structural_margins(problem, point)}
 
@@ -84,7 +95,7 @@ class RiskAwareLSBO(FullBudgetLSBO):
 
     def _propose(self, history):
         if any(record.usable_feasible for record in history):
-            if self.arm in ("ra_refine_sign", "ra_refine_interval"):
+            if self.arm in REFINEMENT_FEEDBACK:
                 return self.engine.propose(selection=partial(self._refinement_proposal, history=history))
             return self.engine.propose()
         return self.engine.propose(selection=partial(self._cold_proposal, history=history))
@@ -94,7 +105,7 @@ class RiskAwareLSBO(FullBudgetLSBO):
         state = {"mode": "native_recovery_or_exploration"}
 
         def risk_surrogate(baseline, representation):
-            feedback = "interval" if self.arm == "ra_refine_interval" else "sign"
+            feedback = REFINEMENT_FEEDBACK[self.arm]
             if not trusted:
                 state.update(mode="native_fallback", reason="no_supported_completion_feedback")
                 return baseline
@@ -131,10 +142,10 @@ class RiskAwareLSBO(FullBudgetLSBO):
         to_dict = [candidate.to_dict() for candidate in pool]
         inputs = rep.features([self.problem.candidate_class(**record.candidate) for record in trusted]).numpy()
         query = rep.features(pool).numpy()
-        use_interval = self.arm != "ra_sign_greedy"
+        feedback, policy = cold_policy(self.arm)
         try:
-            head = FixedTimingHead(self.problem, inputs, trusted, self.seed, use_interval=use_interval)
-            if self.arm == "ra_interval_active":
+            head = FixedTimingHead(self.problem, inputs, trusted, self.seed, use_interval=feedback == "interval")
+            if policy == "information":
                 edges = [deficit_edges(point, self.problem.settings) for point in to_dict]
                 p, _, eligible, gains = score_information(head, query, to_dict, edges)
                 pick = select([to_dict[i] for i in eligible], gains)
@@ -148,8 +159,8 @@ class RiskAwareLSBO(FullBudgetLSBO):
         except (np.linalg.LinAlgError, FloatingPointError, RuntimeError):
             candidate, info = native.propose(phase)
             return candidate, {**info, "risk_fallback": "invalid_completion_posterior"}
-        return pool[index], {"source": "lsbo_latent_completion_risk", "feedback": "interval" if use_interval else "sign",
-                             "policy": "information" if self.arm == "ra_interval_active" else "greedy",
+        return pool[index], {"source": "lsbo_latent_completion_risk", "feedback": feedback,
+                             "policy": policy,
                              "p_complete": float(p[index]), "expected_brier_reduction": gain,
                              "candidate_count": len(pool), "candidate_list_sha256": digest(to_dict),
                              "latent_decoded_candidates": decoded,
@@ -271,8 +282,7 @@ def verify(folder, spec, sha):
                 if proposal["source"] == "lsbo_latent_completion_risk":
                     if arm in (ORIGINAL, EXTERNAL) or any(old.usable_feasible for old in history):
                         raise ValueError("A cold completion policy used an unregistered phase")
-                    feedback = "sign" if arm == "ra_sign_greedy" else "interval"
-                    policy = "information" if arm == "ra_interval_active" else "greedy"
+                    feedback, policy = cold_policy(arm)
                     if (proposal["feedback"], proposal["policy"]) != (feedback, policy):
                         raise ValueError("The receipt differs from the registered cold-start policy")
                     prefix_key = digest([old.observation.design_id for old in history])
@@ -282,12 +292,12 @@ def verify(folder, spec, sha):
                     risk_calls += 1
                 fallbacks += int("risk_fallback" in proposal)
                 if "refinement_risk" in proposal:
-                    if arm not in ("ra_refine_sign", "ra_refine_interval") or not any(
+                    if arm not in REFINEMENT_FEEDBACK or not any(
                             old.usable_feasible for old in history):
                         raise ValueError("Risk refinement applied outside the registered phase")
                     receipt = proposal["refinement_risk"]
                     if receipt["mode"] == "risk_weighted_native_search":
-                        if receipt["feedback"] != arm.removeprefix("ra_refine_"):
+                        if receipt["feedback"] != REFINEMENT_FEEDBACK[arm]:
                             raise ValueError("Incorrect refinement feedback")
                         refinement_calls += 1
             seen.add(key)
@@ -302,7 +312,7 @@ def verify(folder, spec, sha):
                                                 for b in spec["quality_budgets"]})
     row = {"arms": arms, "cold": not any(record.usable_feasible for record in prefix)}
     status = "VERIFIED_RISK_AWARE_LSBO_REFINEMENT" if refinement else "VERIFIED_NATIVE_RISK_LSBO"
-    contrasts = REFINEMENT_CONTRASTS if refinement else CONTRASTS
+    contrasts = spec.get("contrasts", REFINEMENT_CONTRASTS if refinement else CONTRASTS)
     report = {"status": status, "source_sha": sha, "spec": spec, "seed": seed,
               "paid_calls": position, "rcaide_mda_calls": 0, **row, "versions": header["versions"],
               "contrasts": {f"{a}_minus_{b}": compare([row], a, b) for a, b in contrasts}}
