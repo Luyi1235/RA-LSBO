@@ -138,7 +138,7 @@ def select_system_candidate(pool, rows, models, ledger, iteration, method, setti
 class OriginalLSBOWarmStart:
     """Run the unmodified original proposal/evaluation update using settled outcomes."""
 
-    def __init__(self, problem, base_project, rows, seed, settings, output):
+    def __init__(self, problem, base_project, rows, seed, settings, output, *, precheck=None):
         modules, _ = load_base(base_project)
         original = importlib.import_module(modules["space"].__package__+".optimizer")
         self.modules, self.pending = modules, None
@@ -154,7 +154,8 @@ class OriginalLSBOWarmStart:
             solver_domain_metric = getattr(problem, "solver_domain_metric", None)
 
             def precheck(self, candidate):
-                return problem.precheck(candidate.to_dict())
+                check = problem.precheck if precheck is None else precheck
+                return check(candidate.to_dict())
 
             def evaluate(self, candidate):
                 if owner.pending is None or owner.pending[0] != problem.space.key(candidate):
@@ -181,9 +182,9 @@ class OriginalLSBOWarmStart:
         return records.Observation(row["evaluation"], space.Candidate(**row["candidate"]), result,
                                    row.get("phase", "shared_history"), row.get("proposal", {}))
 
-    def propose(self):
+    def propose(self, *, selection=None):
         phase = self.engine.search_phase()
-        candidate, info = self.engine.propose(phase)
+        candidate, info = (self.engine.propose(phase) if selection is None else selection(self.engine, phase))
         return {"candidate": self.problem.canonical(candidate.to_dict()), "mode": "baseline",
                 "source": "original_lsbo:"+info.get("source", "proposal"),
                 "evidence": {"basis": "unavailable", "probability": None}}, {
