@@ -12,7 +12,8 @@ from run_aircraft_risk_cold_start import select
 PROFILE = "structured-risk-paper"
 CONFIRMATION_PROFILE = "structured-risk-confirmation"
 OPTIMIZATION_PROFILE = "structured-risk-optimization"
-COMPACT_PROFILES = (PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE)
+EXTERNAL_PROFILE = "structured-risk-external"
+COMPACT_PROFILES = (PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE, EXTERNAL_PROFILE)
 STRUCTURED_GREEDY = "ra_structured_greedy"
 STRUCTURED_SIGN_GREEDY = "ra_structured_sign_greedy"
 STRUCTURED_DECISION = "ra_structured_decision"

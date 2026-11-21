@@ -8,9 +8,11 @@ from pathlib import Path
 
 import numpy as np
 
+from aircraft_risk_local_search import local_candidates
 from ra_lsbo.budget import digest
 from ra_lsbo.experiments.comparison.methods import ADAPTATIONS, ExternalOptimizer
 from ra_lsbo.experiments.core.runner import Ledger, save
+from ra_lsbo.partial_bo.problems import candidate_pool
 from run_aircraft_coverage_factorial import choose, rosters
 from run_aircraft_external_baseline_pilot import plan as pilot_plan
 from run_aircraft_feedback_replication import paired
@@ -20,6 +22,7 @@ from run_aircraft_timing_usable_value import UsableAircraft
 
 
 POOL_ARMS = ("sign_greedy", "interval_greedy", "interval_active", "logcei_sign")
+ONLINE_LOGCEI = "logcei_screened_online"
 ARMS = (*POOL_ARMS, "archsbo_screened")
 CONTRASTS = (
     ("interval_greedy", "sign_greedy"),
@@ -88,6 +91,38 @@ def play_pool(problem, seed, prefix, pool, arm, horizon, evaluate, *, stop_after
             logcei.accept(record)
         trace.append({"step": step, "candidate_id": digest(candidate),
                       "outcome": discovery_outcome(record.to_dict()), "usable": record.usable_feasible, **entry})
+    return trace
+
+
+def play_logcei_online(problem, seed, prefix, spec, evaluate):
+    """Spend one call per step on one-hot logCEI using fresh screened candidates."""
+    horizon = spec["horizon"]
+    global_count = spec["logcei_global_candidates"]
+    local_count = spec["logcei_local_candidates"]
+    optimizer = ExternalOptimizer(problem, seed, "logcei", {"horizon": horizon, "pool": global_count+local_count})
+    history, trace = list(prefix), []
+    seen = {row.observation.design_id for row in history}
+    for step in range(1, horizon+1):
+        # Separate deterministic streams for the global draw and local augmentation.
+        proposal_seed = seed*1000+2*step
+        drawn, _ = candidate_pool(problem, proposal_seed, global_count, seen)
+        global_pool = [x for x in drawn if passes_exact_screen(problem, x)]
+        feasible = [row for row in history if row.usable_feasible]
+        local_pool = []
+        if feasible:
+            incumbent = min(feasible, key=lambda row: (row.observation.objective.value, row.observation.design_id))
+            local = local_candidates(problem, incumbent.candidate, proposal_seed+1, local_count,
+                                     seen.union(map(digest, drawn)))
+            local_pool = [x for x in local if passes_exact_screen(problem, x)]
+        point, info = optimizer.propose(history, global_pool+local_pool, step-1)
+        record = evaluate(point, step)
+        optimizer.accept(record)
+        key = digest(point)
+        trace.append({"step": step, "candidate": point, "candidate_id": key, "paid_calls": step,
+                      "rule": info["phase"], "screened_global": len(global_pool), "screened_local": len(local_pool),
+                      "outcome": discovery_outcome(record.to_dict()), "usable": record.usable_feasible})
+        seen.add(key)
+        history.append(record)
     return trace
 
 

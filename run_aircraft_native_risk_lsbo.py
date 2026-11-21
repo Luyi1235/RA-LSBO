@@ -25,8 +25,8 @@ from ra_lsbo.experiments.core.runner import Ledger, save
 from ra_lsbo.risk_core.completion_refinement import IntervalCompletionProbability, RiskWeightedRefinement
 from run_aircraft_coverage_factorial import FixedTimingHead
 from run_aircraft_external_full_budget import (
-    SCENARIOS, UsableAircraft, compare, discovery_outcome, evidence_hashes, passes_exact_screen,
-    plan as full_budget_plan, read, read_ledger, rosters, structural_margins, trajectory_metrics,
+    ONLINE_LOGCEI, SCENARIOS, UsableAircraft, compare, discovery_outcome, evidence_hashes, passes_exact_screen,
+    plan as full_budget_plan, play_logcei_online, read, read_ledger, rosters, structural_margins, trajectory_metrics,
 )
 from run_aircraft_ra_lsbo_comparison import FullBudgetLSBO
 from run_aircraft_risk_cold_start import file_hash, select, source_commit
@@ -285,6 +285,8 @@ def run(spec, seed, sha, output):
             return pay(point, f"{arm}/{step}", "online")
         if arm == EXTERNAL:
             trace = screened_trajectory(problem, prefix, seed, spec["horizon"], acquire)["steps"]
+        elif arm == ONLINE_LOGCEI:
+            trace = play_logcei_online(problem, seed, prefix, spec, acquire)
         else:
             torch.manual_seed(seed)
             factory = FullBudgetLSBO if arm == ORIGINAL else partial(RiskAwareLSBO, arm=arm)
@@ -349,9 +351,15 @@ def verify(folder, spec, sha):
                 step["step"], step["candidate_id"], step["outcome"], step["usable"]
             ) != (i, key, discovery_outcome(record.to_dict()), record.usable_feasible):
                 raise ValueError("A proposal does not match its settled observation")
-            if arm == EXTERNAL:
+            if arm in (EXTERNAL, ONLINE_LOGCEI):
                 if (step["paid_calls"], step["candidate"]) != (i, record.candidate):
-                    raise ValueError("ArchSBO paid proposal does not match its ledger")
+                    raise ValueError("External paid proposal does not match its ledger")
+                if arm == ONLINE_LOGCEI:
+                    feasible_before = any(row.usable_feasible for row in history)
+                    rule = "log_constrained_ei" if feasible_before else "feasibility_search"
+                    if (step["rule"] != rule or not 0 < step["screened_global"] <= spec["logcei_global_candidates"]
+                            or not 0 <= step["screened_local"] <= (spec["logcei_local_candidates"] if feasible_before else 0)):
+                        raise ValueError("Online logCEI receipt differs from the registered search")
             else:
                 proposal = step["proposal"]
                 if proposal["source"] == "lsbo_latent_completion_risk":

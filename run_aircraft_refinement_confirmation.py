@@ -12,15 +12,15 @@ import sys
 from scipy.stats import binomtest
 
 from aircraft_multi_feasible import AUDIT_CHECKPOINTS, AUDIT_SIZE, PROFILE as MULTI_PROFILE, TARGET, compare_accumulation
-from aircraft_structured_risk import (CONFIRMATION_PROFILE, LATENT_DECISION, OPTIMIZATION_PROFILE,
+from aircraft_structured_risk import (CONFIRMATION_PROFILE, EXTERNAL_PROFILE, LATENT_DECISION, OPTIMIZATION_PROFILE,
                                       PROFILE as PAPER_PROFILE, STRUCTURED_DECISION, STRUCTURED_GREEDY,
                                       STRUCTURED_SIGN_GREEDY)
 from ra_lsbo.experiments.core.runner import save
-from run_aircraft_external_full_budget import SCENARIOS, compare, effect, feasibility_first_counts
+from run_aircraft_external_full_budget import ADAPTATIONS, ONLINE_LOGCEI, SCENARIOS, compare, effect, feasibility_first_counts
 from run_aircraft_feedback_replication import paired
 from run_aircraft_native_risk_lsbo import (
     COLD_ACTIVE, COLD_ARMS, COLD_CONTRASTS, ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_GREEDY, ENERGY_LOOKAHEAD,
-    INITIAL, ORIGINAL, REFINEMENT_CONTRASTS, plan, run, verify,
+    EXTERNAL, INITIAL, ORIGINAL, REFINEMENT_CONTRASTS, plan, run, verify,
 )
 from run_aircraft_refinement_fork import ARMS as FORK_ARMS, FORK_FEASIBLE, PROFILE as FORK_PROFILE, run_fork, verify_fork
 from run_aircraft_risk_cold_start import source_commit
@@ -28,7 +28,7 @@ from run_aircraft_risk_cold_start import source_commit
 
 ROOT = Path(__file__).resolve().parent
 PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE, MULTI_PROFILE,
-            PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE)
+            PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE, EXTERNAL_PROFILE)
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
@@ -66,6 +66,9 @@ OPTIMIZATION_ENERGY_TIE_WH = 1.
 OPTIMIZATION_PRIMARY = {**PAPER_PRIMARY, "contrast": f"{STRUCTURED_GREEDY}_minus_{ORIGINAL}",
                         "endpoint": "capped_time_to_energy_target",
                         "co_primary_endpoint": "feasibility_first_terminal_order"}
+EXTERNAL_ARMS = (STRUCTURED_GREEDY, EXTERNAL, ONLINE_LOGCEI)
+EXTERNAL_CONTRASTS = ((STRUCTURED_GREEDY, EXTERNAL), (STRUCTURED_GREEDY, ONLINE_LOGCEI))
+EXTERNAL_PRIMARY = {**OPTIMIZATION_PRIMARY, "contrast": f"{STRUCTURED_GREEDY}_minus_{EXTERNAL}"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -80,7 +83,7 @@ def seed_registry(profile):
     base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6),
                   FORK_PROFILE: (29460100, 6), MULTI_PROFILE: (29560100, 12),
                   PAPER_PROFILE: (29620100, 24), CONFIRMATION_PROFILE: (29700100, 24),
-                  OPTIMIZATION_PROFILE: (29760100, 24)}.get(profile, (29300100, 24))
+                  OPTIMIZATION_PROFILE: (29760100, 24), EXTERNAL_PROFILE: (29820100, 24)}.get(profile, (29300100, 24))
     return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
             for i, scenario in enumerate(SCENARIOS)}
 
@@ -90,13 +93,22 @@ def shard_plan(profile, scenario, seed):
         raise ValueError("Seed is outside the registered cohort")
     spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
-    if profile == OPTIMIZATION_PROFILE:
-        spec.update(arms=list(OPTIMIZATION_ARMS), contrasts=[list(pair) for pair in OPTIMIZATION_CONTRASTS],
+    if profile in (OPTIMIZATION_PROFILE, EXTERNAL_PROFILE):
+        arms, contrasts, primary = ((OPTIMIZATION_ARMS, OPTIMIZATION_CONTRASTS, OPTIMIZATION_PRIMARY)
+                                    if profile == OPTIMIZATION_PROFILE else
+                                    (EXTERNAL_ARMS, EXTERNAL_CONTRASTS, EXTERNAL_PRIMARY))
+        spec.update(arms=list(arms), contrasts=[list(pair) for pair in contrasts],
                     total_budget=PAPER_BUDGET, horizon=PAPER_BUDGET-INITIAL, quality_budgets=[16, 24, 32],
-                    calls_per_seed=INITIAL+len(OPTIMIZATION_ARMS)*(PAPER_BUDGET-INITIAL),
-                    usable_acquisition_target=TARGET, primary=OPTIMIZATION_PRIMARY,
+                    calls_per_seed=INITIAL+len(arms)*(PAPER_BUDGET-INITIAL),
+                    usable_acquisition_target=TARGET, primary=primary,
                     energy_order_tie_Wh=OPTIMIZATION_ENERGY_TIE_WH,
                     post_feasible_policy="risk-aware arms use interval-informed refinement after three usable designs")
+        if profile == EXTERNAL_PROFILE:
+            spec.update(logcei_global_candidates=512, logcei_local_candidates=128,
+                        logcei_adapter=ADAPTATIONS["logcei"],
+                        pool_policy="common initial designs and exact screen; each optimizer uses its own proposal search",
+                        post_feasible_policy="structured RA-LSBO switches after three usable designs; "
+                                             "LogCEI uses EI after its first and ArchSBO follows its native search")
     elif profile in (MULTI_PROFILE, PAPER_PROFILE, CONFIRMATION_PROFILE):
         if profile in (PAPER_PROFILE, CONFIRMATION_PROFILE):
             arms, contrasts, primary = ((PAPER_ARMS, PAPER_CONTRASTS, PAPER_PRIMARY) if profile == PAPER_PROFILE else
@@ -133,7 +145,8 @@ def registration(profile):
     primary = {"cold-smoke": COLD_PRIMARY, "cold-pilot": COLD_PRIMARY,
                "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY,
                MULTI_PROFILE: MULTI_PRIMARY, PAPER_PROFILE: PAPER_PRIMARY,
-               CONFIRMATION_PROFILE: CONFIRMATION_PRIMARY, OPTIMIZATION_PROFILE: OPTIMIZATION_PRIMARY}.get(profile, PRIMARY)
+               CONFIRMATION_PROFILE: CONFIRMATION_PRIMARY, OPTIMIZATION_PROFILE: OPTIMIZATION_PRIMARY,
+               EXTERNAL_PROFILE: EXTERNAL_PRIMARY}.get(profile, PRIMARY)
     budget_field = "maximum_calls_per_seed" if profile == FORK_PROFILE else "calls_per_seed"
     registration = {"profile": profile, "primary": primary, "scenarios": {
         scenario: {"seeds": seeds, budget_field: shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
@@ -142,14 +155,16 @@ def registration(profile):
         registration.update(initial_evaluations=INITIAL, usable_acquisition_target=TARGET,
                             heldout_evaluations_per_seed=AUDIT_SIZE,
                             completion_audit_checkpoints=list(AUDIT_CHECKPOINTS))
-    if profile in (PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE):
+    if profile in (PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE, EXTERNAL_PROFILE):
         spec = shard_plan(profile, SCENARIOS[0], scenarios[SCENARIOS[0]][0])
         registration.update(arms=spec["arms"], contrasts=spec["contrasts"])
-    if profile == OPTIMIZATION_PROFILE:
+    if profile in (OPTIMIZATION_PROFILE, EXTERNAL_PROFILE):
         registration.update(initial_evaluations=INITIAL, usable_acquisition_target=TARGET,
                             quality_budgets=spec["quality_budgets"], energy_order_tie_Wh=OPTIMIZATION_ENERGY_TIE_WH,
                             energy_targets_Wh={scenario: shard_plan(profile, scenario, seeds[0])["energy_target_Wh"]
                                                for scenario, seeds in scenarios.items()})
+    if profile == EXTERNAL_PROFILE:
+        registration.update({key: spec[key] for key in ("logcei_global_candidates", "logcei_local_candidates", "logcei_adapter")})
     return registration
 
 
@@ -287,7 +302,7 @@ def analyze(root, profile, sha):
                 name: compare_accumulation(group, COLD_ACTIVE, MULTI_CONTROL, AUDIT_CHECKPOINTS)
                 for name, group in (("all", rows), ("cold", [row for row in rows if row["cold"]]))
             }
-        if profile in (PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE):
+        if profile in (PAPER_PROFILE, CONFIRMATION_PROFILE, OPTIMIZATION_PROFILE, EXTERNAL_PROFILE):
             cohorts = (("all", rows), ("cold", [row for row in rows if row["cold"]]),
                        ("below_initial_target", [row for row in rows if row["initial_usable"] < TARGET]))
             accumulation = {}
@@ -301,7 +316,9 @@ def analyze(root, profile, sha):
                                                          (LATENT_DECISION, -1), (MULTI_CONTROL, 1))) for row in group]
                     accumulation[name]["structure_by_lookahead_time_interaction"] = paired(interaction)
             data[scenario]["accumulation"] = accumulation
-    if profile == OPTIMIZATION_PROFILE:
+    if profile == EXTERNAL_PROFILE:
+        status = "VERIFIED_STRUCTURED_RISK_EXTERNAL"
+    elif profile == OPTIMIZATION_PROFILE:
         status = "VERIFIED_STRUCTURED_RISK_OPTIMIZATION"
     elif profile == CONFIRMATION_PROFILE:
         status = "VERIFIED_STRUCTURED_RISK_CONFIRMATION"
