@@ -1,0 +1,106 @@
+{
+  "profile": "structured-risk-external-64",
+  "primary": {
+    "scenario": "headwind",
+    "cohort": "cold",
+    "budget": 64,
+    "contrast": "ra_structured_greedy_minus_archsbo_screened",
+    "endpoint": "capped_time_to_energy_target",
+    "co_primary_endpoint": "feasibility_first_terminal_order"
+  },
+  "scenarios": {
+    "payload": {
+      "seeds": [
+        29820100,
+        29820200,
+        29820300,
+        29820400,
+        29820500,
+        29820600,
+        29820700,
+        29820800,
+        29820900,
+        29821000,
+        29821100,
+        29821200,
+        29821300,
+        29821400,
+        29821500,
+        29821600,
+        29821700,
+        29821800,
+        29821900,
+        29822000,
+        29822100,
+        29822200,
+        29822300,
+        29822400
+      ],
+      "calls_per_seed": 176
+    },
+    "headwind": {
+      "seeds": [
+        29830100,
+        29830200,
+        29830300,
+        29830400,
+        29830500,
+        29830600,
+        29830700,
+        29830800,
+        29830900,
+        29831000,
+        29831100,
+        29831200,
+        29831300,
+        29831400,
+        29831500,
+        29831600,
+        29831700,
+        29831800,
+        29831900,
+        29832000,
+        29832100,
+        29832200,
+        29832300,
+        29832400
+      ],
+      "calls_per_seed": 176
+    }
+  },
+  "arms": [
+    "ra_structured_greedy",
+    "archsbo_screened",
+    "logcei_screened_online"
+  ],
+  "contrasts": [
+    [
+      "ra_structured_greedy",
+      "archsbo_screened"
+    ],
+    [
+      "ra_structured_greedy",
+      "logcei_screened_online"
+    ]
+  ],
+  "initial_evaluations": 8,
+  "usable_acquisition_target": 3,
+  "quality_budgets": [
+    16,
+    24,
+    32,
+    48,
+    64
+  ],
+  "energy_order_tie_Wh": 1.0,
+  "energy_targets_Wh": {
+    "payload": 38000.0,
+    "headwind": 40000.0
+  },
+  "logcei_global_candidates": 512,
+  "logcei_local_candidates": 128,
+  "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+  "total_budget": 64,
+  "horizon": 56,
+  "run_design": "rerun the external cohort from its eight shared initial designs"
+}

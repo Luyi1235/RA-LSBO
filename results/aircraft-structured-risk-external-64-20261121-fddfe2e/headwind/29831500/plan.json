@@ -1,0 +1,86 @@
+{
+  "contract": "a134e8a0fcf238037970e1c1092ee97c0416fcfc59aef2454fc760695b34b8c9",
+  "seed": 29831500,
+  "source_sha": "fddfe2e476b09db2a38e8b957646bac4d7017055",
+  "spec": {
+    "analysis_role": "structured-risk-external-64",
+    "arms": [
+      "ra_structured_greedy",
+      "archsbo_screened",
+      "logcei_screened_online"
+    ],
+    "calls_per_seed": 176,
+    "cell_current_limit_fraction": 1.0,
+    "contrasts": [
+      [
+        "ra_structured_greedy",
+        "archsbo_screened"
+      ],
+      [
+        "ra_structured_greedy",
+        "logcei_screened_online"
+      ]
+    ],
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "energy_order_tie_Wh": 1.0,
+    "energy_target_Wh": 40000.0,
+    "energy_target_basis": "rounded reduced-model landmarks from the earlier PR151 pilot",
+    "headwind_m_s": 4.0,
+    "horizon": 56,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8
+    ],
+    "logcei_adapter": "Stable log-EI; objective GP uses all trusted completed exact objectives, including explicitly infeasible designs. Constraint/completion GPCs use sign-resolved evidence. Overlapping intervals and unknown outputs are omitted; kernel hyperparameters are fixed.",
+    "logcei_global_candidates": 512,
+    "logcei_local_candidates": 128,
+    "name": "structured-risk-external-64-refinement-headwind",
+    "native_gp_steps": 45,
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 0.0,
+    "pool_policy": "common initial designs and exact screen; each optimizer uses its own proposal search",
+    "post_feasible_policy": "structured RA-LSBO switches after three usable designs; LogCEI uses EI after its first and ArchSBO follows its native search",
+    "primary": {
+      "budget": 64,
+      "co_primary_endpoint": "feasibility_first_terminal_order",
+      "cohort": "cold",
+      "contrast": "ra_structured_greedy_minus_archsbo_screened",
+      "endpoint": "capped_time_to_energy_target",
+      "scenario": "headwind"
+    },
+    "quality_budgets": [
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "risk_candidate_count": 64,
+    "scenario": "headwind",
+    "seeds": [
+      29831500
+    ],
+    "shared_initial_prefixes": true,
+    "study": "refinement",
+    "total_budget": 64,
+    "usable_acquisition_target": 3
+  },
+  "versions": {
+    "botorch": "0.10.0",
+    "gpytorch": "1.11",
+    "numba": "0.68.1",
+    "numpy": "2.5.5",
+    "pymoo": "0.6.2",
+    "sb-arch-opt": "1.7.1",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "smt": "2.15.1",
+    "torch_runtime": "2.8.0+cpu"
+  }
+}
