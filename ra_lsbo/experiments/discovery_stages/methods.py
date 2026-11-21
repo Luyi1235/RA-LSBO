@@ -117,9 +117,10 @@ class Labelled:
 
 
 class NativeLSBO:
-    def __init__(self, problem, base, seed, profile, output):
+    def __init__(self, problem, base, seed, profile, output, *, precheck=None):
         self.problem, self.base, self.seed = problem, base, seed
         self.profile, self.output = profile, output
+        self.precheck = precheck
         self.engine, self.pending, self.stop_reason = None, None, None
         self.iteration = 0
 
@@ -130,11 +131,14 @@ class NativeLSBO:
             self.engine = OriginalLSBOWarmStart(self.problem, self.base,
                 [r.legacy_row(i) for i,r in enumerate(history)], self.seed,
                 SystemSettings(calls=self.profile['horizon'], failure_cap=self.profile['horizon'],
-                               gp_steps=self.profile['native_gp_steps']), self.output)
-        proposal, selection = self.engine.propose()
+                               gp_steps=self.profile['native_gp_steps']), self.output, precheck=self.precheck)
+        proposal, selection = self._propose(history)
         self.pending = (len(history), selection)
         return proposal['candidate'], {**selection, 'method': 'original_lsbo',
                                        'native_settings': self.engine.settings}
+
+    def _propose(self, history):
+        return self.engine.propose()
 
     def accept(self, record):
         if self.pending is None:
