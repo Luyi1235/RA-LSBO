@@ -1,0 +1,90 @@
+{
+  "contract": "99f3e8c6f70b0b72d109959f7e70c83043d1e3779b066fe0d175618154d00492",
+  "seed": 29700500,
+  "source_sha": "956b5956538ae17def1edd97125c3538d4a26a6e",
+  "spec": {
+    "analysis_role": "structured-risk-confirmation",
+    "arms": [
+      "lsbo_native",
+      "ra_refine_interval",
+      "ra_structured_sign_greedy",
+      "ra_structured_greedy",
+      "ra_structured_decision"
+    ],
+    "calls_per_seed": 144,
+    "cell_current_limit_fraction": 1.0,
+    "completion_audit_checkpoints": [
+      8,
+      12,
+      16
+    ],
+    "completion_audit_size": 16,
+    "contrasts": [
+      [
+        "ra_structured_greedy",
+        "ra_refine_interval"
+      ],
+      [
+        "ra_structured_greedy",
+        "ra_structured_sign_greedy"
+      ],
+      [
+        "ra_structured_greedy",
+        "lsbo_native"
+      ],
+      [
+        "ra_structured_decision",
+        "ra_structured_greedy"
+      ]
+    ],
+    "endpoints": [
+      "first_usable_total_call_capped_at_budget_plus_one",
+      "hit_within_budget",
+      "terminal_best_usable_Wh",
+      "feasibility_first_terminal_order"
+    ],
+    "energy_target_Wh": 38000.0,
+    "energy_target_basis": "rounded reduced-model landmarks from the earlier PR151 pilot",
+    "headwind_m_s": 0.0,
+    "horizon": 24,
+    "initial_proposals": 128,
+    "initial_sizes": [
+      8
+    ],
+    "name": "structured-risk-confirmation-refinement-payload",
+    "native_gp_steps": 45,
+    "online_proposals": 256,
+    "online_size": 48,
+    "payload_delta_kg": 24.0,
+    "pool_policy": "LSBO grammar-decoded plus native mixed proposals in the risk-aware cold stage",
+    "post_feasible_policy": "risk-aware arms use interval-informed refinement after three usable designs",
+    "primary": {
+      "budget": 32,
+      "cohort": "cold",
+      "contrast": "ra_structured_greedy_minus_ra_refine_interval",
+      "endpoint": "capped_target_call_to_three_usable_designs",
+      "scenario": "headwind"
+    },
+    "quality_budgets": [
+      16,
+      24,
+      32
+    ],
+    "risk_candidate_count": 64,
+    "scenario": "payload",
+    "seeds": [
+      29700500
+    ],
+    "shared_initial_prefixes": true,
+    "study": "refinement",
+    "total_budget": 32,
+    "usable_acquisition_target": 3
+  },
+  "versions": {
+    "botorch": "0.10.0",
+    "gpytorch": "1.11",
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "torch_runtime": "2.8.0+cpu"
+  }
+}
