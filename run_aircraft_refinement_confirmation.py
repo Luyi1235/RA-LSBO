@@ -14,18 +14,24 @@ from scipy.stats import binomtest
 from ra_lsbo.experiments.core.runner import save
 from run_aircraft_external_full_budget import SCENARIOS, compare, effect
 from run_aircraft_feedback_replication import paired
-from run_aircraft_native_risk_lsbo import COLD_ARMS, COLD_CONTRASTS, INITIAL, REFINEMENT_CONTRASTS, plan, run, verify
+from run_aircraft_native_risk_lsbo import (
+    COLD_ARMS, COLD_CONTRASTS, ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_GREEDY, ENERGY_LOOKAHEAD,
+    INITIAL, REFINEMENT_CONTRASTS, plan, run, verify,
+)
 from run_aircraft_risk_cold_start import source_commit
 
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot")
+PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot")
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
 COLD_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
                 "contrast": "ra_refine_interval_cold_active_minus_ra_refine_interval",
                 "endpoint": "capped_time_to_energy_target"}
+ENERGY_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
+                  "contrast": f"{ENERGY_LOOKAHEAD}_minus_{ENERGY_GREEDY}",
+                  "endpoint": "feasibility_first_terminal_order"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -37,7 +43,7 @@ WORKER_ENTRY = (
 def seed_registry(profile):
     if profile in ("smoke", "cold-smoke"):
         return {scenario: plan(scenario, "smoke", "refinement")["seeds"] for scenario in SCENARIOS}
-    base, size = (29400100, 3) if profile == "cold-pilot" else (29300100, 24)
+    base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6)}.get(profile, (29300100, 24))
     return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
             for i, scenario in enumerate(SCENARIOS)}
 
@@ -47,17 +53,21 @@ def shard_plan(profile, scenario, seed):
         raise ValueError("Seed is outside the registered cohort")
     spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
-    if profile.startswith("cold-"):
-        spec.update(arms=list(COLD_ARMS), contrasts=[list(pair) for pair in COLD_CONTRASTS],
-                    calls_per_seed=INITIAL+len(COLD_ARMS)*spec["horizon"],
+    if profile.startswith("cold-") or profile == "energy-pilot":
+        arms, contrasts, primary = ((ENERGY_ARMS, ENERGY_CONTRASTS, ENERGY_PRIMARY) if profile == "energy-pilot"
+                                    else (COLD_ARMS, COLD_CONTRASTS, COLD_PRIMARY))
+        spec.update(arms=list(arms), contrasts=[list(pair) for pair in contrasts],
+                    calls_per_seed=INITIAL+len(arms)*spec["horizon"],
                     post_feasible_policy="common interval-informed risk refinement within native LSBO",
-                    primary=COLD_PRIMARY)
+                    primary=primary)
     return spec
 
 
 def registration(profile):
     scenarios = seed_registry(profile)
-    return {"profile": profile, "primary": COLD_PRIMARY if profile.startswith("cold-") else PRIMARY, "scenarios": {
+    primary = {"cold-smoke": COLD_PRIMARY, "cold-pilot": COLD_PRIMARY,
+               "energy-pilot": ENERGY_PRIMARY}.get(profile, PRIMARY)
+    return {"profile": profile, "primary": primary, "scenarios": {
         scenario: {"seeds": seeds, "calls_per_seed": shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
         for scenario, seeds in scenarios.items()}}
 
@@ -133,6 +143,11 @@ def cohort_summary(rows, spec):
                 "found_usable": sum(row["arms"][arm]["first_usable"] is not None for row in rows),
                 "hit_energy_target": sum(row["arms"][arm]["first_energy_target"] is not None for row in rows),
                 "refinement_risk_calls": sum(row["arms"][arm]["refinement_risk_calls"] for row in rows),
+                **({key: sum(row["arms"][arm][key] for row in rows)
+                    for key in ("energy_policy_calls", "energy_policy_fallbacks", "energy_bounds_only_calls")}
+                   if arm in (ENERGY_GREEDY, ENERGY_LOOKAHEAD) else {}),
+                **({"energy_adaptive_calls": sum(row["arms"][arm]["energy_adaptive_calls"] for row in rows)}
+                   if arm == ENERGY_LOOKAHEAD else {}),
                 "feasible_at_checkpoints": {
                     str(b): sum(row["arms"][arm]["quality_by_budget"][str(b)] is not None for row in rows)
                     for b in spec["quality_budgets"]},
@@ -168,8 +183,12 @@ def analyze(root, profile, sha):
                 ("initially_usable", [row for row in rows if not row["cold"]]))},
             "rows": rows,
         }
-    status = ("VERIFIED_COLD_ACQUISITION_TO_ENERGY" if profile.startswith("cold-") else
-              "VERIFIED_RISK_AWARE_LSBO_CONFIRMATION")
+    if profile == "energy-pilot":
+        status = "VERIFIED_COLD_ENERGY_VALUE_PILOT"
+    elif profile.startswith("cold-"):
+        status = "VERIFIED_COLD_ACQUISITION_TO_ENERGY"
+    else:
+        status = "VERIFIED_RISK_AWARE_LSBO_CONFIRMATION"
     return {"status": status, "source_sha": sha,
             "plan": registration(profile), "versions": versions, "scenarios": data,
             "paid_calls": sum(row["paid_calls"] for section in data.values() for row in section["rows"]),

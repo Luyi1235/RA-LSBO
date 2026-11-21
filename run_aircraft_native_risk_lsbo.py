@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from scipy.special import ndtr
 
+from aircraft_timing_energy_value import energy_evidence, target_choice, target_marks
 from aircraft_timing_information import score_information, supports_timing
 from aircraft_timing_interval_value import deficit_edges
 from ra_lsbo.budget import digest
@@ -44,7 +45,13 @@ COLD_SIGN = "ra_refine_interval_cold_sign"
 COLD_ACTIVE = "ra_refine_interval_cold_active"
 COLD_ARMS = (COLD_SIGN, "ra_refine_interval", COLD_ACTIVE)
 COLD_CONTRASTS = (("ra_refine_interval", COLD_SIGN), (COLD_ACTIVE, "ra_refine_interval"))
-REFINEMENT_FEEDBACK = {"ra_refine_sign": "sign", **dict.fromkeys(COLD_ARMS, "interval")}
+ENERGY_GREEDY = "ra_refine_interval_cold_energy_greedy"
+ENERGY_LOOKAHEAD = "ra_refine_interval_cold_energy_lookahead"
+ENERGY_POLICIES = {ENERGY_GREEDY: "energy_greedy", ENERGY_LOOKAHEAD: "energy_lookahead"}
+ENERGY_ARMS = ("ra_refine_interval", COLD_ACTIVE, *ENERGY_POLICIES)
+ENERGY_CONTRASTS = ((ENERGY_LOOKAHEAD, ENERGY_GREEDY), (ENERGY_LOOKAHEAD, COLD_ACTIVE),
+                    (ENERGY_GREEDY, "ra_refine_interval"))
+REFINEMENT_FEEDBACK = {"ra_refine_sign": "sign", **dict.fromkeys((*COLD_ARMS, *ENERGY_POLICIES), "interval")}
 QUALITY_BUDGETS = (16, 24, 32, 48)
 ENERGY_TARGET_WH = {"payload": 38000., "headwind": 40000.}
 
@@ -80,12 +87,47 @@ def plan(scenario, profile, study="discovery"):
 
 def cold_policy(arm):
     feedback = "sign" if arm in ("ra_sign_greedy", COLD_SIGN) else "interval"
-    policy = "information" if arm in ("ra_interval_active", COLD_ACTIVE) else "greedy"
+    policy = ENERGY_POLICIES.get(arm, "information" if arm in ("ra_interval_active", COLD_ACTIVE) else "greedy")
     return feedback, policy
 
 
 def engineering_screen(problem, point):
     return {**problem.precheck(point), **structural_margins(problem, point)}
+
+
+def choose_cold(head, inputs, trusted, query, candidates, settings, policy, energy_target, seed):
+    if policy == "greedy":
+        moments = head.predict(query)
+        p = ndtr(-moments["mean"]/np.sqrt(np.maximum(moments["variance"], 1e-14)))
+        if not np.isfinite(p).all():
+            raise FloatingPointError("Invalid LSBO completion posterior")
+        index = select(candidates, p)
+        return index, {"p_complete": float(p[index]), "expected_brier_reduction": None}
+
+    edges = [deficit_edges(point, settings) for point in candidates]
+    receipt = {}
+    if policy in ENERGY_POLICIES.values():
+        evidence = [energy_evidence(record) for record in trusted]
+        mask = [observation is not None for observation in evidence]
+        observed = [observation for observation in evidence if observation is not None]
+        receipt["energy_observations"] = len(observed)
+        receipt["energy_lower_bounds"] = sum(energy.kind == "interval" for energy, _ in observed)
+        try:
+            marks = target_marks(inputs[mask]/head.divisor, query/head.divisor, observed, energy_target, seed)
+            if marks is not None and not np.isfinite(marks).all():
+                raise FloatingPointError("Invalid energy target marks")
+            if marks is not None and (len(query) == 1 or np.ptp(marks) > 1e-12):
+                index, scores = target_choice(head, query, candidates, edges, marks,
+                                              lookahead=policy == "energy_lookahead")
+                return index, {**receipt, **scores, "expected_brier_reduction": None}
+            receipt["energy_fallback"] = "no_energy_evidence" if marks is None else "constant_target_marks"
+        except (np.linalg.LinAlgError, FloatingPointError, RuntimeError):
+            receipt["energy_fallback"] = "invalid_energy_posterior"
+
+    p, _, eligible, gains = score_information(head, query, candidates, edges)
+    pick = select([candidates[i] for i in eligible], gains)
+    index = int(eligible[pick])
+    return index, {**receipt, "p_complete": float(p[index]), "expected_brier_reduction": float(gains[pick])}
 
 
 class RiskAwareLSBO(FullBudgetLSBO):
@@ -145,23 +187,13 @@ class RiskAwareLSBO(FullBudgetLSBO):
         feedback, policy = cold_policy(self.arm)
         try:
             head = FixedTimingHead(self.problem, inputs, trusted, self.seed, use_interval=feedback == "interval")
-            if policy == "information":
-                edges = [deficit_edges(point, self.problem.settings) for point in to_dict]
-                p, _, eligible, gains = score_information(head, query, to_dict, edges)
-                pick = select([to_dict[i] for i in eligible], gains)
-                index, gain = int(eligible[pick]), float(gains[pick])
-            else:
-                moments = head.predict(query)
-                p = ndtr(-moments["mean"]/np.sqrt(np.maximum(moments["variance"], 1e-14)))
-                if not np.isfinite(p).all():
-                    raise FloatingPointError("Invalid LSBO completion posterior")
-                index, gain = select(to_dict, p), None
+            index, scores = choose_cold(head, inputs, trusted, query, to_dict, self.problem.settings,
+                                        policy, self.profile.get("energy_target_Wh"), self.seed)
         except (np.linalg.LinAlgError, FloatingPointError, RuntimeError):
             candidate, info = native.propose(phase)
             return candidate, {**info, "risk_fallback": "invalid_completion_posterior"}
         return pool[index], {"source": "lsbo_latent_completion_risk", "feedback": feedback,
-                             "policy": policy,
-                             "p_complete": float(p[index]), "expected_brier_reduction": gain,
+                             "policy": policy, **scores,
                              "candidate_count": len(pool), "candidate_list_sha256": digest(to_dict),
                              "latent_decoded_candidates": decoded,
                              "representation_version": rep.version, "timing_observations": len(trusted)}
@@ -267,6 +299,7 @@ def verify(folder, spec, sha):
         if len(trace) != spec["horizon"]:
             raise ValueError("An arm did not spend its registered budget")
         risk_calls, fallbacks, refinement_calls = 0, 0, 0
+        energy_calls, energy_fallbacks, bounds_only_calls, adaptive_calls = 0, 0, 0, 0
         for i, step in enumerate(trace, 1):
             record = settled(f"{arm}/{i}", "online")
             key = record.observation.design_id
@@ -289,6 +322,34 @@ def verify(folder, spec, sha):
                     list_key = proposal["candidate_list_sha256"]
                     if candidate_lists.setdefault(prefix_key, list_key) != list_key:
                         raise ValueError("Feedback ablations generated different lists for the same history")
+                    if arm in ENERGY_POLICIES:
+                        evidence = [energy_evidence(old) for old in history if supports_timing(old)]
+                        count = sum(item is not None for item in evidence)
+                        bounds = sum(item is not None and item[0].kind == "interval" for item in evidence)
+                        if (proposal["energy_observations"], proposal["energy_lower_bounds"]) != (count, bounds):
+                            raise ValueError("The cold acquisition used an inconsistent energy history")
+                        fallback = proposal.get("energy_fallback")
+                        if fallback is None:
+                            probability = proposal["target_probability"]
+                            if not count or not 0. <= probability <= proposal["p_complete"] <= 1.:
+                                raise ValueError("Invalid conditional energy target receipt")
+                            if arm == ENERGY_LOOKAHEAD and proposal["candidate_count"] > 1 and not (
+                                probability <= proposal["predicted_fixed_follow_up_target"] + 1e-12
+                                and proposal["predicted_fixed_follow_up_target"]
+                                <= proposal["predicted_two_call_target"] + 1e-12
+                                and proposal["predicted_two_call_target"] <= 1.
+                            ):
+                                raise ValueError("Invalid two-call energy target receipt")
+                            energy_calls += 1
+                            bounds_only_calls += int(bounds == count)
+                            if arm == ENERGY_LOOKAHEAD and proposal["candidate_count"] > 1:
+                                adaptive_calls += int(proposal["predicted_two_call_target"] >
+                                                      proposal["predicted_fixed_follow_up_target"] + 1e-12)
+                        elif fallback not in ({"constant_target_marks", "invalid_energy_posterior"} if count
+                                              else {"no_energy_evidence"}):
+                            raise ValueError("Invalid energy acquisition fallback")
+                        else:
+                            energy_fallbacks += 1
                     risk_calls += 1
                 fallbacks += int("risk_fallback" in proposal)
                 if "refinement_risk" in proposal:
@@ -304,6 +365,11 @@ def verify(folder, spec, sha):
             history.append(record)
         arms[arm] = {**trajectory_metrics(history, spec["total_budget"]),
                      "cold_risk_calls": risk_calls, "cold_risk_fallbacks": fallbacks}
+        if arm in ENERGY_POLICIES:
+            arms[arm].update(energy_policy_calls=energy_calls, energy_policy_fallbacks=energy_fallbacks,
+                             energy_bounds_only_calls=bounds_only_calls)
+        if arm == ENERGY_LOOKAHEAD:
+            arms[arm]["energy_adaptive_calls"] = adaptive_calls
         if refinement:
             target_hit = next((i for i, record in enumerate(history, 1) if record.usable_feasible
                                and record.observation.objective.value <= spec["energy_target_Wh"]), None)
