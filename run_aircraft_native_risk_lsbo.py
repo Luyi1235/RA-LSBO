@@ -12,6 +12,10 @@ import torch
 from scipy.special import ndtr
 
 from aircraft_multi_feasible import accumulation_metrics, acquisition_stage, completion_audit
+from aircraft_structured_risk import (
+    DECISION_ARMS, PROFILE as PAPER_PROFILE, STRUCTURED_ARMS, HierarchicalTimingHead,
+    choose_completion_with_lookahead, with_configuration,
+)
 from aircraft_timing_energy_value import energy_evidence, target_choice, target_marks
 from aircraft_timing_information import score_information, supports_timing
 from aircraft_timing_interval_value import deficit_edges
@@ -25,7 +29,7 @@ from run_aircraft_external_full_budget import (
     plan as full_budget_plan, read, read_ledger, rosters, structural_margins, trajectory_metrics,
 )
 from run_aircraft_ra_lsbo_comparison import FullBudgetLSBO
-from run_aircraft_risk_cold_start import select, source_commit
+from run_aircraft_risk_cold_start import file_hash, select, source_commit
 
 
 INITIAL = 8
@@ -52,7 +56,8 @@ ENERGY_POLICIES = {ENERGY_GREEDY: "energy_greedy", ENERGY_LOOKAHEAD: "energy_loo
 ENERGY_ARMS = ("ra_refine_interval", COLD_ACTIVE, *ENERGY_POLICIES)
 ENERGY_CONTRASTS = ((ENERGY_LOOKAHEAD, ENERGY_GREEDY), (ENERGY_LOOKAHEAD, COLD_ACTIVE),
                     (ENERGY_GREEDY, "ra_refine_interval"))
-REFINEMENT_FEEDBACK = {"ra_refine_sign": "sign", **dict.fromkeys((*COLD_ARMS, *ENERGY_POLICIES), "interval")}
+REFINEMENT_FEEDBACK = {"ra_refine_sign": "sign", **dict.fromkeys(
+    (*COLD_ARMS, *ENERGY_POLICIES, *STRUCTURED_ARMS, *DECISION_ARMS), "interval")}
 QUALITY_BUDGETS = (16, 24, 32, 48)
 ENERGY_TARGET_WH = {"payload": 38000., "headwind": 40000.}
 
@@ -88,7 +93,10 @@ def plan(scenario, profile, study="discovery"):
 
 def cold_policy(arm):
     feedback = "sign" if arm in ("ra_sign_greedy", COLD_SIGN) else "interval"
-    policy = ENERGY_POLICIES.get(arm, "information" if arm in ("ra_interval_active", COLD_ACTIVE) else "greedy")
+    if arm in DECISION_ARMS:
+        policy = "completion_lookahead"
+    else:
+        policy = ENERGY_POLICIES.get(arm, "information" if arm in ("ra_interval_active", COLD_ACTIVE) else "greedy")
     return feedback, policy
 
 
@@ -106,6 +114,8 @@ def choose_cold(head, inputs, trusted, query, candidates, settings, policy, ener
         return index, {"p_complete": float(p[index]), "expected_brier_reduction": None}
 
     edges = [deficit_edges(point, settings) for point in candidates]
+    if policy == "completion_lookahead":
+        return choose_completion_with_lookahead(head, query, candidates, edges)
     receipt = {}
     if policy in ENERGY_POLICIES.values():
         evidence = [energy_evidence(record) for record in trusted]
@@ -190,15 +200,26 @@ class RiskAwareLSBO(FullBudgetLSBO):
         inputs = rep.features([self.problem.candidate_class(**record.candidate) for record in trusted]).numpy()
         query = rep.features(pool).numpy()
         feedback, policy = cold_policy(self.arm)
+        head_type = FixedTimingHead
+        model_receipt = {}
+        if self.arm in STRUCTURED_ARMS:
+            inputs = with_configuration(inputs, [record.candidate for record in trusted])
+            query = with_configuration(query, to_dict)
+            head_type = HierarchicalTimingHead
+            model_receipt["timing_kernel"] = "hierarchical_configuration"
+        last_decision = policy == "completion_lookahead" and len(history)+1 == self.profile["total_budget"]
+        if last_decision:
+            model_receipt["last_call_greedy"] = True
         try:
-            head = FixedTimingHead(self.problem, inputs, trusted, self.seed, use_interval=feedback == "interval")
+            head = head_type(self.problem, inputs, trusted, self.seed, use_interval=feedback == "interval")
             index, scores = choose_cold(head, inputs, trusted, query, to_dict, self.problem.settings,
-                                        policy, self.profile.get("energy_target_Wh"), self.seed)
+                                        "greedy" if last_decision else policy,
+                                        self.profile.get("energy_target_Wh"), self.seed)
         except (np.linalg.LinAlgError, FloatingPointError, RuntimeError):
             candidate, info = native.propose(phase)
             return candidate, {**info, "risk_fallback": "invalid_completion_posterior"}
         return pool[index], {"source": "lsbo_latent_completion_risk", "feedback": feedback,
-                             "policy": policy, **scores,
+                             "policy": policy, **scores, **model_receipt,
                              "candidate_count": len(pool), "candidate_list_sha256": digest(to_dict),
                              "latent_decoded_candidates": decoded,
                              "representation_version": rep.version, "timing_observations": len(trusted)}
@@ -223,6 +244,13 @@ class RiskAwareLSBO(FullBudgetLSBO):
                 candidates.append(point)
                 keys.add(key)
         return candidates+factory(native, limit-len(candidates), target, keys), len(candidates)
+
+
+def seed_evidence(folder, spec):
+    if spec.get("analysis_role") == PAPER_PROFILE:
+        files = ["plan.json", "calls.jsonl", *(arm+".json" for arm in spec["arms"])]
+        return {name: file_hash(folder/name) for name in files}
+    return evidence_hashes(folder)
 
 
 def run(spec, seed, sha, output):
@@ -275,7 +303,7 @@ def run(spec, seed, sha, output):
         pay(point, f"risk_audit/{index}", "heldout")
     if ledger.count != spec["calls_per_seed"]:
         raise ValueError("Evaluation budget differs from the registered plan")
-    save(output/"seal.json", evidence_hashes(output))
+    save(output/"seal.json", seed_evidence(output, spec))
 
 
 def verify(folder, spec, sha):
@@ -283,7 +311,7 @@ def verify(folder, spec, sha):
     problem = UsableAircraft(spec)
     header = read(folder/"plan.json")
     if (header["spec"] != spec or header["seed"] != seed or header["source_sha"] != sha
-            or header["contract"] != problem.contract_id or read(folder/"seal.json") != evidence_hashes(folder)):
+            or header["contract"] != problem.contract_id or read(folder/"seal.json") != seed_evidence(folder, spec)):
         raise ValueError("The run does not match the registered sealed plan")
     calls = read_ledger(folder, problem.contract_id)
     if len(calls) != spec["calls_per_seed"]:
@@ -331,6 +359,17 @@ def verify(folder, spec, sha):
                     feedback, policy = cold_policy(arm)
                     if (proposal["feedback"], proposal["policy"]) != (feedback, policy):
                         raise ValueError("The receipt differs from the registered cold-start policy")
+                    if (proposal.get("timing_kernel") == "hierarchical_configuration") != (arm in STRUCTURED_ARMS):
+                        raise ValueError("The receipt differs from the registered timing kernel")
+                    if arm in DECISION_ARMS:
+                        if len(history)+1 == spec["total_budget"]:
+                            if proposal.get("last_call_greedy") is not True:
+                                raise ValueError("Last call should use immediate completion probability")
+                        elif not (0. <= proposal["p_complete"] <= proposal["fixed_second_completion"] + 1e-12
+                                  and proposal["fixed_second_completion"]
+                                  <= proposal["adaptive_two_call_completion"] + 1e-12
+                                  and proposal["adaptive_two_call_completion"] <= 1.):
+                            raise ValueError("Invalid adaptive two-call completion receipt")
                     prefix_key = digest([old.observation.design_id for old in history])
                     list_key = proposal["candidate_list_sha256"]
                     if candidate_lists.setdefault(prefix_key, list_key) != list_key:

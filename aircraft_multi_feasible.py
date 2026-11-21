@@ -8,6 +8,7 @@ import numpy as np
 from scipy.special import ndtr
 
 from aircraft_risk_discovery import label as outcome_label
+from aircraft_structured_risk import STRUCTURED_ARMS, HierarchicalTimingHead, with_configuration
 from aircraft_timing_information import supports_timing
 from ra_lsbo.budget import digest
 from ra_lsbo.experiments.core.protocol import BASE
@@ -87,8 +88,13 @@ def completion_audit(problem, seed, histories, heldout, checkpoints, initial):
                 continue
             try:
                 inputs = features.transform([row.candidate for row in trusted])
-                head = FixedTimingHead(problem, inputs, trusted, seed, use_interval=True)
-                moments = head.predict(query)
+                if arm in STRUCTURED_ARMS:
+                    inputs = with_configuration(inputs, [row.candidate for row in trusted])
+                    head = HierarchicalTimingHead(problem, inputs, trusted, seed, use_interval=True)
+                    moments = head.predict(with_configuration(query, panel))
+                else:
+                    head = FixedTimingHead(problem, inputs, trusted, seed, use_interval=True)
+                    moments = head.predict(query)
                 probabilities = ndtr(-moments["mean"]/np.sqrt(np.maximum(moments["variance"], 1e-14)))
                 if not np.isfinite(probabilities).all():
                     raise FloatingPointError("Nonfinite audit forecast")

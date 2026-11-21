@@ -12,6 +12,7 @@ import sys
 from scipy.stats import binomtest
 
 from aircraft_multi_feasible import AUDIT_CHECKPOINTS, AUDIT_SIZE, PROFILE as MULTI_PROFILE, TARGET, compare_accumulation
+from aircraft_structured_risk import LATENT_DECISION, PROFILE as PAPER_PROFILE, STRUCTURED_DECISION, STRUCTURED_GREEDY
 from ra_lsbo.experiments.core.runner import save
 from run_aircraft_external_full_budget import SCENARIOS, compare, effect
 from run_aircraft_feedback_replication import paired
@@ -24,7 +25,8 @@ from run_aircraft_risk_cold_start import source_commit
 
 
 ROOT = Path(__file__).resolve().parent
-PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE, MULTI_PROFILE)
+PROFILES = ("smoke", "confirmation", "cold-smoke", "cold-pilot", "energy-pilot", FORK_PROFILE, MULTI_PROFILE,
+            PAPER_PROFILE)
 PRIMARY = {"scenario": "headwind", "cohort": "all", "budget": 24,
            "contrast": "ra_refine_interval_minus_ra_interval_greedy",
            "endpoint": "feasibility_first_energy_order"}
@@ -41,6 +43,15 @@ MULTI_CONTROL = "ra_refine_interval"
 MULTI_PRIMARY = {"scenario": "headwind", "cohort": "cold", "budget": 48,
                  "contrast": f"{COLD_ACTIVE}_minus_{MULTI_CONTROL}",
                  "endpoint": "capped_target_call_to_three_usable_designs"}
+PAPER_BUDGET = 32
+PAPER_ARMS = (MULTI_CONTROL, COLD_ACTIVE, LATENT_DECISION, STRUCTURED_GREEDY, STRUCTURED_DECISION)
+PAPER_CONTRASTS = (
+    (STRUCTURED_DECISION, MULTI_CONTROL), (STRUCTURED_GREEDY, MULTI_CONTROL),
+    (LATENT_DECISION, MULTI_CONTROL), (STRUCTURED_DECISION, STRUCTURED_GREEDY),
+    (STRUCTURED_DECISION, LATENT_DECISION), (STRUCTURED_DECISION, COLD_ACTIVE),
+)
+PAPER_PRIMARY = {**MULTI_PRIMARY, "budget": PAPER_BUDGET,
+                 "contrast": f"{STRUCTURED_DECISION}_minus_{MULTI_CONTROL}"}
 THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
                  "NUMBA_NUM_THREADS", "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
 WORKER_ENTRY = (
@@ -53,7 +64,8 @@ def seed_registry(profile):
     if profile in ("smoke", "cold-smoke"):
         return {scenario: plan(scenario, "smoke", "refinement")["seeds"] for scenario in SCENARIOS}
     base, size = {"cold-pilot": (29400100, 3), "energy-pilot": (29430100, 6),
-                  FORK_PROFILE: (29460100, 6), MULTI_PROFILE: (29560100, 12)}.get(profile, (29300100, 24))
+                  FORK_PROFILE: (29460100, 6), MULTI_PROFILE: (29560100, 12),
+                  PAPER_PROFILE: (29620100, 24)}.get(profile, (29300100, 24))
     return {scenario: list(range(base+10_000*i, base+10_000*i+100*size, 100))
             for i, scenario in enumerate(SCENARIOS)}
 
@@ -63,12 +75,17 @@ def shard_plan(profile, scenario, seed):
         raise ValueError("Seed is outside the registered cohort")
     spec = plan(scenario, "smoke" if profile in ("smoke", "cold-smoke") else "full-pilot", "refinement")
     spec.update(name=f"{profile}-refinement-{scenario}", analysis_role=profile, seeds=[seed])
-    if profile == MULTI_PROFILE:
-        spec.update(arms=[MULTI_CONTROL, COLD_ACTIVE], contrasts=[[COLD_ACTIVE, MULTI_CONTROL]],
-                    calls_per_seed=INITIAL+2*spec["horizon"]+AUDIT_SIZE, usable_acquisition_target=TARGET,
+    if profile in (MULTI_PROFILE, PAPER_PROFILE):
+        if profile == PAPER_PROFILE:
+            arms, contrasts, primary = PAPER_ARMS, PAPER_CONTRASTS, PAPER_PRIMARY
+            spec.update(total_budget=PAPER_BUDGET, horizon=PAPER_BUDGET-INITIAL, quality_budgets=[16, 24, 32])
+        else:
+            arms, contrasts, primary = (MULTI_CONTROL, COLD_ACTIVE), ((COLD_ACTIVE, MULTI_CONTROL),), MULTI_PRIMARY
+        spec.update(arms=list(arms), contrasts=[list(pair) for pair in contrasts],
+                    calls_per_seed=INITIAL+len(arms)*spec["horizon"]+AUDIT_SIZE, usable_acquisition_target=TARGET,
                     completion_audit_size=AUDIT_SIZE, completion_audit_checkpoints=list(AUDIT_CHECKPOINTS),
                     post_feasible_policy="common interval-informed LSBO refinement after three usable designs",
-                    primary=MULTI_PRIMARY)
+                    primary=primary)
     elif profile == FORK_PROFILE:
         spec.update(arms=list(FORK_ARMS), contrasts=[list(reversed(FORK_ARMS))],
                     calls_per_seed=INITIAL+len(FORK_ARMS)*spec["horizon"],
@@ -88,15 +105,18 @@ def shard_plan(profile, scenario, seed):
 def registration(profile):
     scenarios = seed_registry(profile)
     primary = {"cold-smoke": COLD_PRIMARY, "cold-pilot": COLD_PRIMARY,
-               "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY, MULTI_PROFILE: MULTI_PRIMARY}.get(profile, PRIMARY)
+               "energy-pilot": ENERGY_PRIMARY, FORK_PROFILE: FORK_PRIMARY,
+               MULTI_PROFILE: MULTI_PRIMARY, PAPER_PROFILE: PAPER_PRIMARY}.get(profile, PRIMARY)
     budget_field = "maximum_calls_per_seed" if profile == FORK_PROFILE else "calls_per_seed"
     registration = {"profile": profile, "primary": primary, "scenarios": {
         scenario: {"seeds": seeds, budget_field: shard_plan(profile, scenario, seeds[0])["calls_per_seed"]}
         for scenario, seeds in scenarios.items()}}
-    if profile == MULTI_PROFILE:
+    if profile in (MULTI_PROFILE, PAPER_PROFILE):
         registration.update(initial_evaluations=INITIAL, usable_acquisition_target=TARGET,
                             heldout_evaluations_per_seed=AUDIT_SIZE,
                             completion_audit_checkpoints=list(AUDIT_CHECKPOINTS))
+    if profile == PAPER_PROFILE:
+        registration.update(arms=list(PAPER_ARMS), contrasts=[list(pair) for pair in PAPER_CONTRASTS])
     return registration
 
 
@@ -233,7 +253,22 @@ def analyze(root, profile, sha):
                 name: compare_accumulation(group, COLD_ACTIVE, MULTI_CONTROL, AUDIT_CHECKPOINTS)
                 for name, group in (("all", rows), ("cold", [row for row in rows if row["cold"]]))
             }
-    if profile == MULTI_PROFILE:
+        if profile == PAPER_PROFILE:
+            cohorts = (("all", rows), ("cold", [row for row in rows if row["cold"]]),
+                       ("below_initial_target", [row for row in rows if row["initial_usable"] < TARGET]))
+            accumulation = {}
+            for name, group in cohorts:
+                contrasts = {f"{a}_minus_{b}": compare_accumulation(group, a, b, AUDIT_CHECKPOINTS)
+                             for a, b in PAPER_CONTRASTS}
+                interaction = [sum(sign*row["arms"][arm]["accumulation"]["capped_target_call"]
+                                   for arm, sign in ((STRUCTURED_DECISION, 1), (STRUCTURED_GREEDY, -1),
+                                                     (LATENT_DECISION, -1), (MULTI_CONTROL, 1))) for row in group]
+                accumulation[name] = {"n": len(group), "contrasts": contrasts,
+                                      "structure_by_lookahead_time_interaction": paired(interaction)}
+            data[scenario]["accumulation"] = accumulation
+    if profile == PAPER_PROFILE:
+        status = "VERIFIED_STRUCTURED_RISK_PAPER"
+    elif profile == MULTI_PROFILE:
         status = "VERIFIED_MULTI_FEASIBLE_COLD_START"
     elif profile == FORK_PROFILE:
         status = "VERIFIED_CENSORED_ENERGY_REFINEMENT_FORK"

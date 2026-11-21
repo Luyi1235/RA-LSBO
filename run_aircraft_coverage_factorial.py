@@ -98,15 +98,19 @@ def rosters(problem, spec, seed):
 
 class FixedTimingHead:
     scale = MARGIN_SCALE
+    model_class = EvidenceGP
+    metadata_dimensions = 0
 
     def __init__(self, problem, inputs, history, seed, *, use_interval=True):
-        self.divisor = group_divisors(inputs.shape[1], len(problem.space.continuous), *LENGTHS)
+        native_divisor = group_divisors(inputs.shape[1]-self.metadata_dimensions,
+                                       len(problem.space.continuous), *LENGTHS)
+        self.divisor = np.r_[native_divisor, np.ones(self.metadata_dimensions)]
         evidence = [timing_feedback(record.to_dict(), problem.settings, use_interval=use_interval,
                                     allow_hidden_reserve_stop=True) for record in history]
         normalized = [replace(o, lower=None if o.lower is None else o.lower/self.scale,
                               upper=None if o.upper is None else o.upper/self.scale) for o in evidence]
-        self.model = EvidenceGP(inputs/self.divisor, normalized, seed=seed,
-                                settings=MixedGPSettings(interval_noise=0., stable_tail_moments=True))
+        self.model = self.model_class(inputs/self.divisor, normalized, seed=seed,
+                                      settings=MixedGPSettings(interval_noise=0., stable_tail_moments=True))
 
     def predict(self, query):
         result = self.model.predict(query/self.divisor)
