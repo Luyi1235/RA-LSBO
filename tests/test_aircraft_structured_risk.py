@@ -4,12 +4,44 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from aircraft_structured_risk import (CONFIRMATION_PROFILE, LATENT_DECISION, PROFILE, STRUCTURED_ARMS,
+from aircraft_structured_risk import (CONFIRMATION_PROFILE, EXTERNAL_64_PROFILE, EXTERNAL_PROFILE,
+                                      LATENT_DECISION, PROFILE, STRUCTURED_ARMS,
                                       STRUCTURED_DECISION, STRUCTURED_SIGN_GREEDY,
                                       HierarchicalTimingGP, choose_completion_with_lookahead, with_configuration)
 from ra_lsbo.risk_core.observations import OutputObservation
 from run_aircraft_native_risk_lsbo import UsableAircraft, run, verify
-from run_aircraft_refinement_confirmation import CONFIRMATION_ARMS, ORIGINAL, PAPER_ARMS, registration, shard_plan
+from run_aircraft_refinement_confirmation import (CONFIRMATION_ARMS, ORIGINAL, PAPER_ARMS, registration,
+                                                  shard_plan, target_contrast)
+
+
+def test_external_budget_extension_reuses_only_the_registered_initialization():
+    original = registration(EXTERNAL_PROFILE)
+    extended = registration(EXTERNAL_64_PROFILE)
+    assert extended["primary"] == {**original["primary"], "budget": 64}
+    assert extended["energy_targets_Wh"] == original["energy_targets_Wh"]
+    assert extended["arms"] == original["arms"]
+    assert extended["quality_budgets"] == [16, 24, 32, 48, 64]
+    assert (extended["initial_evaluations"], extended["horizon"], extended["total_budget"]) == (8, 56, 64)
+    for scenario, section in extended["scenarios"].items():
+        assert section["seeds"] == original["scenarios"][scenario]["seeds"]
+        assert len(section["seeds"]) == 24
+        assert section["calls_per_seed"] == 176
+        seed = section["seeds"][0]
+        spec = shard_plan(EXTERNAL_64_PROFILE, scenario, seed)
+        baseline = shard_plan(EXTERNAL_PROFILE, scenario, seed)
+        assert baseline["total_budget"] == 32 and baseline["calls_per_seed"] == 80
+        assert spec["contrasts"] == baseline["contrasts"]
+        assert spec["initial_sizes"] == baseline["initial_sizes"] == [8]
+
+
+def test_energy_targets_reached_after_a_checkpoint_are_censored_at_that_checkpoint():
+    rows = [{"arms": {"a": {"first_energy_target": 33}, "b": {"first_energy_target": 32}}}]
+    early = target_contrast(rows, "a", "b", 32)
+    late = target_contrast(rows, "a", "b", 64)
+    assert early["attainment_rate_delta"]["mean"] == -1.
+    assert early["capped_time_delta"]["mean"] == 1.
+    assert late["attainment_rate_delta"]["mean"] == 0.
+    assert late["capped_time_delta"]["mean"] == 1.
 
 
 def test_hierarchical_kernel_preserves_variance_and_learns_from_other_layouts():
