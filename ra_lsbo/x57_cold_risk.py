@@ -1,5 +1,7 @@
 """Transfer the fixed EP hierarchy and completion-weighted LSBO search to X-57."""
 
+from copy import copy
+
 import numpy as np
 from scipy.linalg import cho_solve
 import torch
@@ -10,7 +12,9 @@ from .risk_core.completion_refinement import RiskWeightedRefinement
 from .risk_core.mixed_gp import MixedGPSettings, MixedObservationGP
 from .x57_cold_feedback import risk_observation
 from .x57_cold_sampling import LAYOUT, LAYOUTS
-from .x57_energy_surrogate import EnergyAcquisition
+from .x57_energy_surrogate import (
+    EnergyAcquisition, engineering_log_probability, feature_bounds, fit_cold_constraints,
+)
 
 
 def _kernel(left, right, divisor):
@@ -79,8 +83,11 @@ class CompletionPosterior:
         return torch.special.log_ndtr(-mean / variance.clamp_min(1e-14).sqrt())
 
     def probabilities(self, candidates):
+        return np.exp(self.log_probabilities(candidates))
+
+    def log_probabilities(self, candidates):
         with torch.no_grad():
-            return self._log_probability(self.features(candidates)).exp().numpy()
+            return self._log_probability(self.features(candidates)).numpy()
 
 
 RISK_ERRORS = (np.linalg.LinAlgError, FloatingPointError, RuntimeError)
@@ -125,7 +132,7 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
         return CompletionPosterior(rep, candidates, values, native.settings.seed)
 
     def fallback(reason):
-        point, native_info = native.propose(phase, refine_surrogate=with_energy if fit_energy else None)
+        point, native_info = native.propose(phase)
         return point, phase, {**native_info, **info, "risk_fallback": reason}
 
     def with_energy(surrogate, rep):
@@ -133,7 +140,7 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
         info["engineering_energy_fit"] = head.audit()
         return EnergyAcquisition(surrogate, head)
 
-    if not evidence:
+    if not evidence and fit_energy is None:
         return fallback("no_supported_completion_feedback")
     if stage == "completion":
         rep = native.representation
@@ -145,26 +152,45 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
         pool = latent_pool(native, phase, mixed_candidate_pool, risk_pool_size)
         if not pool:
             return fallback("no_screened_cold_candidates")
-        try:
-            probabilities = fit(rep).probabilities(pool)
-            if not np.isfinite(probabilities).all():
-                raise FloatingPointError("Nonfinite completion probabilities")
-        except RISK_ERRORS:
-            return fallback("invalid_completion_posterior")
-        scores = probabilities
+        log_completion = np.zeros(len(pool))
+        if evidence:
+            try:
+                log_completion = fit(rep).log_probabilities(pool)
+                if not np.isfinite(log_completion).all():
+                    raise FloatingPointError("Nonfinite completion probabilities")
+            except RISK_ERRORS:
+                if fit_energy is None:
+                    return fallback("invalid_completion_posterior")
+                log_completion = np.zeros(len(pool))
+                info["completion_fallback"] = "invalid_completion_posterior"
+        else:
+            info["completion_fallback"] = "no_supported_completion_feedback"
+        scores = log_completion
         if fit_energy:
-            head = fit_energy(rep, None)
-            with torch.no_grad():
-                energy_probabilities = head.log_probability(rep.features(pool)).exp().numpy()
-            scores = probabilities * energy_probabilities
+            try:
+                bounds = feature_bounds(rep)
+                head = fit_energy(rep, bounds)
+                names, models = fit_cold_constraints(native, rep, bounds)
+                with torch.no_grad():
+                    features = rep.features(pool)
+                    log_engineering = engineering_log_probability(features, head, names, models, bounds).numpy()
+                    energy_probabilities = head.log_probability(features).exp().numpy()
+                scores = log_completion + log_engineering
+                if not np.isfinite(scores).all():
+                    raise FloatingPointError("Nonfinite joint feasibility scores")
+            except RISK_ERRORS:
+                return fallback("invalid_engineering_posterior")
             info["engineering_energy_fit"] = head.audit()
+            info["modeled_engineering_constraints"] = ["usable_energy", *models]
         index = max(range(len(pool)), key=lambda i: (scores[i], native.space.key(pool[i])))
         if fit_energy:
             info["p_usable_energy"] = float(energy_probabilities[index])
+            info["engineering_log_probability"] = float(log_engineering[index])
         return pool[index], phase, {**info, "source": "lsbo_latent_completion_risk",
                                     "candidate_count": len(pool),
                                     "candidate_list_sha256": digest([p.to_dict() for p in pool]),
-                                    "p_complete": float(probabilities[index])}
+                                    "p_complete": None if "completion_fallback" in info else
+                                    float(np.exp(log_completion[index]))}
 
     state = {"risk_mode": "native_recovery_or_exploration"}
     posterior = None
@@ -172,12 +198,31 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
     def weighted(surrogate, rep):
         nonlocal posterior
         if fit_energy:
-            surrogate = with_energy(surrogate, rep)
+            try:
+                surrogate = with_energy(surrogate, rep)
+            except RISK_ERRORS:
+                state["engineering_fallback"] = "invalid_engineering_posterior"
+        if not evidence:
+            state["completion_fallback"] = "no_supported_completion_feedback"
+            return surrogate
         try:
             posterior = fit(rep)
         except RISK_ERRORS:
             state.update(risk_mode="native_fallback", risk_fallback="invalid_completion_posterior")
             return surrogate
+        if fit_energy:
+            # The structured completion model replaces both native numerical
+            # heuristics. The native objective and constraint factors stay in place.
+            surrogate = copy(surrogate)
+            raw = copy(surrogate.native) if isinstance(surrogate, EnergyAcquisition) else surrogate
+            raw.domain_model = None
+            raw.success_model = None
+            raw.fit_diagnostics = {k: v for k, v in raw.fit_diagnostics.items()
+                                   if k != "solver_discharge_domain"}
+            if isinstance(surrogate, EnergyAcquisition):
+                surrogate.native = raw
+                surrogate.fit_diagnostics = {k: v for k, v in surrogate.fit_diagnostics.items()
+                                             if k != "solver_discharge_domain"}
         state["risk_mode"] = "risk_weighted_native_search"
         return RiskWeightedRefinement(surrogate, posterior)
 

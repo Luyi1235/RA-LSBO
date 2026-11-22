@@ -42,6 +42,46 @@ def feature_bounds(rep):
     return offset, (upper - offset).clamp_min(1e-8)
 
 
+def fit_cold_constraints(native, rep, bounds):
+    """Fit native constraint GPs without requiring a fitted objective GP."""
+    from lsbo.surrogate import fit_gp
+
+    offset, scale = bounds
+    analytical = set(native.problem.analytical_constraints)
+    names = tuple(k for k in native.problem.required_constraints if k not in analytical and k != CONSTRAINT)
+    models = {}
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(native.settings.seed + len(native.observations))
+        for name in names:
+            known = [o for o in native.observations if o.result.solver_success
+                     and finite(o.result.constraints.get(name))]
+            if len(known) < 3:
+                continue
+            x = (rep.features([o.candidate for o in known]) - offset) / scale
+            y = torch.tensor([o.result.constraints[name] for o in known], dtype=torch.double)
+            center, spread = float(y.mean()), float(y.std().clamp_min(1e-6))
+            models[name] = fit_gp(x, ((y - center) / spread).unsqueeze(-1),
+                                  native.settings.gp_steps, name=name), -center / spread
+    return names, models
+
+
+def engineering_log_probability(features, energy, names, models, bounds):
+    """Sum the marginal log probabilities after the analytical precheck."""
+    offset, scale = bounds
+    x = (features - offset) / scale
+    score = energy.log_probability(features)
+    for name in names:
+        pair = models.get(name)
+        if pair is None:
+            score = score + np.log(.5)
+        else:
+            model, threshold = pair
+            post = model.posterior(x)
+            z = (threshold - post.mean) / post.variance.clamp_min(1e-12).sqrt()
+            score = score + torch.special.log_ndtr(z).squeeze(-1)
+    return score
+
+
 class EnergyPosterior:
     def __init__(self, rep, candidates, evidence, seed, bounds=None):
         self.offset, self.scale = feature_bounds(rep) if bounds is None else bounds
@@ -113,15 +153,7 @@ class EnergyAcquisition:
 
     def engineering_probability(self, features):
         with torch.no_grad():
-            log_p = self.energy.log_probability(features)
-            x = (features - self.native.offset) / self.native.scale
-            for name in self.native.required_constraints:
-                pair = self.native.constraints.get(name)
-                if pair is None:
-                    log_p = log_p + np.log(.5)
-                else:
-                    model, threshold = pair
-                    post = model.posterior(x)
-                    z = (threshold - post.mean) / post.variance.clamp_min(1e-12).sqrt()
-                    log_p = log_p + torch.special.log_ndtr(z).squeeze(-1)
+            log_p = engineering_log_probability(
+                features, self.energy, self.native.required_constraints, self.native.constraints,
+                (self.native.offset, self.native.scale))
             return log_p.exp().numpy()

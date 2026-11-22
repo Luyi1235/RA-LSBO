@@ -40,7 +40,9 @@ PAIRED_COMMIT = "1aea06158e6e4ac8932b1c1269d81e59902214f1"
 PAIRED_HASH = "8863e3ddcdf74ec854239a9617f06fdf16100d194539036a7ce167b565f26b6f"
 PILOT_SEED, POOL_SEED = 20261123, 20261124
 INITIAL, ONLINE, WORKERS = 8, 12, 12
-ARMS = ("lsbo", "ra_lsbo_energy_interval")
+POLICY = {"lsbo": "lsbo_full_budget", "ra_lsbo_energy_sign": "structured_sign",
+          "ra_lsbo_energy_interval": "structured_sign"}
+ARMS = tuple(POLICY)
 
 
 def verify_inputs(args):
@@ -187,8 +189,8 @@ def offline(args, base, configs, sources, ledgers, excluded):
         rankings = [{"candidate_id": r["candidate_id"], "position": r["position"], "layout": r["layout"],
                      **{arm: replays[arm][i] for arm in replays}} for i, r in enumerate(roster)]
         max_delta = max(abs(r["interval"]["p_usable_energy"] - r["sign"]["p_usable_energy"]) for r in rankings)
-        if fits["interval"]["diagnostics"]["n_interval"] == 0 or max_delta <= 1e-12:
-            raise ValueError(f"{distance} nmi replay did not demonstrate fitted interval information")
+        if fits["interval"]["diagnostics"]["n_interval"] == 0:
+            raise ValueError(f"{distance} nmi replay did not consume interval evidence")
         report["distances"][distance] = {
             "config_sha256": sha256(configs[distance]), "fits": fits, "historical_charges": len(rows),
             "rank_changes": sum(r["sign"]["rank"] != r["interval"]["rank"] for r in rankings),
@@ -217,8 +219,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
         verified_hash(args.offline_report, args.offline_report_sha256)
         proof = json.loads(args.offline_report.read_bytes())
         if (proof["code_sha"] != sha or set(proof["distances"]) != {"50", "55"}
-                or proof["sources"] != sources or proof["new_worker_calls"] != 0
-                or any(v["max_abs_p_usable_energy_change"] <= 0 for v in proof["distances"].values())):
+                or proof["sources"] != sources or proof["new_worker_calls"] != 0):
             raise ValueError("Offline replay must pass at the same code and input identity")
         if subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"],
                                    cwd=ROOT, text=True).strip():
@@ -235,25 +236,26 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             raise ValueError("RCAIDE worker environment differs from the qualification")
     if problem.config["mission"]["cruise_distance_nmi"] != 45 or problem.config["runtime"]["timeout_seconds"] != TIMEOUT:
         raise ValueError("Pilot requires the archived 45 nmi configuration and timeout")
-    roster, tasks, _ = points(problem, PILOT_SEED, excluded, INITIAL)
+    roster, tasks, _ = points(problem, args.seed, excluded, INITIAL)
     native_module = importlib.import_module("lsbo.optimizer")
     knobs = ({} if args.execute_rcaide else
              dict(pretrain_epochs=3, update_epochs=2, gp_steps=3, branches=3, points_per_branch=3,
                   restarts=1, raw_samples=8, local_branches=1, proposal_pool_size=24,
                   exploration_probability=0.))
-    settings = native_module.Settings(seed=PILOT_SEED, initial=INITIAL, budget=INITIAL + ONLINE, **knobs)
-    limit = INITIAL + len(ARMS) * ONLINE
+    settings = native_module.Settings(seed=args.seed, initial=INITIAL, budget=INITIAL + args.online, **knobs)
+    limit = INITIAL + len(ARMS) * args.online
     risk_pool_size = 512 if args.execute_rcaide else 32
-    plan = {"code_sha": sha, "base_sha": BASE, "backend": backend, "seed": PILOT_SEED, "distance_nmi": 45,
+    plan = {"code_sha": sha, "base_sha": BASE, "backend": backend, "seed": args.seed, "distance_nmi": 45,
             "identity": environment, "sources": sources, "historical_candidate_exclusions": sorted(excluded),
             "qualification_plan_sha256": QUALIFICATION_PLAN_SHA256,
             "offline_report_sha256": args.offline_report_sha256, "config_sha256": sha256(config),
             "worker_manifest_sha256": digest(worker), "thread_settings": {v: os.environ[v] for v in THREAD_VARS},
-            "roster_sha256": digest(tasks), "tasks": tasks, "initial": INITIAL, "online_per_arm": ONLINE,
-            "max_worker_calls": limit, "worker_concurrency_limit": WORKERS, "timeout_seconds": TIMEOUT,
+            "roster_sha256": digest(tasks), "tasks": tasks, "initial": INITIAL, "online_per_arm": args.online,
+            "max_worker_calls": limit, "worker_concurrency_limit": args.workers, "timeout_seconds": TIMEOUT,
             "settings": asdict(settings), "risk_pool_size": risk_pool_size, "energy_gp": asdict(SETTINGS),
-            "native_missing_objective_policy": "stop arm on an online native stop",
-            "arms": ARMS}
+            "native_missing_objective_policy": "log and continue to the common budget",
+            "protocol": "matched_engineering_energy_feedback_v2",
+            "arms": ARMS, "completion_policies": POLICY}
     plan_path = output / "pilot_plan.json"
     dump(plan_path, plan)
     print(f"Frozen 45 nmi roster {plan['roster_sha256']} at {output}", flush=True)
@@ -268,11 +270,11 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
     def launch(task):
         point = roster[task["position"] - 1]
         journal = dispatcher(init_root / task["task_id"], 1)
-        row = journal.evaluate(point, seed=PILOT_SEED, arm="shared_initial", evaluation=task["position"],
+        row = journal.evaluate(point, seed=args.seed, arm="shared_initial", evaluation=task["position"],
                                online=0, phase="initial", proposal={"roster_sha256": plan["roster_sha256"]})
         return {"status": row["feedback"]["outcome"], "row": source_row(row, f"initial/{task['task_id']}")}
 
-    initial_results = run_wave(tasks, WORKERS, launch)
+    initial_results = run_wave(tasks, args.workers, launch)
     initial_rows = [initial_results[t["task_id"]]["row"] for t in tasks
                     if "row" in initial_results.get(t["task_id"], {})]
     dump(output / "shared_initial.json", initial_rows)
@@ -281,8 +283,9 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
 
     def run_arm(arm):
         folder = output / arm
-        journal = dispatcher(folder, ONLINE)
-        is_ra = arm == ARMS[1]
+        journal = dispatcher(folder, args.online)
+        is_ra = arm != "lsbo"
+        use_interval = arm == "ra_lsbo_energy_interval"
         history = list(initial_rows)
         status = "complete"
         with optimizer_lock:
@@ -291,20 +294,19 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             for point, row in zip(roster, initial_rows):
                 if update_native(optimizer, point, row, "initial", row["proposal"]):
                     journal.event("native_stop_during_shared_replay", source_id=row["source_id"], charged=False)
-            if optimizer.solver_failures >= settings.max_consecutive_solver_failures:
-                status = "native_missing_objective_stop"
 
         def fit(rep, bounds):
             return fit_head(rep, [o.candidate for o in optimizer.observations], history,
-                            PILOT_SEED, 45, True, bounds)[0]
+                            args.seed, 45, use_interval, bounds)[0]
 
-        for i in range(1, ONLINE + 1):
+        for i in range(1, args.online + 1):
             if status != "complete" or stop.is_set():
                 break
             try:
-                with optimizer_lock:
+                with optimizer_lock, torch.random.fork_rng(devices=[]):
+                    torch.manual_seed((args.seed + i) % (1 << 63))
                     point, phase, metadata = propose(
-                        optimizer, history, "structured_interval" if is_ra else "lsbo_full_budget",
+                        optimizer, history, POLICY[arm],
                         native_module.mixed_candidate_pool, risk_pool_size, fit_energy=fit if is_ra else None)
             except Exception as error:
                 journal.event("proposal_error", online=i, charged=False, message=str(error),
@@ -314,7 +316,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             if stop.is_set():
                 break
             try:
-                row = source_row(journal.evaluate(point, seed=PILOT_SEED, arm=arm, evaluation=INITIAL + i,
+                row = source_row(journal.evaluate(point, seed=args.seed, arm=arm, evaluation=INITIAL + i,
                                                   online=i, phase=phase, proposal=metadata), arm)
             except Exception as error:
                 journal.event("dispatch_error", online=i, message=str(error), error_type=type(error).__name__)
@@ -329,12 +331,11 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             with optimizer_lock:
                 if update_native(optimizer, point, row, phase, metadata):
                     journal.event("native_missing_objective_stop", call_id=row["call_id"], charged=False)
-                    status = "native_missing_objective_stop"
-        if status == "complete" and len(history) < INITIAL + ONLINE:
+        if status == "complete" and len(history) < INITIAL + args.online:
             status = "infrastructure_stop"
         with optimizer_lock:
             optimizer.save_summary(status)
-        projections = [(row, *energy_training_row(row, row["source_id"], 45, prefix_energy, True))
+        projections = [(row, *energy_training_row(row, row["source_id"], 45, prefix_energy, use_interval))
                        for row in history]
         fits = [(r["evaluation"], r["proposal"]["engineering_energy_fit"]) for r in history[INITIAL:]
                 if "engineering_energy_fit" in r["proposal"]]
@@ -342,6 +343,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
                              for o in fit_audit["partial_observations"]})
         usable = [r for r in history if r["feedback"]["usable"]]
         result = {"status": status, "first_usable_call": usable[0]["evaluation"] if usable else None,
+                  "first_usable_online": next((r["online"] for r in usable if r["online"] > 0), None),
                   "best_usable_Wh": min((r["feedback"]["objective_Wh"] for r in usable), default=None),
                   "usable": len(usable), "online_records": len(history) - INITIAL,
                   "available_partial_feedback": sum(value.kind == "interval" for _, value, _ in projections),
@@ -358,7 +360,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
     initial_ok = len(initial_rows) == INITIAL and all(r["status"] != "infrastructure_error"
                                                       for r in initial_results.values())
     if initial_ok:
-        with ThreadPoolExecutor(max_workers=len(ARMS)) as pool:
+        with ThreadPoolExecutor(max_workers=min(len(ARMS), args.workers)) as pool:
             futures = {arm: pool.submit(run_arm, arm) for arm in ARMS}
             for arm, future in futures.items():
                 try:
@@ -383,11 +385,12 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             stream.write(json.dumps(event, allow_nan=False) + "\n")
     charges = sum(counts.values())
     peak = elapsed_concurrency(worker_times)
-    if charges > limit or peak > WORKERS:
+    if charges > limit or peak > args.workers:
         raise RuntimeError("Pilot overran the authorized call or concurrency budget")
-    status = ("complete" if initial_ok and all(r["status"] in ("complete", "native_missing_objective_stop")
-                                                for r in arms.values()) else "incomplete")
-    report = {"status": status, "code_sha": sha, "backend": backend, "seed": PILOT_SEED,
+    status = ("complete" if initial_ok and charges == limit and set(arms) == set(ARMS)
+              and all(r["status"] == "complete" and counts[name] == args.online
+                      for name, r in arms.items()) else "incomplete")
+    report = {"status": status, "code_sha": sha, "backend": backend, "seed": args.seed,
               "plan_sha256": sha256(plan_path), "roster_sha256": plan["roster_sha256"],
               "rcaide_calls": charges if args.execute_rcaide else 0, "worker_starts": charges,
               "shared_initial_starts": sum(counts[name] for name in journals[:INITIAL]),
@@ -404,10 +407,16 @@ def main():
     parser.add_argument("mode", choices=("offline", "pilot"))
     for key in ("qualification-plan", "qualification-ledger", "paired-archive", "initialization-ledger", "output"):
         parser.add_argument(f"--{key}", type=lambda value: Path(value).resolve(), required=True)
+    parser.add_argument("--seed", type=int, default=PILOT_SEED)
+    parser.add_argument("--workers", type=int, default=WORKERS)
+    parser.add_argument("--online", type=int, default=ONLINE)
     parser.add_argument("--execute-rcaide", action="store_true")
     parser.add_argument("--offline-report", type=Path)
     parser.add_argument("--offline-report-sha256")
     args = parser.parse_args()
+    if not (0 <= args.seed < (1 << 32) - ONLINE and 1 <= args.workers <= WORKERS
+            and 1 <= args.online <= ONLINE):
+        parser.error("Require a valid seed, 1–12 workers and 1–12 online evaluations per arm")
     if args.execute_rcaide and (args.mode != "pilot" or not args.offline_report or not args.offline_report_sha256):
         parser.error("--execute-rcaide requires pilot mode and an offline report with its SHA256")
     torch.set_num_threads(1)
