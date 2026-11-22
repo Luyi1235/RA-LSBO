@@ -73,3 +73,13 @@ def risk_observation(row, use_interval):
     lower = bounds["lower_W"] / RISK_SCALE_W if bounds else 0.
     upper = bounds["upper_W"] / RISK_SCALE_W if bounds and bounds["upper_W"] is not None else None
     return OutputObservation("interval", row["call_id"], lower=lower, upper=upper)
+
+
+def usable_energy_feedback(evidence_id, terminal_lower_Wh, terminal_cap_Wh, *, use_interval):
+    """Project a verified discharge-prefix violation onto g = E_terminal / cap - 1."""
+    if (not finite(terminal_lower_Wh) or not finite(terminal_cap_Wh)
+            or terminal_cap_Wh <= 0 or terminal_lower_Wh <= terminal_cap_Wh):
+        return OutputObservation("missing", evidence_id, reason="prefix_does_not_establish_violation")
+    if use_interval:
+        return OutputObservation("interval", evidence_id, lower=terminal_lower_Wh / terminal_cap_Wh - 1.)
+    return OutputObservation("interval", evidence_id, lower=0., lower_inclusive=False)
