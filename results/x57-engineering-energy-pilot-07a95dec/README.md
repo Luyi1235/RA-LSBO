@@ -21,6 +21,19 @@ The frozen seed is `20261123`. The eight initial designs alternate the two layou
 
 `mock_report.json` validates the complete 8 + 12 + 12 schedule with a synthetic verified prefix. The RA-LSBO arm consumes one unique partial row. All 32 mock worker starts are recorded and there are zero RCAIDE starts in the mock.
 
+## 45 nmi results
+
+All 32 RCAIDE calls settled with exact objectives and confirmed completion. The two shared usable designs were at positions 4 and 8, with a shared best of 48,215.51 Wh. The wall time was 55 min 52 s and the peak was eight workers. The online trajectories each made 12 calls in order.
+
+| Arm | First usable evaluation including shared initialization | First usable online evaluation | Best usable objective after 20 evaluations | Usable designs including shared initialization | Partial observations fitted |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Original LSBO | 4 | 1 | 46,486.61 Wh | 11 | 0 |
+| RA-LSBO with energy constraint | 4 | 2 | 46,914.66 Wh | 11 | 0 |
+
+Both arms found their best design at evaluation 20. RA-LSBO fit the energy model in 11 proposals, all from exact energy constraint observations. There were zero partial energy observations available at this distance for this seed, so evidence for the effect of the lower endpoint comes from the 50/55 nmi replay. The pilot also started online search with two usable designs already in hand.
+
+`pilot_report.json` records the outcome and fit counts. `calls.jsonl` is the merged ledger, and `shared_initial.json` is the ordered batch that both arms replayed. The numbered folders under `initial/` and the two arm directories contain the per-worker journals and diagnostic artifacts. The pilot exited with status 0. The run stderr records native acquisition-optimizer line-search warnings and retries.
+
 ## Reproduction
 
 Run `reproduce.ps1` from the named Windows workstation. With no switch it runs the offline and mock checks. `-ExecuteRcaide` additionally runs the paid pilot, with a fresh output directory and a maximum of 32 calls. The pinned code, local archive paths, and proof hash check are recorded in the script. Each real call has a dispatch journal with its worker PID, start time and settlement.
