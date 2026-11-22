@@ -1,7 +1,10 @@
 from collections import Counter
 import json
+from pathlib import Path
+import shutil
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,10 +12,11 @@ from ra_lsbo.x57_cold_campaign import ARMS, INITIAL, MAX_ONLINE, endpoint
 from ra_lsbo.x57_cold_feedback import (
     CERTIFICATE_SOURCE, RISK_METRIC, normalize, risk_observation,
 )
+from ra_lsbo.x57_cold_qualification import N_QUALIFICATION, qualification_plan
 from ra_lsbo.x57_cold_sampling import LAYOUTS, RosterShortfall, active_names, freeze_roster
 from ra_lsbo.x57_cold_worker import Dispatcher
-from ra_lsbo.x57_live import X57LiveProblem
-from run_x57_cold_start import BASE, CONFIG, ROOT
+from ra_lsbo.x57_live import X57LiveProblem, evaluator_files
+from run_x57_cold_start import BASE, CONFIG, ROOT, main
 
 
 @pytest.fixture
@@ -177,3 +181,58 @@ def test_endpoints_use_cumulative_nodes_and_retain_unobserved():
     assert result["checkpoints"]["48"] == {"online": 16, "reached": True, "attained": True,
                                            "best_usable_Wh": 39952}
     assert result["checkpoints"]["64"]["attained"] is None
+
+
+@pytest.mark.parametrize("failure,expected_calls,expected_worker_status", [
+    (None, 20, None),
+    (1, 0, "worker_launch_error"),
+    (20, 20, "worker_nonzero_exit"),
+])
+def test_qualification_reports_and_exits_on_infrastructure_stop(
+        live, tmp_path, monkeypatch, failure, expected_calls, expected_worker_status):
+    frozen_worker = tmp_path / "physical-base"
+    shutil.copytree(BASE, frozen_worker, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    qualification_plan(live, tmp_path, {"worker_sha256": evaluator_files(frozen_worker)})
+    output = tmp_path / "qualification-run"
+    attempts = []
+
+    def fake_worker(command, *, cwd, **kwargs):
+        assert cwd == frozen_worker
+        assert command[-3] == "problems.x57.worker"
+        request, response = map(Path, command[-2:])
+        payload = json.loads(request.read_bytes())
+        candidate = live.candidate_class(**payload["candidate"])
+        attempts.append(candidate)
+        if failure == len(attempts):
+            if failure == 1:
+                raise OSError("synthetic launch failure")
+            return SimpleNamespace(pid=101, wait=lambda **_: 1, returncode=1)
+        checks = live.problem.precheck(candidate)
+        margins = {**dict.fromkeys(live.required_constraints, -0.1), **checks}
+        response.write_text(json.dumps({"objective": 40000., "solver_success": True,
+                                        "status": "ok", "constraints": margins, "metrics": {}}), encoding="utf-8")
+        return SimpleNamespace(pid=100, wait=lambda **_: 0, returncode=0)
+
+    monkeypatch.setattr(subprocess, "Popen", fake_worker)
+    monkeypatch.setattr(sys, "argv", ["run_x57_cold_start.py", "qualification-run", "--execute-rcaide",
+                                     "--plan", str(tmp_path / "qualification_plan.json"),
+                                     "--output", str(output)])
+    if failure is None:
+        main()
+    else:
+        with pytest.raises(SystemExit) as stopped:
+            main()
+        assert stopped.value.code == 2
+    report = json.loads((output / "qualification_report.json").read_bytes())
+    assert report["planned_calls"] == N_QUALIFICATION == 20
+    assert report["rcaide_calls"] == expected_calls
+    ledger = [json.loads(line) for line in (output / "calls.jsonl").read_bytes().splitlines()]
+    assert sum(row["event"] == "worker_started" for row in ledger) == expected_calls
+    if failure is None:
+        assert report["status"] == "complete" and report["stop"] is None
+        assert all(v["usable"] == 10 and len(v["repeat_comparisons"]) == 2
+                   for v in report["layouts"].values())
+    else:
+        assert report["status"] == "infrastructure_stop"
+        assert report["stop"]["worker_status"] == expected_worker_status
+        assert report["stop"]["evaluation"] == len(attempts) == failure

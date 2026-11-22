@@ -81,8 +81,10 @@ def main():
         dispatcher = Dispatcher(problem, output, backend="rcaide", worker_root=worker,
                                 timeout=problem.problem.config["runtime"]["timeout_seconds"],
                                 expected_worker=plan["worker"]["worker_sha256"], max_calls=N_QUALIFICATION)
-        run_qualification(problem, dispatcher, output, plan)
+        report = run_qualification(problem, dispatcher, output, plan)
         print(output / "qualification_report.json")
+        if report["status"] != "complete":
+            raise SystemExit(2)
         return
     seeds = args.seed if args.seed is not None else [0]
     if args.backend == "rcaide":

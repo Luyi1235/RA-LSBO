@@ -90,12 +90,15 @@ def run_qualification(problem, dispatcher, output, plan):
                 or problem.problem.precheck(point) != row["precheck"] or violations(row["precheck"])):
             raise ValueError("Qualification candidate changed since preparation")
     rows = []
+    stop = None
     started = time.perf_counter()
     for i, (point, row) in enumerate(zip(candidates, points), 1):
         result = dispatcher.evaluate(point, seed=None, arm="qualification", evaluation=i, online=0,
                                      phase="qualification", proposal={"source": row["role"]})
         rows.append(result)
         if result["feedback"]["outcome"] == "infrastructure_error":
+            stop = {"call_id": result["call_id"], "evaluation": i, "charged": result["charged"],
+                    "worker_status": result["worker_result"].get("status")}
             break
     layouts = {}
     for layout in LAYOUTS:
@@ -120,7 +123,8 @@ def run_qualification(problem, dispatcher, output, plan):
             "p90_seconds": seconds[math.ceil(.9 * len(seconds)) - 1] if seconds else None,
             "repeat_comparisons": repeats,
         }
-    report = {"rcaide_calls": dispatcher.count, "settled_results": len(rows),
+    report = {"status": "infrastructure_stop" if stop else "complete", "stop": stop,
+              "planned_calls": N_QUALIFICATION, "rcaide_calls": dispatcher.count, "settled_results": len(rows),
               "wall_seconds": time.perf_counter() - started, "layouts": layouts}
     dump(output / "qualification_report.json", report)
     return report
