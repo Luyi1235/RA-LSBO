@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 import shutil
 import subprocess
@@ -22,6 +23,10 @@ def dump(path, value):
     with path.open("x", encoding="utf-8") as stream:
         json.dump(value, stream, indent=2, allow_nan=False)
         stream.write("\n")
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 def restore_assets(base, original, destination):
@@ -113,6 +118,7 @@ class Dispatcher:
         self.event("dispatch_intent", **context, backend=self.backend)
         charged = False
         process = None
+        finished_at = None
         try:
             with (folder / "solver.log").open("wb") as log:
                 command = [sys.executable, "-B", "-u", "-X", "faulthandler", "-m",
@@ -123,8 +129,10 @@ class Dispatcher:
                     charged = True
                     self.count += 1
                     self.event("worker_started", **context, backend=self.backend,
-                               charged=True, pid=process.pid)
-                    if process.wait(timeout=self.timeout):
+                               charged=True, pid=process.pid, started_at_utc=utc_now())
+                    returncode = process.wait(timeout=self.timeout)
+                    finished_at = utc_now()
+                    if returncode:
                         raw = {**raw, "status": "worker_nonzero_exit", "returncode": process.returncode}
                     elif response.is_file():
                         result = json.loads(response.read_text(encoding="utf-8"))
@@ -135,6 +143,7 @@ class Dispatcher:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
+                    finished_at = utc_now()
                     raw = {**raw, "status": "timeout"}
                 except (OSError, ValueError) as error:
                     raw = {**raw, "status": "invalid_worker_response" if charged else "worker_launch_error",
@@ -144,6 +153,7 @@ class Dispatcher:
                 process.kill()
                 process.wait()
             self.event("interrupted", **context, charged=charged,
+                       finished_at_utc=(finished_at or utc_now()) if charged else None,
                        elapsed_seconds=time.perf_counter() - started)
             raise
         elapsed = time.perf_counter() - started
@@ -151,6 +161,7 @@ class Dispatcher:
         feedback = normalize(raw, self.problem.required_constraints, checks, self.backend)
         status = "interrupted" if raw.get("status") == "timeout" else "settled"
         settlement = dict(**context, charged=charged, elapsed_seconds=elapsed, feedback=feedback,
+                          finished_at_utc=finished_at,
                           worker_result=raw)
         self.event(status, **settlement)
         return settlement

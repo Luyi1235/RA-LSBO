@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import sys
+import time
 
 from .x57_cold_feedback import CERTIFICATE_SOURCE, RISK_METRIC
 from .x57_cold_worker import dump
@@ -14,6 +15,12 @@ def result(payload):
     constraints.update(step["precheck"])
     scenario = step["profile"]
     evaluation, online = step["evaluation"], step["online"]
+    if scenario == "distance-diagnostic":
+        distance = payload["config"]["mission"]["cruise_distance_nmi"]
+        if distance == 50:
+            constraints["soc"] = .01
+        return dict(objective=30000. + 150. * distance, status="ok" if distance < 50 else "constraint_violation",
+                    solver_success=True, constraints=constraints, metrics={})
     initial_case = (evaluation + (evaluation - 1) // 4) % 4
     if scenario == "infrastructure" and online == 1:
         return dict(objective=None, status="worker_error:MockCrash", solver_success=False,
@@ -39,4 +46,8 @@ def result(payload):
 
 if __name__ == "__main__":
     request, response = map(Path, sys.argv[1:3])
-    dump(response, result(json.loads(request.read_text(encoding="utf-8"))))
+    payload = json.loads(request.read_text(encoding="utf-8"))
+    if payload["mock"]["profile"] == "distance-diagnostic":
+        (response.parent / "solver_work").mkdir()
+        time.sleep(2)
+    dump(response, result(payload))
