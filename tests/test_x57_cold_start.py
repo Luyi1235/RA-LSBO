@@ -62,6 +62,15 @@ def test_shortfall_reports_original_branch(live, monkeypatch):
     assert blocked["rejections_by_reason"] == {"blocked": 128}
 
 
+def test_freeze_replaces_previously_evaluated_points_in_both_layouts(live):
+    original, _ = freeze_roster(live.problem, 0)
+    excluded = {live.space.key(point) for point in original[:2]}
+    roster, audit = freeze_roster(live.problem, 0, exclude_keys=excluded)
+    assert [point.discrete["prop_layout"] for point in roster] == list(LAYOUTS) * 16
+    assert excluded.isdisjoint(live.space.key(point) for point in roster)
+    assert all(audit[layout]["rejections_by_reason"]["previously_evaluated"] == 1 for layout in LAYOUTS)
+
+
 def test_worker_feedback_preserves_information_boundaries():
     required = ("geometry", "soc")
     checks = {"geometry": -.5}

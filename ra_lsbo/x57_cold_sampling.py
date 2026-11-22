@@ -91,8 +91,9 @@ def _select(space, pool):
     return selected
 
 
-def freeze_roster(problem, seed, *, max_designs=64):
+def freeze_roster(problem, seed, *, max_designs=64, exclude_keys=()):
     space = problem.space
+    excluded = set(exclude_keys)
     rng = np.random.default_rng(seed)
     by_layout, audit = {}, {}
     for layout in LAYOUTS:
@@ -109,7 +110,10 @@ def freeze_roster(problem, seed, *, max_designs=64):
                           if space.active(v, point.discrete)]
                 attempted_levels.update(levels)
                 key = space.key(point)
-                rejected = ["duplicate"] if key in keys else violations(problem.precheck(point))
+                if key in excluded:
+                    rejected = ["previously_evaluated"]
+                else:
+                    rejected = ["duplicate"] if key in keys else violations(problem.precheck(point))
                 if rejected:
                     reasons.update(rejected)
                 else:
