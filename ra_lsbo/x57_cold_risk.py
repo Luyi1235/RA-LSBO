@@ -10,6 +10,7 @@ from .risk_core.completion_refinement import RiskWeightedRefinement
 from .risk_core.mixed_gp import MixedGPSettings, MixedObservationGP
 from .x57_cold_feedback import risk_observation
 from .x57_cold_sampling import LAYOUT, LAYOUTS
+from .x57_energy_surrogate import EnergyAcquisition
 
 
 def _kernel(left, right, divisor):
@@ -105,7 +106,7 @@ def latent_pool(native, phase, mixed_candidate_pool, limit):
     return points + mixed_candidate_pool(native, limit - len(points), target, keys)
 
 
-def propose(native, history, arm, mixed_candidate_pool, risk_pool_size):
+def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_energy=None):
     phase = native.search_phase()
     if arm == "lsbo_full_budget":
         candidate, info = native.propose(phase)
@@ -124,8 +125,13 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size):
         return CompletionPosterior(rep, candidates, values, native.settings.seed)
 
     def fallback(reason):
-        point, native_info = native.propose(phase)
+        point, native_info = native.propose(phase, refine_surrogate=with_energy if fit_energy else None)
         return point, phase, {**native_info, **info, "risk_fallback": reason}
+
+    def with_energy(surrogate, rep):
+        head = fit_energy(rep, (surrogate.offset, surrogate.scale))
+        info["engineering_energy_fit"] = head.audit()
+        return EnergyAcquisition(surrogate, head)
 
     if not evidence:
         return fallback("no_supported_completion_feedback")
@@ -145,7 +151,16 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size):
                 raise FloatingPointError("Nonfinite completion probabilities")
         except RISK_ERRORS:
             return fallback("invalid_completion_posterior")
-        index = max(range(len(pool)), key=lambda i: (probabilities[i], native.space.key(pool[i])))
+        scores = probabilities
+        if fit_energy:
+            head = fit_energy(rep, None)
+            with torch.no_grad():
+                energy_probabilities = head.log_probability(rep.features(pool)).exp().numpy()
+            scores = probabilities * energy_probabilities
+            info["engineering_energy_fit"] = head.audit()
+        index = max(range(len(pool)), key=lambda i: (scores[i], native.space.key(pool[i])))
+        if fit_energy:
+            info["p_usable_energy"] = float(energy_probabilities[index])
         return pool[index], phase, {**info, "source": "lsbo_latent_completion_risk",
                                     "candidate_count": len(pool),
                                     "candidate_list_sha256": digest([p.to_dict() for p in pool]),
@@ -156,6 +171,8 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size):
 
     def weighted(surrogate, rep):
         nonlocal posterior
+        if fit_energy:
+            surrogate = with_energy(surrogate, rep)
         try:
             posterior = fit(rep)
         except RISK_ERRORS:

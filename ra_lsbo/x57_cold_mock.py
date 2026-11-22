@@ -25,6 +25,14 @@ def result(payload):
     if scenario == "infrastructure" and online == 1:
         return dict(objective=None, status="worker_error:MockCrash", solver_success=False,
                     constraints={}, metrics={"message": "mock infrastructure failure"})
+    if scenario == "engineering-pilot" and not online and evaluation == 4:
+        segment = {"segment": "DER", "converged": True, "electrical_summary": [
+            {"bus": "bus", "terminal_energy_Wh": 48000., "duration_s": 3600.,
+             "minimum_terminal_power_W": 48000., "maximum_terminal_power_W": 48000.,
+             "initial_charge_soc": 1., "final_charge_soc": .05}]}
+        return dict(objective=None, status="mission_not_converged", solver_success=False, constraints={},
+                    metrics={"mda_evaluated": True, "usable_terminal_energy_Wh": 47000.,
+                             "mission_profile": payload["config"]["mission"], "mission_solver_segments": [segment]})
     if scenario == "no-usable" or (not online and initial_case == 0):
         return dict(objective=None, status="mission_not_converged", solver_success=False,
                     constraints={"solver": 1.}, metrics={"minimum_trial_terminal_power_W": -500})
