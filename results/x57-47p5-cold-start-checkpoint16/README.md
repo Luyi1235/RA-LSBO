@@ -9,3 +9,16 @@ We froze the quality target at 47,500 Wh by rounding up the best prior 47.5 nmi 
 `mock_resume_report.json` and `mock_calls.jsonl` capture a zero-RCAIDE integration test. The runner dispatched one shared prefix of eight, advanced each arm to cumulative 10, then reconstructed each arm and checked the candidate hash and phase of proposal 11 against the saved preview. All five reproduced. Cumulative 12 accounted for 28 simulated worker starts and zero RCAIDE calls.
 
 `reproduce.ps1` runs the mock check by default. `-ExecuteRcaide` starts the physical campaign. `-Resume` replays the ordered settled ledgers in the specified output directory and advances under the same plan. Raw artifacts are retained for any started call that cannot be replayed from a complete settlement.
+
+## Physical shared initialization
+
+| Seed | Exact objective | Feasible | Verified engineering stops | Best feasible (Wh) |
+| --- | ---: | ---: | ---: | ---: |
+| 307261 | 2 | 2 | 6 | 46,734.86 |
+| 356821 | 2 | 1 | 6 | 49,175.68 |
+| 412849 | 3 | 0 | 5 | |
+| 470299 | 3 | 2 | 5 | 48,339.59 |
+| 528899 | 2 | 1 | 6 | 47,753.34 |
+| 590089 | 4 | 2 | 4 | 48,441.92 |
+
+The 48 physical shared starts produced 8 feasible designs, 8 completed constraint violations, and 32 verified engineering stops. Seed `412849` is the zero-feasible cohort. The other five seeds had one or two feasible designs. Each `seed-*/shared/` folder contains the physical ledger and worker artifacts.
