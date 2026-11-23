@@ -22,3 +22,17 @@ We froze the quality target at 47,500 Wh by rounding up the best prior 47.5 nmi 
 | 590089 | 4 | 2 | 4 | 48,441.92 |
 
 The 48 physical shared starts produced 8 feasible designs, 8 completed constraint violations, and 32 verified engineering stops. Seed `412849` is the zero-feasible cohort. The other five seeds had one or two feasible designs. Each `seed-*/shared/` folder contains the physical ledger and worker artifacts.
+
+## Zero-feasible cohort at cumulative 16
+
+All five trajectories for seed `412849` found a feasible design by evaluation 16.
+
+| Arm | First feasible evaluation | First at or below 47,500 Wh | Best feasible (Wh) | Partial rows in RA energy fit |
+| --- | ---: | ---: | ---: | ---: |
+| LSBO | 15 | | 48,291.62 | |
+| RA-LSBO sign | 12 | | 47,795.28 | 8 |
+| RA-LSBO interval | 12 | | 47,795.28 | 8 |
+| ArchSBO | 15 | 15 | 47,322.07 | |
+| LogCEI | 11 | | 48,943.41 | |
+
+The partial-fit column counts unique evidence rows across successful RA engineering-energy fits up to the checkpoint. For LogCEI, nine verified early-stop signs entered its `usable_energy` classifier in this seed. ArchSBO handled missing objectives through its native validity model. Compare the two RA arms using their per-evaluation ledgers in `seed-412849/`. The two arms have the same first hit and final best, with different feasible outcomes at evaluations 13 and 14.
