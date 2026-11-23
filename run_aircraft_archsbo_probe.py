@@ -65,7 +65,8 @@ class SealedAircraft(ArchOptProblemBase):
         return [obs.objective.value], [constraints[name].value for name in self.constraint_names]
 
 
-def warm_start(problem, records, seed, *, factory=get_arch_sbo_gp, followups=1):
+def warm_start(problem, records, seed, *, factory=get_arch_sbo_gp, followups=1,
+               factory_options=None, termination=None):
     candidates = [record.candidate for record in records]
     x, active = problem.correct_x(np.asarray([problem.encode(candidate) for candidate in candidates]))
     if any(problem.decode(vector) != candidate for vector, candidate in zip(x, candidates)):
@@ -74,8 +75,11 @@ def warm_start(problem, records, seed, *, factory=get_arch_sbo_gp, followups=1):
     population = Population.new(X=x, F=f, G=g, H=np.empty((len(x), 0)), is_active=active)
     for individual in population:
         individual.evaluated.update(("F", "G", "H"))
-    algorithm = factory(problem, init_size=len(x), init_sampling=population, kpls_n_dim=None)
-    algorithm.setup(problem, seed=seed, termination=("n_gen", followups+1))
+    if factory_options is None:
+        # Reproduce the reduced-aircraft probe settings.
+        factory_options = {"kpls_n_dim": None}
+    algorithm = factory(problem, init_size=len(x), init_sampling=population, **factory_options)
+    algorithm.setup(problem, seed=seed, termination=termination or ("n_gen", followups+1))
     initial = algorithm.ask()
     if len(initial) != len(x) or not np.array_equal(initial.get("X"), x):
         raise ValueError("ArchSBO warm start differs from the shared prefix")

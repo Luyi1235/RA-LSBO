@@ -18,7 +18,9 @@ from ra_lsbo import x57_cold_risk
 from ra_lsbo.x57_cold_campaign import ObservationAdapter, update_native
 from ra_lsbo.x57_cold_sampling import LAYOUTS, active_names, violations
 from ra_lsbo.x57_cold_worker import Dispatcher, dump
-from ra_lsbo.x57_external import ARMS, TOTAL_BUDGET, X57External, record_from_row
+from ra_lsbo.x57_external import (
+    ARMS, TOTAL_BUDGET, X57External, native_kpls_minimum, native_kpls_shortfall, record_from_row,
+)
 from ra_lsbo.x57_native_slot import configure_native_search
 from run_x57_distance_diagnostic import ROOT, THREAD_VARS, read_events
 from run_x57_engineering_energy_pilot import POLICY, code_sha, fit_head
@@ -89,7 +91,18 @@ def qualify(problem, initial, output, arm):
         raise ValueError("Precheck admitted a known invalid design")
     steps = []
     for online, expected in enumerate(OUTCOMES, 1):
-        candidate, metadata = adapter.ask()
+        try:
+            candidate, metadata = adapter.ask()
+        except ValueError as error:
+            if arm != "archsbo_native" or online != 1:
+                raise
+            minimum = native_kpls_minimum(adapter.arch.n_var)
+            complete = adapter.native_complete_rows()
+            if not native_kpls_shortfall(error, minimum, complete):
+                raise
+            return {"status": "insufficient_complete_rows", "complete_training_rows": complete,
+                    "kpls_minimum_complete_rows": minimum, "error": str(error),
+                    "mock_worker_starts": 0, "rcaide_starts": 0}
         row = worker.evaluate(problem.candidate_class(**candidate), seed=SEED, arm=arm,
                               evaluation=len(initial) + online, online=online, phase="mock_online",
                               proposal=metadata)
@@ -116,7 +129,7 @@ def qualify(problem, initial, output, arm):
             or any(s["completion_label"] is not None or s["objective"]["kind"] != "missing" for s in steps[:2])
             or [s["usable"] for s in steps[2:]] != [False, True]):
         raise ValueError("Worker feedback or charging did not survive the ask/tell contract")
-    return {"total_budget": adapter.total_budget, "shared_prefix_charged_again": 0,
+    return {"status": "complete", "total_budget": adapter.total_budget, "shared_prefix_charged_again": 0,
             "mock_worker_starts": len(starts), "rcaide_starts": 0, "steps": steps,
             "layout_activity": activation, "uncharged_precheck_rejection": rejected[0]["reasons"],
             "resume_next_candidate_id": problem.space.key(problem.candidate_class(**following))}
@@ -249,20 +262,22 @@ def main():
     audit = {}
     for arm in ARMS:
         audit[arm] = qualify(problem, initial, args.output / arm, arm)
-    compared = [audit[arm]["steps"] for arm in ARMS]
+    compared = [audit[arm]["steps"] for arm in ARMS if audit[arm]["status"] == "complete"]
     fields = ("outcome", "charged", "completion_label", "usable")
-    if [tuple(s[k] for k in fields) for s in compared[0]] != [tuple(s[k] for k in fields) for s in compared[1]]:
+    if len(compared) == 2 and ([tuple(s[k] for k in fields) for s in compared[0]]
+                              != [tuple(s[k] for k in fields) for s in compared[1]]):
         raise ValueError("External adapters diverged on the shared worker contract")
-    dump(args.output / "acceptance.json", {"status": "complete", "code_sha": code_sha(),
+    status = "complete" if len(compared) == len(ARMS) else "native_archsbo_prefix_incompatible"
+    dump(args.output / "acceptance.json", {"status": status, "code_sha": code_sha(),
          "archive_sha": ARCHIVE, "python": sys.version, "version": {name: version(name) for name in (
              "sb-arch-opt", "pymoo", "smt", "numba", "numpy", "scipy", "scikit-learn")},
          "shared_archive_projection": [projection(problem, r) for r in initial],
          "adapters": audit, "new_rcaide_calls": 0,
          "archsbo_contract": "Native hidden-constraint viability filters incomplete output rows before "
-                             "the objective and numerical constraint GPs; known sign remains in tell and the ledger.",
+                             "the objective and numerical constraint GPs. Sign and interval evidence stays in the ledger.",
          "logcei_contract": "Objective GP consumes exact objectives. An unknown completion with a verified "
                             "energy sign contributes to the energy classifier only."})
-    print(f"External adapters qualified | RCAIDE starts=0 | output={args.output}", flush=True)
+    print(f"External adapter verification: {status} | RCAIDE starts=0 | output={args.output}", flush=True)
 
 
 if __name__ == "__main__":

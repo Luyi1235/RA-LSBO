@@ -37,7 +37,7 @@ INPUTS = {
 }
 SEEDS = (307261, 356821, 412849, 470299, 528899, 590089)
 NATIVE = ("lsbo_full_budget", "ra_lsbo_energy_sign", "ra_lsbo_energy_interval")
-EXTERNAL = ("archsbo_screened", "logcei_screened_online")
+EXTERNAL = ("archsbo_native", "logcei_screened_online")
 ARMS = NATIVE + EXTERNAL
 INITIAL = 8
 HORIZON = 320
@@ -67,7 +67,7 @@ def check_threads():
 
 
 def external_service(base, config, work, arm):
-    from ra_lsbo.x57_external import X57External
+    from ra_lsbo.x57_external import X57External, native_kpls_minimum
 
     check_threads()
     versions = {name: version(name) for name in BASELINE_VERSIONS}
@@ -87,6 +87,8 @@ def external_service(base, config, work, arm):
                 if op == "identity":
                     value = {"python": sys.version, "exe": sys.executable, "packages": versions,
                              "contract_id": problem.contract_id}
+                    if arm == "archsbo_native":
+                        value["kpls_minimum_complete_rows"] = native_kpls_minimum(len(problem.space.variables))
                 elif op == "init":
                     trajectories[seed] = X57External(problem, arm, seed, request["initial"], HORIZON)
                     value = None
@@ -326,6 +328,8 @@ class Campaign:
                                 online=evaluation - INITIAL, phase=phase, proposal=info)
             if row is None:
                 break
+            if arm == "archsbo_native" and row["proposal"] != info:
+                raise RuntimeError(f"Native ArchSBO proposal audit changed upon replay: {job}")
             tell(row)
             rows.append(row)
             if previous_checkpoint and evaluation == previous_checkpoint["evaluation"]:
@@ -506,6 +510,10 @@ def run(args):
         plan, problem, worker = freeze(args, args.output)
         services = {arm: ExternalService(args.external_python, problem.base, problem.config_path,
                                          args.output, arm, stack) for arm in EXTERNAL}
+        minimum = services["archsbo_native"].identity["kpls_minimum_complete_rows"]
+        if args.execute_rcaide and minimum is not None and INITIAL < minimum:
+            raise ValueError(f"The {INITIAL}-point DOE cannot supply {minimum} complete rows "
+                             "for native ArchSBO KPLS. No worker has been started.")
         plan["external_environments"] = {arm: service.identity for arm, service in services.items()}
         path = args.output / "run_plan.json"
         if args.resume:

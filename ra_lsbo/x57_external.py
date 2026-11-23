@@ -1,9 +1,9 @@
-"""Bridge the X-57 ledger to screened ArchSBO and the repository's LogCEI."""
+"""Bridge the X-57 ledger to native ArchSBO and the repository's LogCEI."""
 
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass
-from functools import partial
+from inspect import signature
 import random
 from threading import RLock
 
@@ -14,9 +14,21 @@ from .risk_core.observations import OutputObservation, RunObservation
 from .x57_cold_sampling import violations
 from .x57_energy_stop import STATUS as ENGINEERING_STOP, verified_stop
 
-ARMS = ("archsbo_screened", "logcei_screened_online")
+ARMS = ("archsbo_native", "logcei_screened_online")
 TOTAL_BUDGET = 320
 RANDOM_LOCK = RLock()
+
+
+def native_kpls_minimum(n_var):
+    from sb_arch_opt.algo.arch_sbo.api import get_arch_sbo_gp
+
+    components = signature(get_arch_sbo_gp).parameters["kpls_n_dim"].default
+    return components + 1 if components is not None and n_var > components else None
+
+
+def native_kpls_shortfall(error, minimum, complete):
+    return (minimum is not None and 1 < complete < minimum
+            and f"at least {minimum} points (currently {complete})" in str(error))
 
 
 @dataclass(frozen=True)
@@ -62,26 +74,6 @@ def record_from_row(problem, row):
     if (usable != feedback["usable"] or (objective.kind == "exact") != (status == "completed")):
         raise ValueError("Feedback changed completion, objective or usability through projection")
     return Record(candidate, observation, usable)
-
-
-class X57Screen:
-    def __init__(self, problem, arch_problem):
-        self.problem, self.arch_problem = problem, arch_problem
-        self.constraint_names = problem.analytical_constraints
-        self.counts = Counter()
-
-    def assess(self, x, context):
-        margins = [self.problem.problem.precheck(self.problem.candidate_class(**self.arch_problem.decode(vector)))
-                   for vector in x]
-        if any(set(m) != set(self.constraint_names) for m in margins):
-            raise ValueError("Mismatch between analytical screen and native ArchSBO constraints")
-        values = np.asarray([[m[name] for name in self.constraint_names] for m in margins],
-                            dtype=float).reshape(len(margins), len(self.constraint_names))
-        if not np.isfinite(values).all():
-            raise ValueError("Nonfinite analytical constraint during ArchSBO screening")
-        self.counts[context + "_checked"] += len(values)
-        self.counts[context + "_rejected"] += int((values > 0).any(axis=1).sum())
-        return values
 
 
 class LogCEIProblem:
@@ -135,29 +127,66 @@ class X57External:
 
     def _init_archsbo(self):
         from run_aircraft_archsbo_probe import SealedAircraft, warm_start
-        from run_aircraft_archsbo_screened import screened_algorithm
+        from sb_arch_opt.algo.arch_sbo.api import get_arch_sbo_gp
 
         class X57Architecture(SealedAircraft):
             def outputs(self, record):
                 obs = record.observation
                 f = [obs.objective.value if obs.objective.kind == "exact" else np.nan]
-                # Native validity handling drops any row with a missing output from
-                # the numerical GP. The unit sign code is never a physical target.
-                g = [item.value if item.kind == "exact" else
-                     (1. if item.constraint_satisfaction() is False else np.nan)
+                g = [item.value if item.kind == "exact" else np.nan
                      for item in (obs.constraint(name) for name in self.constraint_names)]
                 return f, g
 
-        learned = [name for name in self.problem.required_constraints
-                   if name not in self.problem.analytical_constraints]
-        self.arch = X57Architecture(self.problem, constraints=learned)
-        self.screen = X57Screen(self.problem, self.arch)
+        self.arch = X57Architecture(self.problem)
         self.numpy_state = np.random.RandomState(self.seed).get_state()
         self.python_state = random.Random(self.seed).getstate()
-        factory = partial(screened_algorithm, screen=self.screen)
         with self._arch_rng():
-            self.native = warm_start(self.arch, self.records, self.seed, factory=factory,
-                                     followups=self.total_budget - self.initial_size)
+            self.native = warm_start(self.arch, self.records, self.seed,
+                                     factory=get_arch_sbo_gp, factory_options={},
+                                     termination=("n_eval", self.total_budget))
+
+    def _arch_tell(self, population, f, g, *, charged):
+        population.set("F", np.asarray([f]), "G", np.asarray([g]), "H", np.empty((1, 0)))
+        population[0].evaluated.update(("F", "G", "H"))
+        if charged:
+            self.native.evaluator.n_eval += 1
+        with self._arch_rng():
+            self.native.tell(infills=population)
+
+    def native_complete_rows(self):
+        outputs = (self.arch.outputs(record) for record in self.records)
+        return sum(1 for f, g in outputs if np.isfinite(f).all() and np.isfinite(g).all())
+
+    def _ask_archsbo(self):
+        rejections = []
+        # The evaluation boundary may refuse a physical launch. Feed the
+        # observed margins back through standard tell and request a new point.
+        for _ in range(100):
+            with self._arch_rng():
+                native = self.native.ask()
+            if native is None or len(native) != 1:
+                raise RuntimeError(f"ArchSBO did not produce one proposal; precheck rejections: {rejections}")
+            x, active = self.arch.correct_x(native.get("X"))
+            native.set("X", x, "is_active", active)
+            candidate = self.arch.decode(x[0])
+            point = self.problem.candidate_class(**candidate)
+            key = self.problem.space.key(point)
+            if active[0].tolist() != [self.problem.space.active(v, candidate["discrete"])
+                                     for v in self.problem.space.variables]:
+                raise ValueError("Native ArchSBO activity mask differs from the physical design")
+            if self.problem.canonical(candidate) != candidate or key in self.seen:
+                raise RuntimeError("Native ArchSBO proposed a duplicate or noncanonical design")
+            margins = self.problem.problem.precheck(point)
+            if not violations(margins):
+                return candidate, native, {
+                    "native_surrogate_trained": bool(self.native.infill_obj.was_trained),
+                    "precheck_rejections": rejections,
+                }
+            self._arch_tell(native, [np.nan], [margins.get(name, np.nan) for name in self.arch.constraint_names],
+                            charged=False)
+            self.seen.add(key)
+            rejections.append({"candidate_id": key, "precheck": margins, "charged": False})
+        raise RuntimeError(f"Native ArchSBO exhausted 100 dispatch attempts; precheck rejections: {rejections}")
 
     def _logcei_pool(self):
         rng = np.random.default_rng(np.random.SeedSequence([self.seed, len(self.online)]))
@@ -192,19 +221,7 @@ class X57External:
             info["candidate_count"] = len(pool)
             native = None
         else:
-            before = self.screen.counts.copy()
-            with self._arch_rng():
-                native = self.native.ask()
-            if native is None or len(native) != 1:
-                raise RuntimeError("ArchSBO must produce exactly one proposal")
-            x, active = self.arch.correct_x(native.get("X"))
-            native.set("X", x, "is_active", active)
-            candidate = self.arch.decode(x[0])
-            if active[0].tolist() != [self.problem.space.active(v, candidate["discrete"])
-                                     for v in self.problem.space.variables]:
-                raise ValueError("Native ArchSBO activity mask differs from the physical design")
-            info = {"native_surrogate_trained": bool(self.native.infill_obj.was_trained),
-                    "screen_counts": dict(self.screen.counts - before)}
+            candidate, native, info = self._ask_archsbo()
         key = self.problem.space.key(self.problem.candidate_class(**candidate))
         if (self.problem.canonical(candidate) != candidate or key in self.seen
                 or violations(self.problem.precheck(candidate))):
@@ -224,13 +241,8 @@ class X57External:
         if self.arm == "logcei_screened_online":
             self.native.accept(record)
         else:
-            pending = self.pending[2]
             f, g = self.arch.outputs(record)
-            pending.set("F", np.asarray([f]), "G", np.asarray([g]), "H", np.empty((1, 0)))
-            pending[0].evaluated.update(("F", "G", "H"))
-            with self._arch_rng():
-                self.native.tell(infills=pending)
-            self.native.evaluator.n_eval += 1
+            self._arch_tell(self.pending[2], f, g, charged=True)
             if self.native.evaluator.n_eval != len(self.records) + 1:
                 raise RuntimeError("ArchSBO evaluation count differs from its settled trajectory")
         self.records.append(record)
