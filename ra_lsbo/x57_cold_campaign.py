@@ -63,6 +63,8 @@ class ObservationAdapter:
                                      or feedback["outcome"] == "numerical_nonconvergence"):
             return self.evaluation_class(**raw)
         metrics = {"worker_dir": row["worker_dir"]}
+        if feedback.get("known_constraint_violations"):
+            metrics["known_constraint_violations"] = list(feedback["known_constraint_violations"])
         # Retain the native diagnostic only for a converged original-model result.
         source = raw.get("metrics")
         if (feedback["completion"] is True and isinstance(source, dict)

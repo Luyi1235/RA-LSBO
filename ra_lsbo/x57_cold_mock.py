@@ -7,6 +7,7 @@ import time
 
 from .x57_cold_feedback import CERTIFICATE_SOURCE, RISK_METRIC
 from .x57_cold_worker import dump
+from .x57_energy_stop import STATUS, stopped_metrics
 
 
 def result(payload):
@@ -15,6 +16,24 @@ def result(payload):
     constraints.update(step["precheck"])
     scenario = step["profile"]
     evaluation, online = step["evaluation"], step["online"]
+    if scenario == "cold-start-debug":
+        distance = payload["config"]["mission"]["cruise_distance_nmi"]
+        if not online and evaluation % 4 == 1:
+            segment = {"segment": "DER", "converged": True, "electrical_summary": [
+                {"bus": "bus", "terminal_energy_Wh": 48000., "duration_s": 3600.,
+                 "minimum_terminal_power_W": 48000., "maximum_terminal_power_W": 48000.,
+                 "initial_charge_soc": 1., "final_charge_soc": .05}]}
+            return dict(objective=None, status=STATUS, solver_success=False, constraints={},
+                        metrics=stopped_metrics([segment], payload["config"]["mission"]))
+        if not online and evaluation % 4 == 2 and distance == 47.5:
+            return dict(objective=None, status="mission_not_converged", solver_success=False,
+                        constraints={}, metrics={"mission_profile": payload["config"]["mission"]})
+        if not online and evaluation % 4 == 3:
+            constraints["usable_energy"] = .005
+        else:
+            constraints["usable_energy"] = -.05
+        return dict(objective=46350. - 70. * online, solver_success=True, constraints=constraints,
+                    status="constraint_violation" if constraints["usable_energy"] > 0 else "ok", metrics={})
     if scenario == "distance-diagnostic":
         distance = payload["config"]["mission"]["cruise_distance_nmi"]
         if distance == 50:

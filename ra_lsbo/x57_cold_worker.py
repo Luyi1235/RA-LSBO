@@ -58,7 +58,7 @@ def restore_assets(base, original, destination):
 
 class Dispatcher:
     def __init__(self, problem, output, *, backend, worker_root, mock_profile="mixed",
-                 timeout=1800., expected_worker=None, max_calls=None):
+                 timeout=1800., expected_worker=None, max_calls=None, energy_stop=False):
         if backend not in ("mock", "rcaide"):
             raise ValueError("Unknown worker backend")
         self.problem = problem
@@ -69,6 +69,7 @@ class Dispatcher:
         self.timeout = timeout
         self.expected_worker = expected_worker
         self.max_calls = max_calls
+        self.energy_stop = energy_stop
         self.count = 0
         self.sequence = 0
         self.elapsed = 0.
@@ -121,8 +122,11 @@ class Dispatcher:
         finished_at = None
         try:
             with (folder / "solver.log").open("wb") as log:
-                command = [sys.executable, "-B", "-u", "-X", "faulthandler", "-m",
-                           worker_module, str(request), str(response)]
+                entry = ["-m", worker_module]
+                if self.backend == "rcaide" and self.energy_stop:
+                    entry = [str(Path(__file__).resolve().parents[1] / "run_x57_energy_stop_worker.py")]
+                command = [sys.executable, "-B", "-u", "-X", "faulthandler", *entry,
+                           str(request), str(response)]
                 try:
                     process = subprocess.Popen(command, cwd=self.worker_root, stdout=log,
                                                stderr=subprocess.STDOUT)

@@ -9,9 +9,10 @@ import torch
 from .risk_core.mixed_gp import MixedGPSettings, MixedObservationGP
 from .risk_core.observations import OutputObservation, finite
 from .x57_cold_feedback import usable_energy_feedback
+from .x57_energy_stop import CAP_WH, STATUS as ENGINEERING_STOP, verified_stop
 
 CONSTRAINT = "usable_energy"
-TERMINAL_CAP_WH = 47000.
+TERMINAL_CAP_WH = CAP_WH
 SETTINGS = MixedGPSettings(signal_variance=.15**2, exact_noise=1e-4,
                            stable_tail_moments=True, max_sweeps=120)
 
@@ -22,12 +23,16 @@ def energy_training_row(row, evidence_id, distance, prefix_energy, use_interval)
     if feedback["completion"] is True and finite(value):
         return OutputObservation("exact", evidence_id, value=value), None
     metrics = row["worker_result"].get("metrics") or {}
-    if (feedback["outcome"] != "numerical_nonconvergence" or value is not None
+    if (feedback["outcome"] not in ("numerical_nonconvergence", ENGINEERING_STOP) or value is not None
             or metrics.get("mda_evaluated") is not True
             or metrics.get("usable_terminal_energy_Wh") != TERMINAL_CAP_WH
             or (metrics.get("mission_profile") or {}).get("cruise_distance_nmi") != distance):
         return OutputObservation("missing", evidence_id, reason="no_verified_energy_prefix"), None
-    lower, _ = prefix_energy(metrics.get("mission_solver_segments", []))
+    if feedback["outcome"] == ENGINEERING_STOP:
+        stop = verified_stop(row["worker_result"])
+        lower = stop["terminal_energy_lower_Wh"] if stop else None
+    else:
+        lower, _ = prefix_energy(metrics.get("mission_solver_segments", []))
     # The observed prefix is a lower bound on a nonnegative discharge sum.
     return usable_energy_feedback(evidence_id, lower, TERMINAL_CAP_WH,
                                   use_interval=use_interval), lower

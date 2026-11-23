@@ -7,7 +7,6 @@ import csv
 import importlib.metadata
 import importlib.util
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -23,6 +22,7 @@ from ra_lsbo.budget import digest
 from ra_lsbo.risk_core.observations import finite
 from ra_lsbo.x57_cold_sampling import LAYOUT, LAYOUTS, active_names, violations
 from ra_lsbo.x57_cold_worker import Dispatcher, dump, sha256
+from ra_lsbo.x57_energy_stop import prefix_energy, verified_stop
 from ra_lsbo.x57_live import X57LiveProblem, evaluator_files
 
 ROOT = Path(__file__).resolve().parent
@@ -36,8 +36,6 @@ BASELINE_CALLS = (("000001", LAYOUTS[0]), ("000015", LAYOUTS[0]),
                   ("000002", LAYOUTS[1]), ("000012", LAYOUTS[1]))
 TIMEOUT = 1800
 MAX_CALLS = 14
-MISSION_SEGMENTS = ("DER", "ICA", "climb_1", "climb_2", "cruise", "decent", "Downleg",
-                    "Reserve_Climb", "Reserve_Cruise", "Reserve_Descent", "Baseleg")
 
 
 def read_events(path):
@@ -170,31 +168,6 @@ def run_wave(tasks, workers, launch):
     return results
 
 
-def prefix_energy(segments):
-    accepted = []
-    last_soc = 1.
-    for expected, segment in zip(MISSION_SEGMENTS, segments):
-        buses = segment.get("electrical_summary", [])
-        if segment.get("segment") != expected or segment.get("converged") is not True or len(buses) != 1:
-            break
-        bus = buses[0]
-        energy, duration, min_power, max_power, initial_soc, final_soc = (
-            bus.get(key) for key in ("terminal_energy_Wh", "duration_s", "minimum_terminal_power_W",
-                                     "maximum_terminal_power_W", "initial_charge_soc", "final_charge_soc"))
-        if (bus.get("bus") != "bus" or not all(finite(v) for v in
-                                               (energy, duration, min_power, max_power, initial_soc, final_soc))
-                or duration <= 0 or min_power < 0 or min_power > max_power or energy < 0
-                or not min_power * duration / 3600 - 1e-6 <= energy <= max_power * duration / 3600 + 1e-6
-                or not 0 <= final_soc <= initial_soc <= 1
-                or not math.isclose(initial_soc, last_soc, rel_tol=0, abs_tol=1e-8)):
-            break
-        accepted.append({"segment": expected, "terminal_energy_Wh": energy, "duration_s": duration,
-                         "initial_soc": initial_soc, "final_soc": final_soc})
-        last_soc = final_soc
-    lower = math.fsum(s["terminal_energy_Wh"] for s in accepted) if accepted else None
-    return lower, accepted
-
-
 def observation(row):
     feedback, raw = row["feedback"], row["worker_result"]
     metrics = raw.get("metrics", {})
@@ -202,7 +175,7 @@ def observation(row):
     completed = feedback["completion"] is True
     audited = completed and metrics.get("energy_audit_status") == "passed"
     lower, prefix = (None, []) if completed else prefix_energy(segments)
-    return {"outcome": feedback["outcome"], "completion": feedback["completion"], "usable": feedback["usable"],
+    result = {"outcome": feedback["outcome"], "completion": feedback["completion"], "usable": feedback["usable"],
             "worker_status": raw.get("status"), "failure_stage": metrics.get("failure_stage"),
             "failure_message": metrics.get("failure_message") or metrics.get("message"),
             "failed_segment": next((s["segment"] for s in segments if s.get("converged") is False), None),
@@ -217,6 +190,10 @@ def observation(row):
             "terminal_energy_lower_Wh": lower, "converged_energy_prefix": prefix,
             "prefix_end_soc": prefix[-1]["final_soc"] if prefix else None,
             "elapsed_seconds": row["elapsed_seconds"]}
+    if stop := verified_stop(raw):
+        result.update(stop_after_segment=stop["stop_after_segment"],
+                      known_constraint_violations=feedback["known_constraint_violations"])
+    return result
 
 
 def choose_repeats(tasks, results):

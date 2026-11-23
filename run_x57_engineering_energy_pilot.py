@@ -33,6 +33,8 @@ from ra_lsbo.x57_cold_worker import Dispatcher, dump, sha256
 from ra_lsbo.x57_energy_surrogate import (
     CONSTRAINT, SETTINGS, EnergyAcquisition, EnergyPosterior, energy_training_row,
 )
+from ra_lsbo.x57_energy_stop import POLICY as ENERGY_STOP_POLICY
+from ra_lsbo.x57_native_slot import configure_native_search
 from ra_lsbo.x57_live import X57LiveProblem, evaluator_files
 
 BASE = "9cb135a238bd4de2b2df7945f8c2432d231af6c0"
@@ -210,7 +212,8 @@ def source_row(row, journal_name):
     return {**row, "source_id": f"{journal_name}:{row['call_id']}"}
 
 
-def pilot(args, base, worker, qualification, config, sources, excluded):
+def pilot(args, base, worker, qualification, config, sources, excluded, *, frozen=None,
+          trial_stop=None, worker_slots=None, energy_stop=False, reserve_slot=False, target=None):
     started = time.perf_counter()
     output = args.output
     sha = code_sha()
@@ -234,9 +237,12 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
                 or environment["rcaide_module"]["sha256"] != reference["rcaide_module"]["sha256"]
                 or any(os.environ[v] != "1" for v in THREAD_VARS)):
             raise ValueError("RCAIDE worker environment differs from the qualification")
-    if problem.config["mission"]["cruise_distance_nmi"] != 45 or problem.config["runtime"]["timeout_seconds"] != TIMEOUT:
-        raise ValueError("Pilot requires the archived 45 nmi configuration and timeout")
+    distance = problem.config["mission"]["cruise_distance_nmi"]
+    if distance not in ((45, 47.5) if energy_stop else (45,)) or problem.config["runtime"]["timeout_seconds"] != TIMEOUT:
+        raise ValueError("Unsupported pilot mission configuration or timeout")
     roster, tasks, _ = points(problem, args.seed, excluded, INITIAL)
+    if frozen is not None and tasks != frozen:
+        raise ValueError("Pilot roster differs from the frozen design roster")
     native_module = importlib.import_module("lsbo.optimizer")
     knobs = ({} if args.execute_rcaide else
              dict(pretrain_epochs=3, update_epochs=2, gp_steps=3, branches=3, points_per_branch=3,
@@ -245,7 +251,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
     settings = native_module.Settings(seed=args.seed, initial=INITIAL, budget=INITIAL + args.online, **knobs)
     limit = INITIAL + len(ARMS) * args.online
     risk_pool_size = 512 if args.execute_rcaide else 32
-    plan = {"code_sha": sha, "base_sha": BASE, "backend": backend, "seed": args.seed, "distance_nmi": 45,
+    plan = {"code_sha": sha, "base_sha": BASE, "backend": backend, "seed": args.seed, "distance_nmi": distance,
             "identity": environment, "sources": sources, "historical_candidate_exclusions": sorted(excluded),
             "qualification_plan_sha256": QUALIFICATION_PLAN_SHA256,
             "offline_report_sha256": args.offline_report_sha256, "config_sha256": sha256(config),
@@ -257,30 +263,51 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             "protocol": "matched_engineering_energy_feedback_v3",
             "performance_gate": {"usable_designs_min": 1, "exact_objectives_min": 3},
             "arms": ARMS, "completion_policies": POLICY}
+    if energy_stop:
+        plan.update(protocol="cold_start_debug_v1", evaluation_stop=ENERGY_STOP_POLICY,
+                    reserved_non_elite_slot=reserve_slot, target_objective_Wh=target)
     plan_path = output / "pilot_plan.json"
     dump(plan_path, plan)
-    print(f"Frozen 45 nmi roster {plan['roster_sha256']} at {output}", flush=True)
+    print(f"Frozen {distance} nmi roster {plan['roster_sha256']} at {output}", flush=True)
 
     def dispatcher(folder, max_calls):
         folder.mkdir(parents=True, exist_ok=True)
         return Dispatcher(problem, folder, backend=backend, worker_root=base if backend == "rcaide" else ROOT,
                           timeout=TIMEOUT, expected_worker=worker, max_calls=max_calls,
-                          mock_profile="engineering-pilot")
+                          mock_profile="cold-start-debug" if energy_stop else "engineering-pilot",
+                          energy_stop=energy_stop)
+
+    stop = trial_stop if trial_stop is not None else Event()
+
+    def evaluate(journal, point, **fields):
+        if worker_slots is None:
+            return journal.evaluate(point, **fields)
+        with worker_slots:
+            if stop.is_set():
+                raise RuntimeError("Batch halted before worker admission")
+            result = journal.evaluate(point, **fields)
+            if result["feedback"]["outcome"] == "infrastructure_error":
+                stop.set()
+            return result
 
     init_root = output / "initial"
     def launch(task):
         point = roster[task["position"] - 1]
         journal = dispatcher(init_root / task["task_id"], 1)
-        row = journal.evaluate(point, seed=args.seed, arm="shared_initial", evaluation=task["position"],
-                               online=0, phase="initial", proposal={"roster_sha256": plan["roster_sha256"]})
+        try:
+            row = evaluate(journal, point, seed=args.seed, arm="shared_initial", evaluation=task["position"],
+                           online=0, phase="initial", proposal={"roster_sha256": plan["roster_sha256"]})
+        except Exception:
+            stop.set()
+            raise
         return {"status": row["feedback"]["outcome"], "row": source_row(row, f"initial/{task['task_id']}")}
 
     initial_results = run_wave(tasks, args.workers, launch)
     initial_rows = [initial_results[t["task_id"]]["row"] for t in tasks
                     if "row" in initial_results.get(t["task_id"], {})]
     dump(output / "shared_initial.json", initial_rows)
-    stop = Event()
-    optimizer_lock = Lock()  # The native optimizer and VAE use process-wide Torch RNG state.
+    # Both seeds share process-wide Torch RNG state when run by the debug campaign.
+    optimizer_lock = getattr(args, "optimizer_lock", None) or Lock()
 
     def run_arm(arm):
         folder = output / arm
@@ -292,13 +319,15 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
         with optimizer_lock:
             adapter = ObservationAdapter(problem.problem, native_module.Evaluation, native_feedback=not is_ra)
             optimizer = native_module.Optimizer(adapter, settings, folder)
+            if is_ra and reserve_slot:
+                configure_native_search(optimizer, reserve=True, joint_final=True, force_weighted=True)
             for point, row in zip(roster, initial_rows):
                 if update_native(optimizer, point, row, "initial", row["proposal"]):
                     journal.event("native_stop_during_shared_replay", source_id=row["source_id"], charged=False)
 
         def fit(rep, bounds):
             return fit_head(rep, [o.candidate for o in optimizer.observations], history,
-                            args.seed, 45, use_interval, bounds)[0]
+                            args.seed, distance, use_interval, bounds)[0]
 
         for i in range(1, args.online + 1):
             if status != "complete" or stop.is_set():
@@ -313,12 +342,14 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
                 journal.event("proposal_error", online=i, charged=False, message=str(error),
                               error_type=type(error).__name__)
                 status = "proposal_error"
+                if energy_stop:
+                    stop.set()
                 break
             if stop.is_set():
                 break
             try:
-                row = source_row(journal.evaluate(point, seed=args.seed, arm=arm, evaluation=INITIAL + i,
-                                                  online=i, phase=phase, proposal=metadata), arm)
+                row = source_row(evaluate(journal, point, seed=args.seed, arm=arm, evaluation=INITIAL + i,
+                                          online=i, phase=phase, proposal=metadata), arm)
             except Exception as error:
                 journal.event("dispatch_error", online=i, message=str(error), error_type=type(error).__name__)
                 stop.set()
@@ -336,7 +367,7 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             status = "infrastructure_stop"
         with optimizer_lock:
             optimizer.save_summary(status)
-        projections = [(row, *energy_training_row(row, row["source_id"], 45, prefix_energy, use_interval))
+        projections = [(row, *energy_training_row(row, row["source_id"], distance, prefix_energy, use_interval))
                        for row in history]
         fits = [(r["evaluation"], r["proposal"]["engineering_energy_fit"]) for r in history[INITIAL:]
                 if "engineering_energy_fit" in r["proposal"]]
@@ -354,11 +385,25 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
                        "feedback": r["feedback"], "terminal_energy_lower_Wh": prefix,
                        "energy_evidence": asdict(value), "charged": r["charged"] and r["arm"] == arm}
                       for r, value, prefix in projections]}
+        if target is not None:
+            hits = [r["evaluation"] for r in usable if r["feedback"]["objective_Wh"] <= target]
+            result.update(first_target_call=min(hits, default=None), target_reached=bool(hits),
+                          best_usable_trajectory_Wh=[
+                              min((r["feedback"]["objective_Wh"] for r in usable
+                                   if r["evaluation"] <= index), default=None)
+                              for index in range(1, len(history) + 1)],
+                          fallbacks=[{"evaluation": row["evaluation"], **{
+                              k: v for k, v in row["proposal"].items()
+                              if "fallback" in k or k == "risk_mode"}}
+                              for row in history[INITIAL:]
+                              if any("fallback" in k for k in row["proposal"])
+                              or row["proposal"].get("risk_mode") in
+                              ("native_recovery_or_exploration", "native_fallback")])
         dump(folder / "arm_report.json", result)
         return result
 
     arms = {}
-    initial_ok = len(initial_rows) == INITIAL and all(r["status"] != "infrastructure_error"
+    initial_ok = not stop.is_set() and len(initial_rows) == INITIAL and all(r["status"] != "infrastructure_error"
                                                       for r in initial_results.values())
     if initial_ok:
         with ThreadPoolExecutor(max_workers=min(len(ARMS), args.workers)) as pool:

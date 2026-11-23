@@ -1,6 +1,7 @@
 """Map X-57 worker outcomes to usable observations and completion evidence."""
 
 from .risk_core.observations import OutputObservation, finite
+from .x57_energy_stop import STATUS as ENGINEERING_STOP, verified_stop
 
 RISK_METRIC = "negative_minimum_admissible_terminal_power_W"
 RISK_SCALE_W = 1000.
@@ -32,6 +33,7 @@ def normalize(raw, required, checks, backend):
     objective = None
     completed = None
     bounds = None
+    engineering_stop = None
     if (status in ("ok", "constraint_violation") and raw.get("solver_success") is True
             and finite(raw.get("objective")) and isinstance(metrics, dict)
             and isinstance(received, dict) and all(finite(received.get(name)) for name in required)
@@ -51,15 +53,21 @@ def normalize(raw, required, checks, backend):
             outcome = "unverified_termination"
     elif status in NUMERICAL and raw.get("solver_success") is False:
         outcome = "numerical_nonconvergence"
+    elif status == ENGINEERING_STOP and (engineering_stop := verified_stop(raw)) is not None:
+        outcome = ENGINEERING_STOP
     else:
         outcome = "infrastructure_error"
-    return {
+    feedback = {
         "outcome": outcome, "completion": completed, "usable": outcome == "completed_usable",
         "objective_Wh": objective, "objective_kind": "exact" if completed else "missing",
         "constraints": {name: constraints.get(name) for name in required},
         "constraint_kinds": {name: "exact" if name in constraints else "missing" for name in required},
         "risk_metric": RISK_METRIC, "risk_interval_W": bounds,
     }
+    if engineering_stop:
+        feedback["constraint_kinds"]["usable_energy"] = "interval"
+        feedback["known_constraint_violations"] = ["usable_energy"]
+    return feedback
 
 
 def risk_observation(row, use_interval):
