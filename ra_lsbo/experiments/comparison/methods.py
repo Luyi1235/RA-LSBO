@@ -59,7 +59,9 @@ def _class_label(observation):
 def _classifier(problem, records, name=None):
     x, y = [], []
     for record in records:
-        if record.observation.status in {"unknown", "infrastructure_error"}:
+        status = record.observation.status
+        if status == "infrastructure_error" or (status == "unknown" and (
+                name == "__completion__" or not getattr(problem, "allow_unknown_constraint_evidence", False))):
             continue
         if name == "__completion__":
             label = record.observation.completion_label()

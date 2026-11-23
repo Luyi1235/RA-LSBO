@@ -32,6 +32,8 @@ ARCHSBO_VERSION = "1.7.1"
 
 
 class AircraftScreen:
+    constraint_names = STATIC
+
     def __init__(self, aircraft, problem):
         self.aircraft = aircraft
         self.problem = problem
@@ -57,7 +59,7 @@ class ScreenedHCInfill(HCInfill):
         super().__init__(infill, hc_strategy)
 
     def get_n_infill_constraints(self):
-        return super().get_n_infill_constraints()+len(STATIC)
+        return super().get_n_infill_constraints()+len(self.screen.constraint_names)
 
     def _evaluate(self, x, is_active):
         f, learned = super()._evaluate(x, is_active)
