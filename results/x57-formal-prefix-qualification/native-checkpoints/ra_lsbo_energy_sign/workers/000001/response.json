@@ -1,0 +1,52 @@
+{
+  "objective": null,
+  "status": "engineering_energy_stop",
+  "solver_success": false,
+  "constraints": {},
+  "metrics": {
+    "mda_evaluated": true,
+    "usable_terminal_energy_Wh": 47000.0,
+    "mission_profile": {
+      "version": "concept_mission_20261004_v4",
+      "cruise_distance_nmi": 45.0,
+      "main_descent_rate_ft_min": 450.0,
+      "downleg_distance_ft": 6000.0,
+      "baseleg_descent_rate_ft_min": 250.0
+    },
+    "mission_solver_segments": [
+      {
+        "segment": "DER",
+        "converged": true,
+        "electrical_summary": [
+          {
+            "bus": "bus",
+            "terminal_energy_Wh": 48000.0,
+            "duration_s": 3600.0,
+            "minimum_terminal_power_W": 48000.0,
+            "maximum_terminal_power_W": 48000.0,
+            "initial_charge_soc": 1.0,
+            "final_charge_soc": 0.05
+          }
+        ]
+      }
+    ],
+    "engineering_energy_stop": {
+      "policy": "first_converged_discharge_prefix_over_47000_Wh_v1",
+      "stop_after_segment": "DER",
+      "next_segment_not_started": "ICA",
+      "completed_segments": 1,
+      "terminal_energy_lower_Wh": 48000.0,
+      "terminal_energy_cap_Wh": 47000.0,
+      "natural_completion": null,
+      "prefix": [
+        {
+          "segment": "DER",
+          "terminal_energy_Wh": 48000.0,
+          "duration_s": 3600.0,
+          "initial_soc": 1.0,
+          "final_soc": 0.05
+        }
+      ]
+    }
+  }
+}

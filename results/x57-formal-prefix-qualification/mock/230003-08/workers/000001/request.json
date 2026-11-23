@@ -1,0 +1,115 @@
+{
+  "candidate": {
+    "continuous": {
+      "aspect_ratio": 8.70839952740201,
+      "wing_area": 13.147103705906531,
+      "quarter_chord_sweep": 2.202628094999622,
+      "thickness_to_chord": 0.13847704565379632,
+      "taper_ratio": 0.5834835996088492,
+      "root_twist": 3.2772496929331894,
+      "tip_twist": -1.2601941222958737,
+      "dihedral": 2.911761417971859,
+      "prop_span_spacing": 0.46875209120438965,
+      "prop_diameter_ratio": 1.0828689534882292,
+      "tip_prop_diameter": 1.72,
+      "tip_prop_rpm": 2700.0,
+      "winglet_fraction": 0.08902017350615608,
+      "winglet_cant_angle": 57.91755485209059
+    },
+    "discrete": {
+      "prop_layout": "leading_edge_distributed",
+      "propeller_count": 4,
+      "wing_airfoil": "Clark_Y",
+      "blade_count": 4,
+      "has_winglet": "yes"
+    }
+  },
+  "config": {
+    "name": "X57_cold_start_qualification_55nmi",
+    "backend": "workspace_v49_nasa_modII_geometry_v2",
+    "operating_limit_policy": "audited_operating_constraints_20261004_v1",
+    "geometry": {
+      "version": "constant_disk_area_clearance_20260927_v2",
+      "reference_diameter_m": 1.72,
+      "reference_rpm": 2700.0,
+      "fuselage_half_width_m": 0.6,
+      "min_disk_clearance_m": 0.05,
+      "min_fuselage_clearance_m": 0.05,
+      "min_wing_clearance_m": 0.05
+    },
+    "runtime": {
+      "timeout_seconds": 1800
+    },
+    "mission": {
+      "version": "concept_mission_20261004_v4",
+      "cruise_distance_nmi": 45.0,
+      "main_descent_rate_ft_min": 450.0,
+      "downleg_distance_ft": 6000.0,
+      "baseleg_descent_rate_ft_min": 250.0
+    },
+    "propulsion_research": {
+      "version": "propulsion_consistency_research_20261002_v1",
+      "synchronize_mission_mass": true,
+      "correct_nacelle_drag": true,
+      "native_wake": false
+    },
+    "section_consistency": {
+      "version": "section_thickness_consistency_20261002_v1"
+    },
+    "simplified_powered_lift": {
+      "version": "native_delta_lift_concept_screen_20261004_v1",
+      "enabled": true,
+      "reference_alpha_deg": 8.0,
+      "spanwise_panels": 48,
+      "chordwise_panels": 5
+    },
+    "mission_slipstream": {
+      "version": "native_mission_increment_20261004_v2",
+      "enabled": true,
+      "spanwise_panels": 24,
+      "chordwise_panels": 4
+    },
+    "component_scaling": {
+      "version": "component_similarity_v1",
+      "scale_motor_no_load": true,
+      "reconcile_nacelle_diameter": true,
+      "leading_edge_exposed_fraction": 0.8
+    },
+    "design_study": {
+      "version": "compact_wing_bounds_study_20261012_v1",
+      "wing_area_bounds_m2": [
+        9.0,
+        17.0
+      ],
+      "scope": "conceptual_sensitivity_not_NASA_validated_bounds"
+    }
+  },
+  "mock": {
+    "arm": "shared",
+    "online": 0,
+    "evaluation": 8,
+    "profile": "formal-prefix",
+    "required": [
+      "soc",
+      "stall_speed",
+      "flutter",
+      "structure",
+      "span_min",
+      "span_max",
+      "usable_energy",
+      "prop_disk_clearance",
+      "prop_fuselage_clearance",
+      "prop_wing_clearance",
+      "battery_current",
+      "battery_voltage"
+    ],
+    "precheck": {
+      "prop_disk_clearance": -0.19533732771663176,
+      "prop_fuselage_clearance": 0.0,
+      "prop_wing_clearance": -1.7706463941050448,
+      "flutter": -0.301500935674481,
+      "span_min": -1.5000108270609545,
+      "span_max": -3.7999891729390463
+    }
+  }
+}
