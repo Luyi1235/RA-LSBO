@@ -16,19 +16,21 @@ def result(payload):
     constraints.update(step["precheck"])
     scenario = step["profile"]
     evaluation, online = step["evaluation"], step["online"]
-    if scenario == "cold-start-debug":
+    if scenario in ("cold-start-debug", "formal-prefix"):
         distance = payload["config"]["mission"]["cruise_distance_nmi"]
-        if not online and evaluation % 4 == 1:
+        if (not online and evaluation % 4 == 1) or (scenario == "formal-prefix" and online == 1):
             segment = {"segment": "DER", "converged": True, "electrical_summary": [
                 {"bus": "bus", "terminal_energy_Wh": 48000., "duration_s": 3600.,
                  "minimum_terminal_power_W": 48000., "maximum_terminal_power_W": 48000.,
                  "initial_charge_soc": 1., "final_charge_soc": .05}]}
             return dict(objective=None, status=STATUS, solver_success=False, constraints={},
                         metrics=stopped_metrics([segment], payload["config"]["mission"]))
-        if not online and evaluation % 4 == 2 and distance == 47.5:
+        if ((not online and evaluation % 4 == 2 and distance == 47.5)
+                or (scenario == "formal-prefix" and online == 2)):
             return dict(objective=None, status="mission_not_converged", solver_success=False,
                         constraints={}, metrics={"mission_profile": payload["config"]["mission"]})
-        if not online and evaluation % 4 == 3:
+        if (not online and evaluation % (8 if scenario == "formal-prefix" else 4) == 3
+                or (scenario == "formal-prefix" and online == 3)):
             constraints["usable_energy"] = .005
         else:
             constraints["usable_energy"] = -.05
