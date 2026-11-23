@@ -254,7 +254,8 @@ def pilot(args, base, worker, qualification, config, sources, excluded):
             "max_worker_calls": limit, "worker_concurrency_limit": args.workers, "timeout_seconds": TIMEOUT,
             "settings": asdict(settings), "risk_pool_size": risk_pool_size, "energy_gp": asdict(SETTINGS),
             "native_missing_objective_policy": "log and continue to the common budget",
-            "protocol": "matched_engineering_energy_feedback_v2",
+            "protocol": "matched_engineering_energy_feedback_v3",
+            "performance_gate": {"usable_designs_min": 1, "exact_objectives_min": 3},
             "arms": ARMS, "completion_policies": POLICY}
     plan_path = output / "pilot_plan.json"
     dump(plan_path, plan)

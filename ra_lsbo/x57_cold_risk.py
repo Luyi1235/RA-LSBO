@@ -119,10 +119,16 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
         candidate, info = native.propose(phase)
         return candidate, phase, info
 
-    stage = "completion" if sum(row["feedback"]["usable"] for row in history) < 3 else "performance"
+    usable_designs = sum(row["feedback"]["usable"] for row in history)
+    exact_objectives = sum(obs.result.has_objective() for obs in native.observations)
+    # Native LogEI needs a feasible incumbent and the native surrogate needs
+    # three valid objectives. Completed designs can supply objectives even
+    # when they violate an engineering constraint.
+    stage = "performance" if usable_designs and exact_objectives >= 3 else "completion"
     evidence = [(obs.candidate, value) for obs, row in zip(native.observations, history)
                 if (value := risk_observation(row, arm == "structured_interval")) is not None]
     info = {"risk_stage": stage, "risk_training_rows": len(evidence),
+            "usable_designs": usable_designs, "exact_objectives": exact_objectives,
             "n_finite_information_rows": sum(
                 (v.lower is not None and v.lower > 0.) or (v.upper is not None and v.upper > 0.)
                 for _, v in evidence)}

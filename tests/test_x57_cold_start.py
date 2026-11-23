@@ -140,7 +140,9 @@ def test_mock_worker_closed_loop(tmp_path, scenario, online, status, charges):
             hit = next(r["evaluation"] for r in paid if r["feedback"]["objective_Wh"] <= 41000.)
             assert track["first_usable"] == 33 and track["first_target"] == hit
             if arm != ARMS[0]:
-                assert [r["proposal"]["risk_stage"] for r in paid] == ["completion"] * 3 + ["performance"]
+                assert [r["proposal"]["risk_stage"] for r in paid] == ["completion"] + ["performance"] * 3
+                assert paid[1]["proposal"]["usable_designs"] == 1
+                assert paid[1]["proposal"]["exact_objectives"] >= 3
                 assert paid[-1]["proposal"]["risk_mode"] == "risk_weighted_native_search"
                 assert all(r["proposal"]["n_finite_information_rows"] ==
                            (8 if arm == "structured_interval" else 0) for r in paid)
