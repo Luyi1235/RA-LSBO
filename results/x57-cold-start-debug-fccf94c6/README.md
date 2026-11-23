@@ -17,6 +17,19 @@ The frozen code is `fccf94c61d87b170824476046c8f3d2a4d503229`. [`campaign_plan.j
 
 [`energy_stop_replay.json`](verification/energy_stop_replay.json) pairs the counterfactual observations with sealed historical truth. At the stop, the natural completion state is unknown and the mission objective is missing. All arms receive the established energy constraint violation. The sign arm uses `g > 0`; the interval arm uses `g >= E_prefix / 47000 - 1`. The prefix requires contiguous converged discharge segments with finite energy, physically consistent terminal power, and continuous SOC. The real worker checks it after postprocessing each segment, while retaining the frozen RCAIDE and X-57 sources.
 
+## Calibration
+
+The 24 paired calls settled at peak concurrency 12. Each row covers six new designs.
+
+| Distance | Layout | Usable | Completed with violations | Engineering stops with verified bounds | Numerical nonconvergence |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 45 nmi | Wingtip | 0 | 1 | 5 | 0 |
+| 45 nmi | Leading-edge distributed | 2 | 0 | 4 | 0 |
+| 47.5 nmi | Wingtip | 0 | 0 | 6 | 0 |
+| 47.5 nmi | Leading-edge distributed | 0 | 2 | 4 | 0 |
+
+The two usable 45 nmi designs had mission objectives of 48,373.69 and 48,464.22 Wh. The predeclared rule selected 45 nmi for the pilot. The per-design report includes solver times, constraint violations, failure diagnostics and the verified stopping boundary. [Calibration report](calibration/calibration_report.json)
+
 ## Reproduce
 
 Run from the fixed development commit in the qualified workstation environment. `-Mode verify` runs the archived replay. `-Mode mock` runs the full simulation. The real run accepts the completed mock and replay reports for that same commit and records their applicable hashes.
