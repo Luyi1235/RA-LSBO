@@ -93,7 +93,7 @@ class X57External:
     """Sequential ask/tell with explicit worker ownership outside the optimizer."""
 
     def __init__(self, problem, arm, seed, initial, total_budget=TOTAL_BUDGET, pool_size=512):
-        if arm not in ARMS or len(initial) not in (8, 32) or not len(initial) < total_budget <= TOTAL_BUDGET:
+        if arm not in ARMS or len(initial) not in (8, 32, 64) or not len(initial) < total_budget <= TOTAL_BUDGET:
             raise ValueError("Invalid external trajectory settings")
         self.problem, self.arm, self.seed = problem, arm, seed
         self.total_budget, self.initial_size, self.pool_size = total_budget, len(initial), pool_size
