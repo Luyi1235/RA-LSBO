@@ -30,6 +30,25 @@ The 24 paired calls settled at peak concurrency 12. Each row covers six new desi
 
 The two usable 45 nmi designs had mission objectives of 48,373.69 and 48,464.22 Wh. The predeclared rule selected 45 nmi for the pilot. The per-design report includes solver times, constraint violations, failure diagnostics and the verified stopping boundary. [Calibration report](calibration/calibration_report.json)
 
+## Paired pilot
+
+The campaign exited with code `0`. Its 112 worker starts cover 24 calibration calls, 16 shared initial calls and 72 online calls. The independently reconstructed peak overlap was 12 overall and 6 online. The audit verified 34 engineering stops, comprising 19 in calibration and 15 in the pilot. [Physical audit](physical_audit.json)
+
+| Seed | Arm | Initial usable | First usable, cumulative | First usable, online | First `<= 46,000 Wh`, cumulative | Best at 20, Wh | Fitted partials |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 20261127 | Original LSBO | 1 | 7 | 1 | 10 | 44,480.67 | 0 |
+| 20261127 | RA-LSBO sign | 1 | 7 | 2 | 15 | 45,328.34 | 7 |
+| 20261127 | RA-LSBO interval | 1 | 7 | 2 | 15 | 45,521.14 | 7 |
+| 20261129 | Original LSBO | 3 | 2 | 1 | 20 | 45,886.15 | 0 |
+| 20261129 | RA-LSBO sign | 3 | 2 | 2 | 10 | 44,686.80 | 5 |
+| 20261129 | RA-LSBO interval | 3 | 2 | 2 | 10 | 44,635.76 | 5 |
+
+All three arms reached the quality target in both seeds. The zero-initial-usable subgroup has no sampled seed. The interval arm finished 192.79 Wh above the sign arm on `20261127` and 51.04 Wh below it on `20261129`. None of the trajectories recorded an RA decision fallback or a native consecutive-missing-objective stop. [Campaign report](campaign_report.json) · [Complete trajectory CSV](trajectory.csv) · [Figure](best_feasible_trajectory.pdf) · [Worker ledger](calls.jsonl)
+
+## Formal comparison
+
+The protocol fixes a 45 nmi mission, six independent seeds and five arms, including screened ArchSBO and adapted LogCEI. Each arm receives a cumulative budget of 320 calls, with 32 shared initial designs in the main study and a nested prefix of eight in the sensitivity study. The two external X-57 adapters require qualification ahead of the formal run. [Frozen protocol](formal_protocol.json) · [Frozen design rosters](formal_rosters.json)
+
 ## Reproduce
 
 Run from the fixed development commit in the qualified workstation environment. `-Mode verify` runs the archived replay. `-Mode mock` runs the full simulation. The real run accepts the completed mock and replay reports for that same commit and records their applicable hashes.

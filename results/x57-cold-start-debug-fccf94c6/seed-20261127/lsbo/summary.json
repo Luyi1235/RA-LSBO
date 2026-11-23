@@ -1,0 +1,4086 @@
+{
+  "status": "complete",
+  "problem": "X57_cold_start_qualification_55nmi",
+  "settings": {
+    "budget": 20,
+    "initial": 8,
+    "seed": 20261127,
+    "latent_dim": 4,
+    "pretrain_epochs": 60,
+    "update_epochs": 20,
+    "update_every": 8,
+    "gp_steps": 45,
+    "branches": 12,
+    "points_per_branch": 10,
+    "restarts": 4,
+    "raw_samples": 64,
+    "local_branches": 2,
+    "refinement_fraction": 0.2,
+    "exploration_probability": 0.1,
+    "use_prior": true,
+    "max_proposal_attempts": 3000,
+    "max_consecutive_solver_failures": 5,
+    "initial_local_fraction": 0.0,
+    "initial_local_radius": 0.03,
+    "stratified_initialization": true,
+    "coverage_interval": 5,
+    "use_solver_domain": true,
+    "refinement_radius": 0.03,
+    "adaptive_refinement": true,
+    "refinement_min_radius": 0.001,
+    "screen_solver_risk": true,
+    "bo_domain_probability": 0.8,
+    "refinement_domain_probability": 0.95,
+    "bo_success_probability": 0.5,
+    "refinement_success_probability": 0.7,
+    "proposal_pool_size": 512,
+    "coverage_min_evaluations": 4,
+    "refinement_challenger_patience": 8,
+    "refinement_challenger_interval": 5,
+    "constrained_local_search": true
+  },
+  "method": "lsbo",
+  "initial_design_sha256": null,
+  "recovery_policy": "margin_ranked_anchor_backoff_v1",
+  "consecutive_solver_failures": 0,
+  "resume_failure_limit": null,
+  "continuation": null,
+  "last_representation_update": 17,
+  "coverage": [
+    {
+      "stratum": {
+        "prop_layout": "wingtip",
+        "propeller_count": 2
+      },
+      "evaluations": 5
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 2
+      },
+      "evaluations": 11
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 4
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 6
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 8
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 10
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 12
+      },
+      "evaluations": 0
+    }
+  ],
+  "evaluations": 20,
+  "feasible_evaluations": 7,
+  "precheck_rejections": {
+    "flutter": 7652,
+    "span_min": 879,
+    "span_max": 175,
+    "prop_disk_clearance": 3133
+  },
+  "proposal_sources": {
+    "unspecified": 8,
+    "feasible_neighborhood_recovery": 1,
+    "latent_decode_rescore": 9,
+    "elite_local_rescore": 2
+  },
+  "best": {
+    "evaluation": 20,
+    "candidate": {
+      "continuous": {
+        "aspect_ratio": 10.804468132534918,
+        "wing_area": 10.857156761892563,
+        "quarter_chord_sweep": 3.999999999999499,
+        "thickness_to_chord": 0.13999999999838614,
+        "taper_ratio": 0.3500000001699272,
+        "root_twist": 2.000000000087063,
+        "tip_twist": -2.199999999012308,
+        "dihedral": 1.701713821993506,
+        "prop_span_spacing": 0.5180715916485592,
+        "prop_diameter_ratio": 0.8200000000000842,
+        "tip_prop_diameter": 1.72,
+        "tip_prop_rpm": 2700.0,
+        "winglet_fraction": 0.058837897935051495,
+        "winglet_cant_angle": 45.00000000001925
+      },
+      "discrete": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 2,
+        "wing_airfoil": "NACA_65_215",
+        "blade_count": 3,
+        "has_winglet": "yes"
+      }
+    },
+    "result": {
+      "objective": 44480.67480668034,
+      "solver_success": true,
+      "constraints": {
+        "soc": -0.09416597066989707,
+        "stall_speed": -0.6292169030638917,
+        "flutter": -1.5082113336006842e-10,
+        "structure": -0.50003880770415,
+        "span_min": -1.6307804078840142,
+        "span_max": -3.6692195921159865,
+        "usable_energy": -0.10351451913370568,
+        "prop_disk_clearance": -4.674443070678113,
+        "prop_fuselage_clearance": -1.7122215353390566,
+        "prop_wing_clearance": -1.5927686686028055,
+        "battery_current": -0.4392411053324694,
+        "battery_voltage": -0.24270097432361726
+      },
+      "status": "ok",
+      "metrics": {
+        "soc_margin": 0.24416597066989706,
+        "stall_speed_mps": 30.770783096936107,
+        "flutter_margin": 0.8500000001508211,
+        "structural_ratio": 0.49996119229585007,
+        "span_m": 10.830780407884014,
+        "edge_margin": 1.2523315717771766e-13,
+        "postprocess_version": "nasa_charge_soc_energy_audit_fail_closed_v1",
+        "operating_limit_policy": "audited_operating_constraints_20261004_v1",
+        "design_study": {
+          "version": "compact_wing_bounds_study_20261012_v1",
+          "wing_area_bounds_m2": [
+            9.0,
+            17.0
+          ],
+          "scope": "conceptual_sensitivity_not_NASA_validated_bounds"
+        },
+        "energy_model_version": "nasa_modII_30Q_final_envelope_20260926",
+        "declared_pack_capacity_Wh": 56560.31949930993,
+        "capacity_source": "nasa_2019_20C_OCV_integral_3Ah_5120cells",
+        "soc_definition": "charge_fraction_not_energy_fraction",
+        "physical_configuration": "two_128S20P_strings_16_physical_modules",
+        "computational_equivalent": "balanced_128S40P_8_equivalent_modules",
+        "nominal_energy_Wh": 55296.0,
+        "maximum_voltage_times_Ah_Wh": 64512.0,
+        "usable_terminal_energy_Wh": 47000.0,
+        "pack_nominal_voltage_V": 460.8,
+        "pack_mass_kg": 350.0,
+        "mission_cell_current_limit_A": 9.0,
+        "operating_limit_check": "final_converged_mission_including_substep_extrema",
+        "minimum_allowed_pack_voltage_V": 330.0,
+        "aircraft_weight_scope": "existing_fixed_nonwing_mass_retained_no_battery_double_add",
+        "thermal_assumption": "isothermal_20C_no_cooling_power_or_thermal_validation",
+        "electrical_model": "NASA_2019_appendix_A_20C_OCV_R0_plus_Rth_quasisteady",
+        "native_NMC_kernel_used": false,
+        "cell_capacity_Ah": 3.0,
+        "cell_max_voltage_V": 4.2,
+        "module_series_cells": 16,
+        "module_parallel_cells": 40,
+        "energy_loss_convention": "I_squared_R0_plus_Rth_dissipation",
+        "native_energy_method_sha256": [
+          "b9be991f58cb47d3715ffc4dd80998a92531d10243238c52315f0af00012ac9e"
+        ],
+        "native_energy_kernel_sha256": [
+          "10af41b9fc5f73602defddc7cc5dea4092ead3cd2d89ff40b3005ff8a505cfa9"
+        ],
+        "mission_profile": {
+          "version": "concept_mission_20261004_v4",
+          "cruise_distance_nmi": 45.0,
+          "main_descent_rate_ft_min": 450.0,
+          "downleg_distance_ft": 6000.0,
+          "baseleg_descent_rate_ft_min": 250.0
+        },
+        "mission_assumption_source": "conceptual_design_scenario_not_NASA_flight_test_schedule",
+        "main_descent_duration_s": 934.9333333333333,
+        "previous_main_descent_duration_s": 2103.6,
+        "downleg_duration_s": 38.83858033605736,
+        "previous_downleg_duration_s": 166.97599999999994,
+        "downleg_effective_distance_m": 1828.8000000000002,
+        "downleg_acceleration_m_s2": -0.10748075660542428,
+        "baseleg_duration_s": 120.0,
+        "previous_baseleg_duration_s": 85.71428571428572,
+        "baseleg_initial_speed_m_s": 49.1744,
+        "cruise_distance_m": 83340.0,
+        "previous_cruise_distance_m": 92600.0,
+        "mission_end_altitude_m": 152.4,
+        "reserve_segments_retained": true,
+        "component_scaling": {
+          "settings": {
+            "version": "component_similarity_v1",
+            "scale_motor_no_load": true,
+            "reconcile_nacelle_diameter": true,
+            "leading_edge_exposed_fraction": 0.8
+          },
+          "scope": "declared_conceptual_similarity_assumption_not_measured_X57_calibration",
+          "motor_rule": "constant_no_load_fraction_of_design_input_current",
+          "reference_power_W": 178013.23953552858,
+          "reference_voltage_V": 268.8,
+          "reference_efficiency": 0.98,
+          "reference_no_load_current_A": 1.0,
+          "reference_no_load_fraction": 0.0014798000457006727,
+          "nacelle_rule": "equivalent_diameter_from_maximum_elliptical_loft_section",
+          "installation_rule": "declared_effective_exposed_wetted_fraction_for_leading_edge_only",
+          "installation_scope": "assumed_integration_not_CAD_union_or_measured_interference_drag",
+          "unchanged": [
+            "design_efficiency",
+            "ESC_efficiency",
+            "rotor_BEM",
+            "battery",
+            "mission",
+            "design_variables",
+            "constraints",
+            "fixed_nonwing_mass"
+          ],
+          "components": [
+            {
+              "tag": "propulsor_0",
+              "inherited_diameter_m": 0.8747760000000898,
+              "loft_equivalent_diameter_m": 0.4947257826311969,
+              "applied_diameter_m": 0.4947257826311969,
+              "full_loft_wetted_m2": 2.1823522251771,
+              "effective_wetted_m2": 1.74588178014168,
+              "exposed_fraction": 0.8,
+              "no_load_current_A": 1.0473101526276858,
+              "motor_design_current_A": 707.7376133826198
+            },
+            {
+              "tag": "propulsor_1",
+              "inherited_diameter_m": 0.8747760000000898,
+              "loft_equivalent_diameter_m": 0.4947257826311969,
+              "applied_diameter_m": 0.4947257826311969,
+              "full_loft_wetted_m2": 2.1823522251771,
+              "effective_wetted_m2": 1.74588178014168,
+              "exposed_fraction": 0.8,
+              "no_load_current_A": 1.0473101526276858,
+              "motor_design_current_A": 707.7376133826198
+            }
+          ]
+        },
+        "motor_design_version": "dc_exact_design_20260926",
+        "motor_design_records": [
+          {
+            "speed_constant": 1.3070134136774232,
+            "resistance": 0.007044429115501125,
+            "design_current": 707.7376133826198,
+            "torque_residual_Nm": 0.0,
+            "efficiency_residual": -1.1102230246251565e-16,
+            "tag": "motor",
+            "no_load_current_before_A": 1.0,
+            "no_load_current_A": 1.0473101526276858,
+            "no_load_fraction": 0.0014798000457006727
+          },
+          {
+            "speed_constant": 1.3070134136774232,
+            "resistance": 0.007044429115501125,
+            "design_current": 707.7376133826198,
+            "torque_residual_Nm": 0.0,
+            "efficiency_residual": -1.1102230246251565e-16,
+            "tag": "motor",
+            "no_load_current_before_A": 1.0,
+            "no_load_current_A": 1.0473101526276858,
+            "no_load_fraction": 0.0014798000457006727
+          }
+        ],
+        "propulsion_geometry_version": "constant_disk_area_clearance_20260927_v2",
+        "propulsion_geometry_settings": {
+          "version": "constant_disk_area_clearance_20260927_v2",
+          "reference_diameter_m": 1.72,
+          "reference_rpm": 2700.0,
+          "fuselage_half_width_m": 0.6,
+          "min_disk_clearance_m": 0.05,
+          "min_fuselage_clearance_m": 0.05,
+          "min_wing_clearance_m": 0.05
+        },
+        "nonwing_mass_scope": "legacy_fixed_nonwing_mass; not a variable propulsion mass model",
+        "propulsion_research": {
+          "settings": {
+            "version": "propulsion_consistency_research_20261002_v1",
+            "synchronize_mission_mass": true,
+            "correct_nacelle_drag": true,
+            "native_wake": false
+          },
+          "scope": "experimental_consistency_check_not_validated_powered_lift",
+          "powered_stall_credit_applied": true,
+          "propulsion_mass_policy": "legacy_fixed_nonwing_mass_retained_pending_calibrated_component_model",
+          "phase_policy": "all_installed_cruise_propulsors_one_throttle_group_not_X57_highlift_plus_cruise",
+          "components": [
+            {
+              "tag": "propulsor_0",
+              "motor_mass_kg": 40.39161458915659,
+              "nacelle_original_wetted_m2": 0.00021124069002742112,
+              "nacelle_loft_wetted_m2": 2.1823522251771,
+              "motor_design_efficiency": 0.98,
+              "esc_efficiency": 0.95,
+              "rotor_design_power_W": 186435.07306770323,
+              "rotor_design_thrust_N": 2000.0
+            },
+            {
+              "tag": "propulsor_1",
+              "motor_mass_kg": 40.39161458915659,
+              "nacelle_original_wetted_m2": 0.00021124069002742112,
+              "nacelle_loft_wetted_m2": 2.1823522251771,
+              "motor_design_efficiency": 0.98,
+              "esc_efficiency": 0.95,
+              "rotor_design_power_W": 186435.07306770323,
+              "rotor_design_thrust_N": 2000.0
+            }
+          ],
+          "motor_mass_sum_kg": 80.78322917831318,
+          "weight": {
+            "template_mission_mass_kg": 1230.1425074400001,
+            "constraint_mass_kg": 1290.0621502352667,
+            "configured_mission_mass_kg": 1290.0621502352667
+          },
+          "dep_diagnostics": {
+            "version": "dep_conditional_physics_20261002_v1",
+            "wing_root_z_m": 1.01,
+            "realized_wing": {
+              "area_m2": 10.857156761892563,
+              "span_m": 10.830780407884014,
+              "taper": 0.3500000001699273,
+              "aspect_ratio": 10.804468132534918,
+              "thickness_to_chord": 0.13999999999838614
+            },
+            "projection": {
+              "covered_area_m2": 2.6371961263365,
+              "coverage_fraction": 0.24289933213387604,
+              "intervals_m": [
+                [
+                  -3.770064431837843,
+                  -2.364778638840415
+                ],
+                [
+                  2.364778638840415,
+                  3.770064431837843
+                ]
+              ],
+              "scope": "planar_disk_projection_no_wake_contraction"
+            },
+            "low_speed_requirement": {
+              "required_cl": 1.9301814751150481,
+              "assumed_unpowered_clmax": 1.9033207290301515,
+              "required_global_loading_ratio": 1.0141125695082318,
+              "actual_powered_clmax": null,
+              "powered_stall_credit_applied": false
+            },
+            "conditional_power_requirement": {
+              "status": "conditional_scenario_only",
+              "local_q_ratio": 1.0581004870793698,
+              "cases": {
+                "disk_plane": {
+                  "ideal_shaft_power_W": 7182.260990540743,
+                  "thrust_N": 222.36584303725252,
+                  "induced_speed_mps": 0.899299624616867
+                },
+                "far_wake": {
+                  "ideal_shaft_power_W": 3491.839710956828,
+                  "thrust_N": 109.63510530051077,
+                  "induced_speed_mps": 0.4496498123084335
+                }
+              },
+              "usable_as_constraint": false,
+              "assumptions": "uniform_loading_fixed_section_CLmax_no_contraction_or_losses"
+            },
+            "power_chain": [
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 5.079999999999989,
+                "bus_terminal_energy_Wh": 114.66530314286454,
+                "rotor_shaft_energy_Wh": 107.18483116319307,
+                "motor_esc_loss_Wh": 7.438138646338148,
+                "auxiliary_distribution_energy_Wh": 0.04233333333333324,
+                "balance_residual_Wh": -3.2335245592207684e-15,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "DER",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 44.999999999999915,
+                "bus_terminal_energy_Wh": 1170.4101903659966,
+                "rotor_shaft_energy_Wh": 1093.9780413456774,
+                "motor_esc_loss_Wh": 76.05714902031922,
+                "auxiliary_distribution_energy_Wh": 0.3749999999999993,
+                "balance_residual_Wh": 1.4932499681208355e-14,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "ICA",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 239.99999999999957,
+                "bus_terminal_energy_Wh": 5526.406035469814,
+                "rotor_shaft_energy_Wh": 5172.0727577179505,
+                "motor_esc_loss_Wh": 352.33327775186297,
+                "auxiliary_distribution_energy_Wh": 1.9999999999999962,
+                "balance_residual_Wh": 5.722089468918057e-13,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "climb_1",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 472.4341960533336,
+                "bus_terminal_energy_Wh": 11983.110765363088,
+                "rotor_shaft_energy_Wh": 11203.999724819942,
+                "motor_esc_loss_Wh": 775.1740889093646,
+                "auxiliary_distribution_energy_Wh": 3.93695163377778,
+                "balance_residual_Wh": 3.965716643961059e-12,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "climb_2",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 1541.8598178795294,
+                "bus_terminal_energy_Wh": 17109.28016274467,
+                "rotor_shaft_energy_Wh": 16011.33306210229,
+                "motor_esc_loss_Wh": 1085.098268826717,
+                "auxiliary_distribution_energy_Wh": 12.848831815662743,
+                "balance_residual_Wh": 1.227462576025573e-12,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "cruise",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 934.9333333333316,
+                "bus_terminal_energy_Wh": 1244.9979094289477,
+                "rotor_shaft_energy_Wh": 1109.1482444112726,
+                "motor_esc_loss_Wh": 128.0585539065639,
+                "auxiliary_distribution_energy_Wh": 7.791111111111096,
+                "balance_residual_Wh": 8.171241461241152e-14,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "decent",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 38.838580336057476,
+                "bus_terminal_energy_Wh": 282.16338647326296,
+                "rotor_shaft_energy_Wh": 263.44272826359156,
+                "motor_esc_loss_Wh": 18.397003373537615,
+                "auxiliary_distribution_energy_Wh": 0.3236548361338123,
+                "balance_residual_Wh": -2.842170943040401e-14,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "Downleg",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 60.0,
+                "bus_terminal_energy_Wh": 1383.1202708405187,
+                "rotor_shaft_energy_Wh": 1294.413935251016,
+                "motor_esc_loss_Wh": 88.2063355895025,
+                "auxiliary_distribution_energy_Wh": 0.5,
+                "balance_residual_Wh": 2.1316282072803006e-13,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "Reserve_Climb",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 148.96551724137953,
+                "bus_terminal_energy_Wh": 2675.0964247830284,
+                "rotor_shaft_energy_Wh": 2506.98426889745,
+                "motor_esc_loss_Wh": 166.870776575233,
+                "auxiliary_distribution_energy_Wh": 1.2413793103448294,
+                "balance_residual_Wh": 5.930811397547586e-13,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "Reserve_Cruise",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 100.0,
+                "bus_terminal_energy_Wh": 383.2343629091336,
+                "rotor_shaft_energy_Wh": 355.12748533121834,
+                "motor_esc_loss_Wh": 27.273544244581867,
+                "auxiliary_distribution_energy_Wh": 0.8333333333333334,
+                "balance_residual_Wh": 6.983302824892235e-14,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "Reserve_Descent",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              },
+              {
+                "integration": "left_endpoint_same_as_battery_audit",
+                "duration_s": 120.0,
+                "bus_terminal_energy_Wh": 262.33278919449947,
+                "rotor_shaft_energy_Wh": 240.20820713543813,
+                "motor_esc_loss_Wh": 21.124582059061307,
+                "auxiliary_distribution_energy_Wh": 1.0,
+                "balance_residual_Wh": 3.197442310920451e-14,
+                "rotor_count": 2,
+                "minimum_bus_minus_esc_W": 30.0,
+                "segment": "Baseleg",
+                "roles": [
+                  "cruise",
+                  "cruise"
+                ],
+                "operating_states": [
+                  "active",
+                  "active"
+                ]
+              }
+            ],
+            "power_chain_status": "passed",
+            "powered_stall_credit_applied": false,
+            "auxiliary_operating_group_verified": false,
+            "high_lift_operating_group_implemented": false,
+            "variable_installed_propulsion_mass_implemented": false,
+            "ready_for_architecture_optimization": false
+          },
+          "segments": [
+            {
+              "segment": "DER",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 45.0,
+                "max": 45.0,
+                "mean": 45.0
+              },
+              "lift_coefficient": {
+                "min": 0.6827703608304962,
+                "max": 0.6837531159885144,
+                "mean": 0.6832616370456932
+              },
+              "drag_coefficient": {
+                "min": 0.03168375856727562,
+                "max": 0.03171314499727204,
+                "mean": 0.03169844792023746
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.2851527298544972,
+                    "max": 0.2852437397206316,
+                    "mean": 0.2851982263437788
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 714.3999593715826,
+                    "mean": 238.10898000427986
+                  },
+                  "power": {
+                    "min": 37977.34039011578,
+                    "max": 37980.18461957625,
+                    "mean": 37978.76116887278
+                  },
+                  "efficiency": {
+                    "min": 0.8431470111455763,
+                    "max": 0.8432704846741198,
+                    "mean": 0.8432087579198722
+                  },
+                  "omega": {
+                    "min": 198.04523805214916,
+                    "max": 198.11011469391855,
+                    "mean": 198.07767048825872
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.2851527298544972,
+                    "max": 0.2852437397206316,
+                    "mean": 0.2851982263437788
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 714.3999593715826,
+                    "mean": 238.10898000427986
+                  },
+                  "power": {
+                    "min": 37977.34039011578,
+                    "max": 37980.18461957625,
+                    "mean": 37978.76116887278
+                  },
+                  "efficiency": {
+                    "min": 0.8431470111455763,
+                    "max": 0.8432704846741198,
+                    "mean": 0.8432087579198722
+                  },
+                  "omega": {
+                    "min": 198.04523805214916,
+                    "max": 198.11011469391855,
+                    "mean": 198.07767048825872
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "ICA",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 45.0,
+                "max": 50.00000000000001,
+                "mean": 47.5
+              },
+              "lift_coefficient": {
+                "min": 0.5622350567041173,
+                "max": 0.6825073081649532,
+                "mean": 0.6202455010559405
+              },
+              "drag_coefficient": {
+                "min": 0.028362948417843054,
+                "max": 0.03165795607402266,
+                "mean": 0.029943540531056086
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.29356180198492887,
+                    "max": 0.3080849515312585,
+                    "mean": 0.30065820010131233
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 792.3998566790997,
+                    "mean": 260.90477504387695
+                  },
+                  "power": {
+                    "min": 42619.326978192636,
+                    "max": 45232.355779651196,
+                    "mean": 43883.60946992811
+                  },
+                  "efficiency": {
+                    "min": 0.833578718236664,
+                    "max": 0.8546047842438765,
+                    "mean": 0.8444776150692215
+                  },
+                  "omega": {
+                    "min": 203.74442583194062,
+                    "max": 213.92189025195518,
+                    "mean": 208.71798074903512
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.29356180198492887,
+                    "max": 0.3080849515312585,
+                    "mean": 0.30065820010131233
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 792.3998566790997,
+                    "mean": 260.90477504387695
+                  },
+                  "power": {
+                    "min": 42619.326978192636,
+                    "max": 45232.355779651196,
+                    "mean": 43883.60946992811
+                  },
+                  "efficiency": {
+                    "min": 0.833578718236664,
+                    "max": 0.8546047842438765,
+                    "mean": 0.8444776150692215
+                  },
+                  "omega": {
+                    "min": 203.74442583194062,
+                    "max": 213.92189025195518,
+                    "mean": 208.71798074903512
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "climb_1",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 53.6448,
+                "max": 53.6448,
+                "mean": 53.6448
+              },
+              "lift_coefficient": {
+                "min": 0.49047491076861255,
+                "max": 0.5199748962967586,
+                "mean": 0.5051008393105124
+              },
+              "drag_coefficient": {
+                "min": 0.026476485103218428,
+                "max": 0.02731655073990758,
+                "mean": 0.026892568551367617
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.3061561667988734,
+                    "max": 0.30903379790615604,
+                    "mean": 0.30758664384594736
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 639.6368576193472,
+                    "mean": 211.6667672457288
+                  },
+                  "power": {
+                    "min": 38546.548598712376,
+                    "max": 39003.73328338763,
+                    "mean": 38772.7839903401
+                  },
+                  "efficiency": {
+                    "min": 0.8760703847103792,
+                    "max": 0.8787194944772719,
+                    "mean": 0.8774112814905015
+                  },
+                  "omega": {
+                    "min": 212.90654800339556,
+                    "max": 214.97532420381674,
+                    "mean": 213.93520423677407
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.3061561667988734,
+                    "max": 0.30903379790615604,
+                    "mean": 0.30758664384594736
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 639.6368576193472,
+                    "mean": 211.6667672457288
+                  },
+                  "power": {
+                    "min": 38546.548598712376,
+                    "max": 39003.73328338763,
+                    "mean": 38772.7839903401
+                  },
+                  "efficiency": {
+                    "min": 0.8760703847103792,
+                    "max": 0.8787194944772719,
+                    "mean": 0.8774112814905015
+                  },
+                  "omega": {
+                    "min": 212.90654800339556,
+                    "max": 214.97532420381674,
+                    "mean": 213.93520423677407
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "climb_2",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 43.10627904,
+                "max": 43.10627904,
+                "mean": 43.10627904
+              },
+              "lift_coefficient": {
+                "min": 0.7966215475444114,
+                "max": 0.9378762261275658,
+                "mean": 0.865604723941688
+              },
+              "drag_coefficient": {
+                "min": 0.035864327547737655,
+                "max": 0.041481700711066896,
+                "mean": 0.03859282980642886
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.295360071158579,
+                    "max": 0.3096888176946401,
+                    "mean": 0.3023834651279151
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 806.2792238098475,
+                    "mean": 268.092976944122
+                  },
+                  "power": {
+                    "min": 42402.332725230626,
+                    "max": 43078.93619778585,
+                    "mean": 42722.8551335718
+                  },
+                  "efficiency": {
+                    "min": 0.795738645130453,
+                    "max": 0.8148395555591742,
+                    "mean": 0.8054533566385855
+                  },
+                  "omega": {
+                    "min": 205.03657999625995,
+                    "max": 215.18420097831455,
+                    "mean": 210.01164926983154
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.295360071158579,
+                    "max": 0.3096888176946401,
+                    "mean": 0.3023834651279151
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 806.2792238098475,
+                    "mean": 268.092976944122
+                  },
+                  "power": {
+                    "min": 42402.332725230626,
+                    "max": 43078.93619778585,
+                    "mean": 42722.8551335718
+                  },
+                  "efficiency": {
+                    "min": 0.795738645130453,
+                    "max": 0.8148395555591742,
+                    "mean": 0.8054533566385855
+                  },
+                  "omega": {
+                    "min": 205.03657999625995,
+                    "max": 215.18420097831455,
+                    "mean": 210.01164926983154
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "cruise",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 54.0516064,
+                "max": 54.0516064,
+                "mean": 54.0516064
+              },
+              "lift_coefficient": {
+                "min": 0.6068723968171963,
+                "max": 0.6068723969567047,
+                "mean": 0.6068723969064724
+              },
+              "drag_coefficient": {
+                "min": 0.029921772328042485,
+                "max": 0.029921772331760885,
+                "mean": 0.02992177233045027
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.27857262505320113,
+                    "max": 0.27857262506076597,
+                    "mean": 0.2785726250580421
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 311.3591868675075,
+                    "mean": 103.78639561612789
+                  },
+                  "power": {
+                    "min": 18691.97132877639,
+                    "max": 18691.97133201175,
+                    "mean": 18691.971330846765
+                  },
+                  "efficiency": {
+                    "min": 0.8979082263896468,
+                    "max": 0.897908226393816,
+                    "mean": 0.897908226391148
+                  },
+                  "omega": {
+                    "min": 194.57347479897274,
+                    "max": 194.57347480409788,
+                    "mean": 194.5734748022524
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.27857262505320113,
+                    "max": 0.27857262506076597,
+                    "mean": 0.2785726250580421
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 311.3591868675075,
+                    "mean": 103.78639561612789
+                  },
+                  "power": {
+                    "min": 18691.97132877639,
+                    "max": 18691.97133201175,
+                    "mean": 18691.971330846765
+                  },
+                  "efficiency": {
+                    "min": 0.8979082263896468,
+                    "max": 0.897908226393816,
+                    "mean": 0.897908226391148
+                  },
+                  "omega": {
+                    "min": 194.57347479897274,
+                    "max": 194.57347480409788,
+                    "mean": 194.5734748022524
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "decent",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 49.1744,
+                "max": 54.0516064,
+                "mean": 51.613003199999994
+              },
+              "lift_coefficient": {
+                "min": 0.5951306912285375,
+                "max": 0.6082241725232245,
+                "mean": 0.6006648957595077
+              },
+              "drag_coefficient": {
+                "min": 0.029456471386206023,
+                "max": 0.03003311900138194,
+                "mean": 0.029715448767657783
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.2081682185565139,
+                    "max": 0.2337246142562612,
+                    "mean": 0.2209793426901119
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 41.098908260416955,
+                    "mean": 9.57079042203504
+                  },
+                  "power": {
+                    "min": 1289.926327958466,
+                    "max": 2822.207417204256,
+                    "mean": 2067.786863483812
+                  },
+                  "efficiency": {
+                    "min": 0.5817309746082759,
+                    "max": 0.7848554222842058,
+                    "mean": 0.7034187422276588
+                  },
+                  "omega": {
+                    "min": 146.15363264971342,
+                    "max": 164.0099800461853,
+                    "mean": 155.1026913822608
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.2081682185565139,
+                    "max": 0.2337246142562612,
+                    "mean": 0.2209793426901119
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 41.098908260416955,
+                    "mean": 9.57079042203504
+                  },
+                  "power": {
+                    "min": 1289.926327958466,
+                    "max": 2822.207417204256,
+                    "mean": 2067.786863483812
+                  },
+                  "efficiency": {
+                    "min": 0.5817309746082759,
+                    "max": 0.7848554222842058,
+                    "mean": 0.7034187422276588
+                  },
+                  "omega": {
+                    "min": 146.15363264971342,
+                    "max": 164.0099800461853,
+                    "mean": 155.1026913822608
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "Downleg",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 45.0,
+                "max": 49.1744,
+                "mean": 47.0872
+              },
+              "lift_coefficient": {
+                "min": 0.5942475366931684,
+                "max": 0.709141918021361,
+                "mean": 0.6499189127079921
+              },
+              "drag_coefficient": {
+                "min": 0.029370963827550296,
+                "max": 0.032972318264378596,
+                "mean": 0.031029815983825676
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.22549231254965768,
+                    "max": 0.24336251212012408,
+                    "mean": 0.23429845535930038
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 243.05298530755306,
+                    "mean": 77.66269375575659
+                  },
+                  "power": {
+                    "min": 11199.607526147387,
+                    "max": 13219.419694843462,
+                    "mean": 12151.151661324315
+                  },
+                  "efficiency": {
+                    "min": 0.8990315252927149,
+                    "max": 0.9017768264467675,
+                    "mean": 0.9004719550251998
+                  },
+                  "omega": {
+                    "min": 157.57733029926723,
+                    "max": 170.05365116156284,
+                    "mean": 163.727988425913
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.22549231254965768,
+                    "max": 0.24336251212012408,
+                    "mean": 0.23429845535930038
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 243.05298530755306,
+                    "mean": 77.66269375575659
+                  },
+                  "power": {
+                    "min": 11199.607526147387,
+                    "max": 13219.419694843462,
+                    "mean": 12151.151661324315
+                  },
+                  "efficiency": {
+                    "min": 0.8990315252927149,
+                    "max": 0.9017768264467675,
+                    "mean": 0.9004719550251998
+                  },
+                  "omega": {
+                    "min": 157.57733029926723,
+                    "max": 170.05365116156284,
+                    "mean": 163.727988425913
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "Reserve_Climb",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 53.6448,
+                "max": 53.6448,
+                "mean": 53.6448
+              },
+              "lift_coefficient": {
+                "min": 0.4976528059684866,
+                "max": 0.5049602441131075,
+                "mean": 0.5012988546886544
+              },
+              "drag_coefficient": {
+                "min": 0.026680240281155593,
+                "max": 0.026888093067381342,
+                "mean": 0.02678392330312561
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.3068623438086858,
+                    "max": 0.3075771913037491,
+                    "mean": 0.3072192555992089
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 637.2842565187392,
+                    "mean": 212.04088522688912
+                  },
+                  "power": {
+                    "min": 38770.1112231224,
+                    "max": 38885.66703859258,
+                    "mean": 38827.74343438409
+                  },
+                  "efficiency": {
+                    "min": 0.8774298030537985,
+                    "max": 0.8780832848479514,
+                    "mean": 0.8777575585876606
+                  },
+                  "omega": {
+                    "min": 213.41464967795383,
+                    "max": 213.928706612453,
+                    "mean": 213.6713263486275
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.3068623438086858,
+                    "max": 0.3075771913037491,
+                    "mean": 0.3072192555992089
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 637.2842565187392,
+                    "mean": 212.04088522688912
+                  },
+                  "power": {
+                    "min": 38770.1112231224,
+                    "max": 38885.66703859258,
+                    "mean": 38827.74343438409
+                  },
+                  "efficiency": {
+                    "min": 0.8774298030537985,
+                    "max": 0.8780832848479514,
+                    "mean": 0.8777575585876606
+                  },
+                  "omega": {
+                    "min": 213.41464967795383,
+                    "max": 213.928706612453,
+                    "mean": 213.6713263486275
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "Reserve_Cruise",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 64.8208,
+                "max": 64.8208,
+                "mean": 64.8208
+              },
+              "lift_coefficient": {
+                "min": 0.3475635678382433,
+                "max": 0.34756356783824355,
+                "mean": 0.3475635678382434
+              },
+              "drag_coefficient": {
+                "min": 0.02334931826255091,
+                "max": 0.023349318262550912,
+                "mean": 0.023349318262550912
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.3226917420901209,
+                    "max": 0.32269174209012313,
+                    "mean": 0.32269174209012275
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 424.4138325791016,
+                    "mean": 141.47127752636615
+                  },
+                  "power": {
+                    "min": 30292.726582509476,
+                    "max": 30292.72658251098,
+                    "mean": 30292.72658251074
+                  },
+                  "efficiency": {
+                    "min": 0.9079910994621971,
+                    "max": 0.9079910994621978,
+                    "mean": 0.9079910994621976
+                  },
+                  "omega": {
+                    "min": 225.11046323799673,
+                    "max": 225.1104632379982,
+                    "mean": 225.11046323799795
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.3226917420901209,
+                    "max": 0.32269174209012313,
+                    "mean": 0.32269174209012275
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 424.4138325791016,
+                    "mean": 141.47127752636615
+                  },
+                  "power": {
+                    "min": 30292.726582509476,
+                    "max": 30292.72658251098,
+                    "mean": 30292.72658251074
+                  },
+                  "efficiency": {
+                    "min": 0.9079910994621971,
+                    "max": 0.9079910994621978,
+                    "mean": 0.9079910994621976
+                  },
+                  "omega": {
+                    "min": 225.11046323799673,
+                    "max": 225.1104632379982,
+                    "mean": 225.11046323799795
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "Reserve_Descent",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 49.174400000000006,
+                "max": 49.174400000000006,
+                "mean": 49.174400000000006
+              },
+              "lift_coefficient": {
+                "min": 0.5948077445194724,
+                "max": 0.6036133588247798,
+                "mean": 0.5992011936094886
+              },
+              "drag_coefficient": {
+                "min": 0.029419835094095837,
+                "max": 0.029678938904857222,
+                "mean": 0.029549063735712776
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.2246890667723198,
+                    "max": 0.22474801099858335,
+                    "mean": 0.2247185378320618
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 116.55841744653702,
+                    "mean": 38.54491534411687
+                  },
+                  "power": {
+                    "min": 6346.233578707409,
+                    "max": 6446.854926365438,
+                    "mean": 6396.454476967621
+                  },
+                  "efficiency": {
+                    "min": 0.8863795247911259,
+                    "max": 0.8866921158667598,
+                    "mean": 0.8865354876577137
+                  },
+                  "omega": {
+                    "min": 157.3829739064686,
+                    "max": 157.41680327248181,
+                    "mean": 157.39989454042762
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.2246890667723198,
+                    "max": 0.22474801099858335,
+                    "mean": 0.2247185378320618
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 116.55841744653702,
+                    "mean": 38.54491534411687
+                  },
+                  "power": {
+                    "min": 6346.233578707409,
+                    "max": 6446.854926365438,
+                    "mean": 6396.454476967621
+                  },
+                  "efficiency": {
+                    "min": 0.8863795247911259,
+                    "max": 0.8866921158667598,
+                    "mean": 0.8865354876577137
+                  },
+                  "omega": {
+                    "min": 157.3829739064686,
+                    "max": 157.41680327248181,
+                    "mean": 157.39989454042762
+                  }
+                }
+              ]
+            },
+            {
+              "segment": "Baseleg",
+              "mission_mass_kg": {
+                "min": 1290.0621502352667,
+                "max": 1290.0621502352667,
+                "mean": 1290.0621502352667
+              },
+              "airspeed_mps": {
+                "min": 40.0,
+                "max": 49.174400000000006,
+                "mean": 44.587199999999996
+              },
+              "lift_coefficient": {
+                "min": 0.5948882204416134,
+                "max": 0.8861558181826904,
+                "mean": 0.7300741684364809
+              },
+              "drag_coefficient": {
+                "min": 0.02942649583691573,
+                "max": 0.03991317816813698,
+                "mean": 0.034076733577349506
+              },
+              "propulsors": [
+                {
+                  "tag": "propulsor_0",
+                  "throttle": {
+                    "min": 0.17322504071009573,
+                    "max": 0.22214501715170706,
+                    "mean": 0.19773521386966497
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 99.94139365511685,
+                    "mean": 21.990160352380524
+                  },
+                  "power": {
+                    "min": 1712.1402838520803,
+                    "max": 5583.168236528108,
+                    "mean": 3505.5876863721587
+                  },
+                  "efficiency": {
+                    "min": 0.8019319403507591,
+                    "max": 0.8778842352459583,
+                    "mean": 0.8472673983732643
+                  },
+                  "omega": {
+                    "min": 121.53747782795541,
+                    "max": 155.64898638921437,
+                    "mean": 138.63320206882332
+                  }
+                },
+                {
+                  "tag": "propulsor_1",
+                  "throttle": {
+                    "min": 0.17322504071009573,
+                    "max": 0.22214501715170706,
+                    "mean": 0.19773521386966497
+                  },
+                  "thrust": {
+                    "min": 0.0,
+                    "max": 99.94139365511685,
+                    "mean": 21.990160352380524
+                  },
+                  "power": {
+                    "min": 1712.1402838520803,
+                    "max": 5583.168236528108,
+                    "mean": 3505.5876863721587
+                  },
+                  "efficiency": {
+                    "min": 0.8019319403507591,
+                    "max": 0.8778842352459583,
+                    "mean": 0.8472673983732643
+                  },
+                  "omega": {
+                    "min": 121.53747782795541,
+                    "max": 155.64898638921437,
+                    "mean": 138.63320206882332
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "simplified_powered_lift": {
+          "version": "native_delta_lift_concept_screen_20261004_v1",
+          "settings": {
+            "version": "native_delta_lift_concept_screen_20261004_v1",
+            "enabled": true,
+            "reference_alpha_deg": 8.0,
+            "spanwise_panels": 48,
+            "chordwise_panels": 5
+          },
+          "scope": "conceptual_power_on_low_speed_proxy_not_validated_stall",
+          "status": "conceptual_estimate",
+          "mission_aerodynamics": "coupled_native_mission_see_mission_slipstream_settings",
+          "validated_CLmax": false,
+          "motor_thermal_rating_validated": false,
+          "limitations": [
+            "fixed_alpha_delta_transfer",
+            "native_axial_wake_no_swirl",
+            "no_stall_separation_or_low_speed_trim",
+            "existing_fixed_propulsion_mass_policy"
+          ],
+          "airfoil_assignment": {
+            "requested": "NACA_65_215",
+            "reader_field": "segment.airfoil",
+            "coordinate_sha256": "ce64bd47ff6fd1501eb7806d2a414e1fb5e85042fb30462db3aa8004be8366c0",
+            "segment_count": 4,
+            "verified": true
+          },
+          "minimum_mission_soc": 0.24416597066989706,
+          "mission_peak_terminal_power_W": 96758.15010653494,
+          "speed_mps": 31.4,
+          "dry_clmax": 1.9033207290301515,
+          "dry_stall_speed_mps": 31.620791088022074,
+          "wing_area_m2": 10.857156761892563,
+          "vehicle_reference_area_m2": 14.76,
+          "operating_point_trials": [
+            {
+              "rpm_ratio": 1.0,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 534568.4759716624,
+                "shaft_power_W": 494839.1127510561,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 247419.55637552805,
+                    "torque_Nm": 717.5554942247561,
+                    "motor_current_A": 938.9019661623166,
+                    "motor_voltage_V": 270.42842089718727,
+                    "esc_input_W": 267269.2379858312
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 247419.55637552805,
+                    "torque_Nm": 717.5554942247561,
+                    "motor_current_A": 938.9019661623166,
+                    "motor_voltage_V": 270.42842089718727,
+                    "esc_input_W": 267269.2379858312
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": false,
+                "motor_thermal_rating_validated": false,
+                "domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.24416597, cell_power_W=104.40791, pack_power_W=534568.48, cell_max_power_W=43.182749"
+              }
+            },
+            {
+              "rpm_ratio": 0.9,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 389996.7494130343,
+                "shaft_power_W": 361771.42504467315,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 180885.71252233657,
+                    "torque_Nm": 582.8854649816925,
+                    "motor_current_A": 762.8864315213017,
+                    "motor_voltage_V": 242.8070526851664,
+                    "esc_input_W": 194983.37470651715
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 180885.71252233657,
+                    "torque_Nm": 582.8854649816925,
+                    "motor_current_A": 762.8864315213017,
+                    "motor_voltage_V": 242.8070526851664,
+                    "esc_input_W": 194983.37470651715
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": false,
+                "motor_thermal_rating_validated": false,
+                "domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.24416597, cell_power_W=76.17124, pack_power_W=389996.75, cell_max_power_W=43.182749"
+              }
+            },
+            {
+              "rpm_ratio": 0.8,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 274609.86018548347,
+                "shaft_power_W": 255239.42614015372,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 127619.71307007686,
+                    "torque_Nm": 462.6464638966896,
+                    "motor_current_A": 605.7324442560288,
+                    "motor_voltage_V": 215.3185533066426,
+                    "esc_input_W": 137289.93009274174
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 127619.71307007686,
+                    "torque_Nm": 462.6464638966896,
+                    "motor_current_A": 605.7324442560288,
+                    "motor_voltage_V": 215.3185533066426,
+                    "esc_input_W": 137289.93009274174
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": false,
+                "motor_thermal_rating_validated": false,
+                "domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.24416597, cell_power_W=53.634738, pack_power_W=274609.86, cell_max_power_W=43.182749"
+              }
+            },
+            {
+              "rpm_ratio": 0.7,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 184413.45974439656,
+                "shaft_power_W": 171718.2574224458,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 85859.1287112229,
+                    "torque_Nm": 355.721329842659,
+                    "motor_current_A": 465.97985978815404,
+                    "motor_voltage_V": 187.95263687663532,
+                    "esc_input_W": 92191.72987219828
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 85859.1287112229,
+                    "torque_Nm": 355.721329842659,
+                    "motor_current_A": 465.97985978815404,
+                    "motor_voltage_V": 187.95263687663532,
+                    "esc_input_W": 92191.72987219828
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": false,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 14.825601511338702,
+                "pack_voltage_V": 310.9712944924295,
+                "required_max_throttle": 0.6044051017101547
+              }
+            },
+            {
+              "rpm_ratio": 0.6,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 115478.18905240999,
+                "shaft_power_W": 107703.46359021336,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 53851.73179510668,
+                    "torque_Nm": 260.29743828095917,
+                    "motor_current_A": 341.2595535317125,
+                    "motor_voltage_V": 160.692614264933,
+                    "esc_input_W": 57724.09452620499
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 53851.73179510668,
+                    "torque_Nm": 260.29743828095917,
+                    "motor_current_A": 341.2595535317125,
+                    "motor_voltage_V": 160.692614264933,
+                    "esc_input_W": 57724.09452620499
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 7.725537693987657,
+                "pack_voltage_V": 373.68981172106646,
+                "required_max_throttle": 0.430016043319048
+              }
+            },
+            {
+              "rpm_ratio": 0.5,
+              "admissible": true,
+              "electrical": {
+                "terminal_power_W": 63633.77041606066,
+                "shaft_power_W": 59425.75161620006,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 29712.87580810003,
+                    "torque_Nm": 172.34399412599393,
+                    "motor_current_A": 226.3032222420448,
+                    "motor_voltage_V": 133.5013732827697,
+                    "esc_input_W": 31801.88520803033
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 29712.87580810003,
+                    "torque_Nm": 172.34399412599393,
+                    "motor_current_A": 226.3032222420448,
+                    "motor_voltage_V": 133.5013732827697,
+                    "esc_input_W": 31801.88520803033
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 3.9044545564965043,
+                "pack_voltage_V": 407.4434053162583,
+                "required_max_throttle": 0.327656237751954
+              }
+            },
+            {
+              "rpm_ratio": 0.55,
+              "admissible": true,
+              "electrical": {
+                "terminal_power_W": 87559.99060757704,
+                "shaft_power_W": 81723.88413510611,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 40861.94206755306,
+                    "torque_Nm": 215.46552132512508,
+                    "motor_current_A": 282.663636709565,
+                    "motor_voltage_V": 147.08911985491403,
+                    "esc_input_W": 43764.99530378852
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 40861.94206755306,
+                    "torque_Nm": 215.46552132512508,
+                    "motor_current_A": 282.663636709565,
+                    "motor_voltage_V": 147.08911985491403,
+                    "esc_input_W": 43764.99530378852
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 5.574335763920048,
+                "pack_voltage_V": 392.69248532852146,
+                "required_max_throttle": 0.37456565977284023
+              }
+            },
+            {
+              "rpm_ratio": 0.575,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 101026.20767760326,
+                "shaft_power_W": 94259.49075970566,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 47129.74537985283,
+                    "torque_Nm": 237.7106934867922,
+                    "motor_current_A": 311.7383751144276,
+                    "motor_voltage_V": 153.88929460241258,
+                    "esc_input_W": 50498.10383880163
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 47129.74537985283,
+                    "torque_Nm": 237.7106934867922,
+                    "motor_current_A": 311.7383751144276,
+                    "motor_voltage_V": 153.88929460241258,
+                    "esc_input_W": 50498.10383880163
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.580590751381843,
+                "pack_voltage_V": 383.80371722853687,
+                "required_max_throttle": 0.4009583224301572
+              }
+            },
+            {
+              "rpm_ratio": 0.5625,
+              "admissible": true,
+              "electrical": {
+                "terminal_power_W": 94171.37891459555,
+                "shaft_power_W": 87879.49107462273,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 43939.74553731136,
+                    "torque_Nm": 226.54604303724932,
+                    "motor_current_A": 297.14602721785536,
+                    "motor_voltage_V": 150.48881993514956,
+                    "esc_input_W": 47070.689457297776
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 43939.74553731136,
+                    "torque_Nm": 226.54604303724932,
+                    "motor_current_A": 297.14602721785536,
+                    "motor_voltage_V": 150.48881993514956,
+                    "esc_input_W": 47070.689457297776
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.061690730334283,
+                "pack_voltage_V": 388.38742812849796,
+                "required_max_throttle": 0.38747088354610787
+              }
+            },
+            {
+              "rpm_ratio": 0.56875,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 97568.21016614481,
+                "shaft_power_W": 91041.3048854839,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 45520.65244274195,
+                    "torque_Nm": 232.11784971743702,
+                    "motor_current_A": 304.42845328727816,
+                    "motor_voltage_V": 152.18896042282296,
+                    "esc_input_W": 48769.105083072405
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 45520.65244274195,
+                    "torque_Nm": 232.11784971743702,
+                    "motor_current_A": 304.42845328727816,
+                    "motor_voltage_V": 152.18896042282296,
+                    "esc_input_W": 48769.105083072405
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.317025619098896,
+                "pack_voltage_V": 386.1319236665634,
+                "required_max_throttle": 0.3941372134624195
+              }
+            },
+            {
+              "rpm_ratio": 0.565625,
+              "admissible": true,
+              "electrical": {
+                "terminal_power_W": 95862.75194324797,
+                "shaft_power_W": 89453.90811352663,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 44726.954056763316,
+                    "torque_Nm": 229.33070020339522,
+                    "motor_current_A": 300.785611486501,
+                    "motor_voltage_V": 151.33887870525916,
+                    "esc_input_W": 47916.37597162399
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 44726.954056763316,
+                    "torque_Nm": 229.33070020339522,
+                    "motor_current_A": 300.785611486501,
+                    "motor_voltage_V": 151.33887870525916,
+                    "esc_input_W": 47916.37597162399
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.188395915031693,
+                "pack_voltage_V": 387.2681760324842,
+                "required_max_throttle": 0.3907857347218864
+              }
+            },
+            {
+              "rpm_ratio": 0.5671875,
+              "admissible": true,
+              "electrical": {
+                "terminal_power_W": 96713.22650478124,
+                "shaft_power_W": 90245.52785871654,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 45122.76392935827,
+                    "torque_Nm": 230.7227997313434,
+                    "motor_current_A": 302.6051042427033,
+                    "motor_voltage_V": 151.763905981366,
+                    "esc_input_W": 48341.61325239062
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 45122.76392935827,
+                    "torque_Nm": 230.7227997313434,
+                    "motor_current_A": 302.6051042427033,
+                    "motor_voltage_V": 151.763905981366,
+                    "esc_input_W": 48341.61325239062
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.25243049148196,
+                "pack_voltage_V": 386.7025256679748,
+                "required_max_throttle": 0.3924564643564585
+              }
+            },
+            {
+              "rpm_ratio": 0.5679687499999999,
+              "admissible": false,
+              "electrical": {
+                "terminal_power_W": 97140.15396290856,
+                "shaft_power_W": 90642.89605250701,
+                "components": [
+                  {
+                    "tag": "propulsor_0",
+                    "shaft_W": 45321.44802625351,
+                    "torque_Nm": 231.4199557555218,
+                    "motor_current_A": 303.5162965177305,
+                    "motor_voltage_V": 151.97642980493782,
+                    "esc_input_W": 48555.07698145428
+                  },
+                  {
+                    "tag": "propulsor_1",
+                    "shaft_W": 45321.44802625351,
+                    "torque_Nm": 231.4199557555218,
+                    "motor_current_A": 303.5162965177305,
+                    "motor_voltage_V": 151.97642980493782,
+                    "esc_input_W": 48555.07698145428
+                  }
+                ],
+                "soc": 0.24416597066989706,
+                "within_reference_envelope": true,
+                "motor_thermal_rating_validated": false,
+                "cell_current_A": 6.284657569561732,
+                "pack_voltage_V": 386.417847303981,
+                "required_max_throttle": 0.3932955759297097
+              }
+            }
+          ],
+          "coefficient_reference": "main_wing_area_not_aircraft_reference_area",
+          "empirical_delta_transfer": "same_attached_flow_increment_added_to_dry_lift_limit",
+          "power_policy": "not_above_mission_peak_power_at_minimum_mission_SOC",
+          "delta_cl": 0.10660653593808345,
+          "applied": true,
+          "paired": {
+            "off": {
+              "wing_CL": 1.005923372176828,
+              "aircraft_CL": 0.7729498480794851,
+              "aircraft_CDi": 0.023580174392689827
+            },
+            "on": {
+              "wing_CL": 1.1125299081149114,
+              "aircraft_CL": 0.8516516118912407,
+              "aircraft_CDi": 0.024466162551873907
+            }
+          },
+          "rpm_ratio": 0.5671875,
+          "electrical": {
+            "terminal_power_W": 96713.22650478124,
+            "shaft_power_W": 90245.52785871654,
+            "components": [
+              {
+                "tag": "propulsor_0",
+                "shaft_W": 45122.76392935827,
+                "torque_Nm": 230.7227997313434,
+                "motor_current_A": 302.6051042427033,
+                "motor_voltage_V": 151.763905981366,
+                "esc_input_W": 48341.61325239062
+              },
+              {
+                "tag": "propulsor_1",
+                "shaft_W": 45122.76392935827,
+                "torque_Nm": 230.7227997313434,
+                "motor_current_A": 302.6051042427033,
+                "motor_voltage_V": 151.763905981366,
+                "esc_input_W": 48341.61325239062
+              }
+            ],
+            "soc": 0.24416597066989706,
+            "within_reference_envelope": true,
+            "motor_thermal_rating_validated": false,
+            "cell_current_A": 6.25243049148196,
+            "pack_voltage_V": 386.7025256679748,
+            "required_max_throttle": 0.3924564643564585
+          },
+          "equivalent_clmax": 2.009927264968235,
+          "equivalent_stall_speed_mps": 30.770783096936107,
+          "dry_stall_constraint": 0.22079108802207514,
+          "powered_stall_constraint": -0.6292169030638917
+        },
+        "mission_slipstream": {
+          "settings": {
+            "version": "native_mission_increment_20261004_v2",
+            "enabled": true,
+            "spanwise_panels": 24,
+            "chordwise_panels": 4
+          },
+          "native_pressure_velocity_corrected": true,
+          "induced_drag": "paired_full_wing_Fourier_increment_on_unchanged_dry_model",
+          "mission_energy": "original_battery_integral_no_discount",
+          "limitations": [
+            "axial_wake_no_swirl",
+            "planar_far_wake_no_interwing_interference",
+            "no_viscous_separation",
+            "fixed_nonwing_mass",
+            "all_rotors_active"
+          ],
+          "status": "evaluated",
+          "mission_solver": "existing_domain_backtracking_used_as_primary_residual_solver",
+          "segments": [
+            {
+              "segment": "DER",
+              "axial_wake_mps": {
+                "min": 9.604234004063265,
+                "max": 9.615344184801906,
+                "mean": 9.609787896193046
+              },
+              "circulation_drag_increment": {
+                "min": 0.00026822179515961254,
+                "max": 0.0002689244963873013,
+                "mean": 0.0002685728633292152
+              },
+              "native_lift_increment": {
+                "min": 0.026536446214648568,
+                "max": 0.026594864282389996,
+                "mean": 0.02656564539023029
+              },
+              "alpha_deg": {
+                "min": 4.960925857933027,
+                "max": 4.972092755417085,
+                "mean": 4.966508210916522
+              }
+            },
+            {
+              "segment": "ICA",
+              "axial_wake_mps": {
+                "min": 9.587549359901084,
+                "max": 10.559874338373064,
+                "mean": 10.056637653605227
+              },
+              "circulation_drag_increment": {
+                "min": 0.00019805150227628077,
+                "max": 0.00029463767841059196,
+                "mean": 0.0002433666343078137
+              },
+              "native_lift_increment": {
+                "min": 0.020821167892636994,
+                "max": 0.029180747839214538,
+                "mean": 0.0247545605355719
+              },
+              "alpha_deg": {
+                "min": 3.551286397753299,
+                "max": 4.920840073596918,
+                "mean": 4.2131613591460715
+              }
+            },
+            {
+              "segment": "climb_1",
+              "axial_wake_mps": {
+                "min": 7.559308296051757,
+                "max": 7.87553192917154,
+                "mean": 7.716036884363559
+              },
+              "circulation_drag_increment": {
+                "min": 0.00012656953378458943,
+                "max": 0.0001402383480750436,
+                "mean": 0.00013330730496064435
+              },
+              "native_lift_increment": {
+                "min": 0.013953475515156855,
+                "max": 0.01512184737033162,
+                "mean": 0.014529965640494247
+              },
+              "alpha_deg": {
+                "min": 2.76163345847382,
+                "max": 3.10335831553785,
+                "mean": 2.931101198894735
+              }
+            },
+            {
+              "segment": "climb_2",
+              "axial_wake_mps": {
+                "min": 11.856779241175264,
+                "max": 13.722307039235163,
+                "mean": 12.767038826142795
+              },
+              "circulation_drag_increment": {
+                "min": 0.0004041892362820834,
+                "max": 0.0005512082925624891,
+                "mean": 0.00047472424179599744
+              },
+              "native_lift_increment": {
+                "min": 0.03841537709725151,
+                "max": 0.05050210859867532,
+                "mean": 0.04421958372082409
+              },
+              "alpha_deg": {
+                "min": 6.219993487110105,
+                "max": 7.809004070312539,
+                "mean": 6.997447326827874
+              }
+            },
+            {
+              "segment": "cruise",
+              "axial_wake_mps": {
+                "min": 4.765861501871201,
+                "max": 4.765861502640652,
+                "mean": 4.7658615023635855
+              },
+              "circulation_drag_increment": {
+                "min": 9.768438401849475e-05,
+                "max": 9.768438458388276e-05,
+                "mean": 9.768438445655308e-05
+              },
+              "native_lift_increment": {
+                "min": 0.009938673934633657,
+                "max": 0.009938673937887721,
+                "mean": 0.009938673936716047
+              },
+              "alpha_deg": {
+                "min": 4.227498256404521,
+                "max": 4.227498258055861,
+                "mean": 4.227498257461269
+              }
+            },
+            {
+              "segment": "decent",
+              "axial_wake_mps": {
+                "min": 0.5564466181458481,
+                "max": 0.8922958752151862,
+                "mean": 0.7255227023770656
+              },
+              "circulation_drag_increment": {
+                "min": 4.870206151166151e-06,
+                "max": 1.3487586925769665e-05,
+                "mean": 9.264681826551204e-06
+              },
+              "native_lift_increment": {
+                "min": 0.0004898723821076256,
+                "max": 0.0013592341231113414,
+                "mean": 0.0009347580778588591
+              },
+              "alpha_deg": {
+                "min": 4.2375215969076,
+                "max": 4.362869677531335,
+                "mean": 4.287837091124438
+              }
+            },
+            {
+              "segment": "Downleg",
+              "axial_wake_mps": {
+                "min": 3.344513638413895,
+                "max": 3.3879626817240434,
+                "mean": 3.3631923468330167
+              },
+              "circulation_drag_increment": {
+                "min": 7.350791543038124e-05,
+                "max": 9.732077526945597e-05,
+                "mean": 8.454325966705302e-05
+              },
+              "native_lift_increment": {
+                "min": 0.007536639124538058,
+                "max": 0.009454994448002685,
+                "mean": 0.00842114499336511
+              },
+              "alpha_deg": {
+                "min": 4.128774343796001,
+                "max": 5.532094649243049,
+                "mean": 4.8068221029202
+              }
+            },
+            {
+              "segment": "Reserve_Climb",
+              "axial_wake_mps": {
+                "min": 7.636167618408536,
+                "max": 7.714469102349057,
+                "mean": 7.675233155423946
+              },
+              "circulation_drag_increment": {
+                "min": 0.0001298337332378335,
+                "max": 0.0001331976498927306,
+                "mean": 0.0001315097521594572
+              },
+              "native_lift_increment": {
+                "min": 0.014233393707356379,
+                "max": 0.01452124539280708,
+                "mean": 0.01437684661216751
+              },
+              "alpha_deg": {
+                "min": 2.8448481731129642,
+                "max": 2.929520660864737,
+                "mean": 2.887098147481431
+              }
+            },
+            {
+              "segment": "Reserve_Cruise",
+              "axial_wake_mps": {
+                "min": 4.499279175540889,
+                "max": 4.49927917554109,
+                "mean": 4.4992791755410675
+              },
+              "circulation_drag_increment": {
+                "min": 4.288795968726555e-05,
+                "max": 4.288795968726555e-05,
+                "mean": 4.288795968726555e-05
+              },
+              "native_lift_increment": {
+                "min": 0.005466112629319675,
+                "max": 0.0054661126293199525,
+                "mean": 0.005466112629319859
+              },
+              "alpha_deg": {
+                "min": 1.1265970510159216,
+                "max": 1.1265970510159269,
+                "mean": 1.126597051015923
+              }
+            },
+            {
+              "segment": "Reserve_Descent",
+              "axial_wake_mps": {
+                "min": 1.6991676932183304,
+                "max": 1.7006069113890872,
+                "mean": 1.6998818403809643
+              },
+              "circulation_drag_increment": {
+                "min": 3.590051701902845e-05,
+                "max": 3.641897309456313e-05,
+                "mean": 3.615901133355846e-05
+              },
+              "native_lift_increment": {
+                "min": 0.003669755725767998,
+                "max": 0.0037044258938007113,
+                "mean": 0.003687040451293762
+              },
+              "alpha_deg": {
+                "min": 4.189370735215425,
+                "max": 4.295982260379289,
+                "mean": 4.242563663899047
+              }
+            },
+            {
+              "segment": "Baseleg",
+              "axial_wake_mps": {
+                "min": 0.7371210812987852,
+                "max": 1.4787130649509619,
+                "mean": 1.0927639069718964
+              },
+              "circulation_drag_increment": {
+                "min": 2.4715438101133302e-05,
+                "max": 3.086493004991926e-05,
+                "mean": 2.8637832614875785e-05
+              },
+              "native_lift_increment": {
+                "min": 0.0022526972747792806,
+                "max": 0.003152991730835164,
+                "mean": 0.0027714882457392787
+              },
+              "alpha_deg": {
+                "min": 4.197537167085846,
+                "max": 7.87273288222804,
+                "mean": 5.897329573613677
+              }
+            }
+          ],
+          "linear_solve_cache": {
+            "hits": 27351,
+            "misses": 182,
+            "entries": 32,
+            "policy": "exact_matrix_LU_reuse_no_interpolation"
+          },
+          "influence_geometry_cache": {
+            "hits": 1702,
+            "misses": 18,
+            "fields": [
+              "XA1",
+              "XA2",
+              "XAH",
+              "XA_TE",
+              "XB1",
+              "XB2",
+              "XBH",
+              "XB_TE",
+              "XC",
+              "YA1",
+              "YA2",
+              "YAH",
+              "YB1",
+              "YB2",
+              "YBH",
+              "YC",
+              "ZA1",
+              "ZA2",
+              "ZAH",
+              "ZB1",
+              "ZB2",
+              "ZBH",
+              "ZC",
+              "chord_lengths",
+              "leading_edge_indices",
+              "n_cp",
+              "panels_per_strip",
+              "trailing_edge_indices"
+            ],
+            "policy": "exact_consumed_geometry_and_Mach_no_interpolation"
+          }
+        },
+        "mission_solver_version": "battery_domain_bounded_resume_v1",
+        "procedure_diagnostics_version": "procedure_traceback_stdout_restore_20260926",
+        "propulsion_geometry": {
+          "propulsors": [
+            {
+              "tag": "propulsor_0",
+              "origin_m": [
+                2.0,
+                -3.067421535339129,
+                0.95
+              ],
+              "radius_m": 0.7052000000000724,
+              "design_thrust_N": 2000.0,
+              "design_power_W": 186435.07306770323
+            },
+            {
+              "tag": "propulsor_1",
+              "origin_m": [
+                2.0,
+                3.067421535339129,
+                0.95
+              ],
+              "radius_m": 0.7052000000000724,
+              "design_thrust_N": 2000.0,
+              "design_power_W": 186435.07306770323
+            }
+          ],
+          "count": 2,
+          "total_design_thrust_N": 4000.0,
+          "total_design_power_W": 372870.14613540645,
+          "minimum_coplanar_disk_clearance_m": 4.724443070678113,
+          "overlapping_disk_pairs": [],
+          "scope": "enforced_static_clearances_not_full_CAD_or_certification",
+          "version": "constant_disk_area_clearance_20260927_v2",
+          "constraints": {
+            "prop_disk_clearance": -4.674443070678113,
+            "prop_fuselage_clearance": -1.7122215353390566,
+            "prop_wing_clearance": -1.5927686686028055
+          },
+          "layout_plan": {
+            "version": "constant_disk_area_clearance_20260927_v2",
+            "layout": "leading_edge_distributed",
+            "count": 2,
+            "span_m": 10.830780407884014,
+            "diameter_m": 1.4104000000001449,
+            "rpm": 3292.6829268289302,
+            "y_positions_m": [
+              -3.067421535339129,
+              3.067421535339129
+            ],
+            "constraints": {
+              "prop_disk_clearance": -4.674443070678113,
+              "prop_fuselage_clearance": -1.7122215353390566,
+              "prop_wing_clearance": -1.5927686686028055
+            },
+            "total_disk_area_m2": 3.124672286885613,
+            "rotational_tip_speed_m_s": 243.15927138784997,
+            "settings": {
+              "version": "constant_disk_area_clearance_20260927_v2",
+              "reference_diameter_m": 1.72,
+              "reference_rpm": 2700.0,
+              "fuselage_half_width_m": 0.6,
+              "min_disk_clearance_m": 0.05,
+              "min_fuselage_clearance_m": 0.05,
+              "min_wing_clearance_m": 0.05
+            }
+          },
+          "placement_span_m": 10.830780407884014,
+          "requested_span_m": 10.830780407884014,
+          "placement_span_error_m": 0.0
+        },
+        "last_started_stage": "procedure.post_process",
+        "section_consistency": {
+          "version": "section_thickness_consistency_20261002_v1",
+          "requested_tc": 0.13999999999838614,
+          "before": [
+            {
+              "config": "base",
+              "wing_tc": 0.13999999999838614,
+              "segment_tc": [
+                0.12,
+                0.12,
+                0.12,
+                0.12
+              ]
+            }
+          ],
+          "after": [
+            {
+              "config": "base",
+              "wing_tc": 0.13999999999838614,
+              "segment_tc": [
+                0.13999999999838614,
+                0.13999999999838614,
+                0.13999999999838614,
+                0.13999999999838614
+              ]
+            }
+          ],
+          "coordinate_files_changed": false,
+          "polar_files_changed": false,
+          "powered_stall_validated": false,
+          "source": "candidate_design_variable_not_NASA_calibration"
+        },
+        "design_study_realized_wing_area_m2": 10.857156761892563,
+        "last_completed_stage": "procedure.post_process",
+        "mission_solver_segments": [
+          {
+            "segment": "DER",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 5.08,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 113,
+            "rejected_domain_trials": 0,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 190.2424820168975
+              },
+              {
+                "index": 1,
+                "residual_inf": 11.617931466870118
+              },
+              {
+                "index": 2,
+                "residual_inf": 156.66159292192816
+              },
+              {
+                "index": 3,
+                "residual_inf": 244.80338948256167
+              },
+              {
+                "index": 4,
+                "residual_inf": 294.5293330734036
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 4.123564470973186e-09,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  251.59934977143558,
+                  251.70019754317343
+                ],
+                "body_angle": [
+                  0.15330063857848103,
+                  0.15349553770681054
+                ],
+                "throttle_0": [
+                  0.2851527298544972,
+                  0.2852437397206316
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -2.7121402399703575e-09,
+                  4.123564470973186e-09
+                ],
+                "force_z": [
+                  -2.7557260023295336e-10,
+                  1.8096782537672457e-10
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 81261.92412275303,
+                  "minimum_terminal_power_W": 81255.29297471349,
+                  "initial_charge_soc": 1.0,
+                  "final_charge_soc": 0.9981240427714841,
+                  "duration_s": 5.079999999999989,
+                  "terminal_energy_Wh": 114.66530314286454
+                }
+              ]
+            },
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 4.123564470973186e-09,
+            "elapsed_seconds": 27.9469672,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 81261.92412275303,
+                "minimum_terminal_power_W": 81255.29297471349,
+                "initial_charge_soc": 1.0,
+                "final_charge_soc": 0.9981240427714841,
+                "duration_s": 5.079999999999989,
+                "terminal_energy_Wh": 114.66530314286454
+              }
+            ]
+          },
+          {
+            "segment": "ICA",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 45.0,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 115,
+            "rejected_domain_trials": 1,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 32.35203069266595
+              },
+              {
+                "index": 1,
+                "residual_inf": 18.240029758752826
+              },
+              {
+                "index": 2,
+                "residual_inf": 34.56368328045441
+              },
+              {
+                "index": 3,
+                "residual_inf": 53.11442008361998
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": 35.86382366280026
+              },
+              {
+                "index": 6,
+                "residual_inf": 190.89287727301314
+              },
+              {
+                "index": 7,
+                "residual_inf": 292.54513613682695
+              },
+              {
+                "index": 8,
+                "residual_inf": 361.76701098355977
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 1.6319220974558846e-10,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  274.44881213211096,
+                  277.40657224874457
+                ],
+                "body_angle": [
+                  0.12297945939485963,
+                  0.15367009301278653
+                ],
+                "throttle_0": [
+                  0.29356180198492887,
+                  0.3080849515312585
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -1.318918307902095e-10,
+                  1.6319220974558846e-10
+                ],
+                "force_z": [
+                  -1.1092453048613207e-11,
+                  8.160976926679985e-12
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 96758.15010653494,
+                  "minimum_terminal_power_W": 91215.66101879324,
+                  "initial_charge_soc": 0.9981240427714841,
+                  "final_charge_soc": 0.9787036311502318,
+                  "duration_s": 44.999999999999915,
+                  "terminal_energy_Wh": 1170.4101903659966
+                }
+              ]
+            },
+            "last_domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.92816772, cell_power_W=78.22949, pack_power_W=400534.99, cell_max_power_W=78.07156",
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 1.6319220974558846e-10,
+            "elapsed_seconds": 30.4379413,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 96758.15010653494,
+                "minimum_terminal_power_W": 91215.66101879324,
+                "initial_charge_soc": 0.9981240427714841,
+                "final_charge_soc": 0.9787036311502318,
+                "duration_s": 44.999999999999915,
+                "terminal_energy_Wh": 1170.4101903659966
+              }
+            ]
+          },
+          {
+            "segment": "climb_1",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 240.0,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 64,
+            "rejected_domain_trials": 1,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 34.94032687302973
+              },
+              {
+                "index": 1,
+                "residual_inf": 14.049810736019722
+              },
+              {
+                "index": 2,
+                "residual_inf": 36.22724158502178
+              },
+              {
+                "index": 3,
+                "residual_inf": 57.259641764946295
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": 74.13375221351384
+              },
+              {
+                "index": 6,
+                "residual_inf": 222.5501076439361
+              },
+              {
+                "index": 7,
+                "residual_inf": 333.8782299467032
+              },
+              {
+                "index": 8,
+                "residual_inf": 419.7488560669337
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 8.974825504992623e-08,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  235.4037705320661,
+                  240.4875860211614
+                ],
+                "body_angle": [
+                  0.09556579089981435,
+                  0.10153001479148867
+                ],
+                "throttle_0": [
+                  0.3061561667988734,
+                  0.30903379790615604
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -7.597717754915385e-09,
+                  4.531990727043717e-09
+                ],
+                "force_z": [
+                  -2.4352839830134966e-09,
+                  9.759155236127324e-10
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 83359.98911881514,
+                  "minimum_terminal_power_W": 82365.1051440789,
+                  "initial_charge_soc": 0.9787036311502318,
+                  "final_charge_soc": 0.8856994311662013,
+                  "duration_s": 239.99999999999957,
+                  "terminal_energy_Wh": 5526.406035469814
+                }
+              ]
+            },
+            "last_domain_error": "Battery depleted or requested interval power is infeasible: SOC=0.93005515, pack_power_W=400534.99, interval_s=6.2717078, current_bracket_upper_A=38.3296",
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 8.974825504992623e-08,
+            "elapsed_seconds": 16.405993000000002,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 83359.98911881514,
+                "minimum_terminal_power_W": 82365.1051440789,
+                "initial_charge_soc": 0.9787036311502318,
+                "final_charge_soc": 0.8856994311662013,
+                "duration_s": 239.99999999999957,
+                "terminal_energy_Wh": 5526.406035469814
+              }
+            ]
+          },
+          {
+            "segment": "climb_2",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 472.4341960533346,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 115,
+            "rejected_domain_trials": 2,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 55.46475223617813
+              },
+              {
+                "index": 1,
+                "residual_inf": 67.70262816662003
+              },
+              {
+                "index": 2,
+                "residual_inf": 45.329614857649105
+              },
+              {
+                "index": 3,
+                "residual_inf": 27.62873631681032
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": 171.98862510714935
+              },
+              {
+                "index": 7,
+                "residual_inf": 220.86486364946373
+              },
+              {
+                "index": 8,
+                "residual_inf": 253.99853769453372
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 9.312089740864256e-09,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  262.70568098839874,
+                  271.34257963196455
+                ],
+                "body_angle": [
+                  0.1911510211474901,
+                  0.21888448767340785
+                ],
+                "throttle_0": [
+                  0.295360071158579,
+                  0.3096888176946401
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -6.430866386001288e-09,
+                  9.312089740864256e-09
+                ],
+                "force_z": [
+                  -7.683435328632978e-10,
+                  5.294498826284435e-10
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 92109.00950561481,
+                  "minimum_terminal_power_W": 90735.86805611457,
+                  "initial_charge_soc": 0.8856994311662013,
+                  "final_charge_soc": 0.674474375005268,
+                  "duration_s": 472.4341960533336,
+                  "terminal_energy_Wh": 11983.110765363088
+                }
+              ]
+            },
+            "last_domain_error": "Battery depleted or requested interval power is infeasible: SOC=0.47930828, pack_power_W=225314.06, interval_s=9.6607375, current_bracket_upper_A=24.479387",
+            "selected_seed": 3,
+            "seed_restarts": [],
+            "residual_inf": 9.312089740864256e-09,
+            "elapsed_seconds": 30.050042000000005,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 92109.00950561481,
+                "minimum_terminal_power_W": 90735.86805611457,
+                "initial_charge_soc": 0.8856994311662013,
+                "final_charge_soc": 0.674474375005268,
+                "duration_s": 472.4341960533336,
+                "terminal_energy_Wh": 11983.110765363088
+              }
+            ]
+          },
+          {
+            "segment": "cruise",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 66,
+            "rejected_domain_trials": 4,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": null
+              },
+              {
+                "index": 1,
+                "residual_inf": 17.65599009451013
+              },
+              {
+                "index": 2,
+                "residual_inf": 31.723458974388052
+              },
+              {
+                "index": 3,
+                "residual_inf": 44.26182020315185
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": null
+              },
+              {
+                "index": 7,
+                "residual_inf": 295.55274900507607
+              },
+              {
+                "index": 8,
+                "residual_inf": 347.69271635484716
+              }
+            ],
+            "last_domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.064580996, cell_power_W=19.561767, pack_power_W=100156.25, cell_max_power_W=19.506458",
+            "best_evaluable_trial": {
+              "residual_inf": 2.805413903126599e-09,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  126.6073705879407,
+                  126.60737060860998
+                ],
+                "body_angle": [
+                  0.07378376369657835,
+                  0.07378376372539966
+                ],
+                "throttle_0": [
+                  0.27857262505320113,
+                  0.27857262506076597
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -2.805413903126599e-09,
+                  -2.7788216102920192e-09
+                ],
+                "force_z": [
+                  -9.209339369989964e-10,
+                  1.343464818548361e-09
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 39947.47633756251,
+                  "minimum_terminal_power_W": 39947.47632996179,
+                  "initial_charge_soc": 0.674474375005268,
+                  "final_charge_soc": 0.3661611354601165,
+                  "duration_s": 1541.8598178795294,
+                  "terminal_energy_Wh": 17109.28016274467
+                }
+              ]
+            },
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 2.805413903126599e-09,
+            "elapsed_seconds": 18.743290900000005,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 39947.47633756251,
+                "minimum_terminal_power_W": 39947.47632996179,
+                "initial_charge_soc": 0.674474375005268,
+                "final_charge_soc": 0.3661611354601165,
+                "duration_s": 1541.8598178795294,
+                "terminal_energy_Wh": 17109.28016274467
+              }
+            ]
+          },
+          {
+            "segment": "decent",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 934.9333333333333,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 65,
+            "rejected_domain_trials": 3,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 55.957205631301846
+              },
+              {
+                "index": 1,
+                "residual_inf": 37.916280647751684
+              },
+              {
+                "index": 2,
+                "residual_inf": 38.99780808574648
+              },
+              {
+                "index": 3,
+                "residual_inf": 65.65697165264369
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": null
+              },
+              {
+                "index": 7,
+                "residual_inf": 293.95618564715016
+              },
+              {
+                "index": 8,
+                "residual_inf": 345.5334501232921
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 5.592839098511604e-07,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  12.582780600542286,
+                  23.537788867413834
+                ],
+                "body_angle": [
+                  0.02745434034147311,
+                  0.03384090730113803
+                ],
+                "throttle_0": [
+                  0.2081682185565139,
+                  0.2337246142562612
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -1.835559821500299e-08,
+                  1.2572054407938849e-08
+                ],
+                "force_z": [
+                  -1.6965673644532694e-08,
+                  1.817007152783398e-08
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 6256.382044597301,
+                  "minimum_terminal_power_W": 2994.535806067838,
+                  "initial_charge_soc": 0.3661611354601165,
+                  "final_charge_soc": 0.34334476273040576,
+                  "duration_s": 934.9333333333316,
+                  "terminal_energy_Wh": 1244.9979094289477
+                }
+              ]
+            },
+            "last_domain_error": "Battery depleted or requested interval power is infeasible: SOC=0.068947314, pack_power_W=100156.25, interval_s=9.7727145, current_bracket_upper_A=12.918602",
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 5.592839098511604e-07,
+            "elapsed_seconds": 18.071589799999998,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 6256.382044597301,
+                "minimum_terminal_power_W": 2994.535806067838,
+                "initial_charge_soc": 0.3661611354601165,
+                "final_charge_soc": 0.34334476273040576,
+                "duration_s": 934.9333333333316,
+                "terminal_energy_Wh": 1244.9979094289477
+              }
+            ]
+          },
+          {
+            "segment": "Downleg",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 65,
+            "rejected_domain_trials": 1,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 30.430692604556448
+              },
+              {
+                "index": 1,
+                "residual_inf": 37.299884036263514
+              },
+              {
+                "index": 2,
+                "residual_inf": 73.30567331421531
+              },
+              {
+                "index": 3,
+                "residual_inf": 109.0126859322448
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": 37.52063307684489
+              },
+              {
+                "index": 6,
+                "residual_inf": 185.68542424850045
+              },
+              {
+                "index": 7,
+                "residual_inf": 280.9233898712786
+              },
+              {
+                "index": 8,
+                "residual_inf": 343.9652019120823
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 3.4813514560028125e-07,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  93.94161938204697,
+                  102.6502966350788
+                ],
+                "body_angle": [
+                  0.07206070637110853,
+                  0.09655326616125205
+                ],
+                "throttle_0": [
+                  0.22549231254965768,
+                  0.24336251212012408
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -7.92880071320834e-09,
+                  6.069270794273329e-09
+                ],
+                "force_z": [
+                  -5.2911373136214155e-09,
+                  9.86396634760328e-09
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 28303.497747604895,
+                  "minimum_terminal_power_W": 24004.824312264373,
+                  "initial_charge_soc": 0.34334476273040576,
+                  "final_charge_soc": 0.3380373696659154,
+                  "duration_s": 38.838580336057476,
+                  "terminal_energy_Wh": 282.16338647326296
+                }
+              ]
+            },
+            "last_domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.34334476, cell_power_W=78.22949, pack_power_W=400534.99, cell_max_power_W=51.794833",
+            "selected_seed": 0,
+            "seed_restarts": [],
+            "residual_inf": 3.4813514560028125e-07,
+            "elapsed_seconds": 17.64318159999999,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 28303.497747604895,
+                "minimum_terminal_power_W": 24004.824312264373,
+                "initial_charge_soc": 0.34334476273040576,
+                "final_charge_soc": 0.3380373696659154,
+                "duration_s": 38.838580336057476,
+                "terminal_energy_Wh": 282.16338647326296
+              }
+            ]
+          },
+          {
+            "segment": "Reserve_Climb",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 66,
+            "rejected_domain_trials": 2,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 67.28131836307648
+              },
+              {
+                "index": 1,
+                "residual_inf": 84.68652256405761
+              },
+              {
+                "index": 2,
+                "residual_inf": 114.72501012175948
+              },
+              {
+                "index": 3,
+                "residual_inf": 144.38848661054828
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": 221.16007977354548
+              },
+              {
+                "index": 7,
+                "residual_inf": 330.86577222957123
+              },
+              {
+                "index": 8,
+                "residual_inf": 414.1919950672159
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 5.924373738253053e-07,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  237.91620159988378,
+                  239.194450688208
+                ],
+                "body_angle": [
+                  0.09701816165637495,
+                  0.09849597535349795
+                ],
+                "throttle_0": [
+                  0.3068623438086858,
+                  0.3075771913037491
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -3.614970024193897e-08,
+                  3.6785393113096035e-08
+                ],
+                "force_z": [
+                  -1.2032335549616878e-08,
+                  1.2971234891447903e-08
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 83103.08678998273,
+                  "minimum_terminal_power_W": 82851.6340549376,
+                  "initial_charge_soc": 0.3380373696659154,
+                  "final_charge_soc": 0.31010200520488024,
+                  "duration_s": 60.0,
+                  "terminal_energy_Wh": 1383.1202708405187
+                }
+              ]
+            },
+            "last_domain_error": "Battery depleted or requested interval power is infeasible: SOC=0.25605964, pack_power_W=225314.06, interval_s=5.0739182, current_bracket_upper_A=25.547859",
+            "selected_seed": 0,
+            "seed_restarts": [],
+            "residual_inf": 5.924373738253053e-07,
+            "elapsed_seconds": 16.677488699999998,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 83103.08678998273,
+                "minimum_terminal_power_W": 82851.6340549376,
+                "initial_charge_soc": 0.3380373696659154,
+                "final_charge_soc": 0.31010200520488024,
+                "duration_s": 60.0,
+                "terminal_energy_Wh": 1383.1202708405187
+              }
+            ]
+          },
+          {
+            "segment": "Reserve_Cruise",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 64,
+            "rejected_domain_trials": 2,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 86.47775023604919
+              },
+              {
+                "index": 1,
+                "residual_inf": 90.94519365122177
+              },
+              {
+                "index": 2,
+                "residual_inf": 130.09340550022944
+              },
+              {
+                "index": 3,
+                "residual_inf": 164.81037793615303
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": 329.16726927402163
+              },
+              {
+                "index": 7,
+                "residual_inf": 478.35985176139627
+              },
+              {
+                "index": 8,
+                "residual_inf": 612.3435755954539
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 1.8136319113182253e-07,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  176.92985005795433,
+                  176.92985005796223
+                ],
+                "body_angle": [
+                  0.019662827883486358,
+                  0.01966282788348645
+                ],
+                "throttle_0": [
+                  0.3226917420901209,
+                  0.32269174209012313
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  5.513651090375541e-09,
+                  5.513654089326955e-09
+                ],
+                "force_z": [
+                  -1.4072546906803436e-08,
+                  -1.4072539856796569e-08
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 64648.16359892401,
+                  "minimum_terminal_power_W": 64648.16359892068,
+                  "initial_charge_soc": 0.31010200520488024,
+                  "final_charge_soc": 0.256468448013578,
+                  "duration_s": 148.96551724137953,
+                  "terminal_energy_Wh": 2675.0964247830284
+                }
+              ]
+            },
+            "last_domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.25091892, cell_power_W=44.006652, pack_power_W=225314.06, cell_max_power_W=43.832416",
+            "selected_seed": 0,
+            "seed_restarts": [],
+            "residual_inf": 1.8136319113182253e-07,
+            "elapsed_seconds": 16.128164899999973,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 64648.16359892401,
+                "minimum_terminal_power_W": 64648.16359892068,
+                "initial_charge_soc": 0.31010200520488024,
+                "final_charge_soc": 0.256468448013578,
+                "duration_s": 148.96551724137953,
+                "terminal_energy_Wh": 2675.0964247830284
+              }
+            ]
+          },
+          {
+            "segment": "Reserve_Descent",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 62,
+            "rejected_domain_trials": 2,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 115.94511963704244
+              },
+              {
+                "index": 1,
+                "residual_inf": 96.50498621885752
+              },
+              {
+                "index": 2,
+                "residual_inf": 55.56562830666334
+              },
+              {
+                "index": 3,
+                "residual_inf": 16.975694820939278
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": 186.20494374271186
+              },
+              {
+                "index": 7,
+                "residual_inf": 279.8681230881479
+              },
+              {
+                "index": 8,
+                "residual_inf": 342.46093649646645
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 7.575890919800718e-09,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  53.75067576081943,
+                  54.574796993760856
+                ],
+                "body_angle": [
+                  0.04212161403681132,
+                  0.04398233617149354
+                ],
+                "throttle_0": [
+                  0.2246890667723198,
+                  0.22474801099858335
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -7.575890919800718e-09,
+                  3.0911941642394176e-09
+                ],
+                "force_z": [
+                  -6.508340322856265e-10,
+                  3.460495731780202e-10
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 13912.051022146483,
+                  "minimum_terminal_power_W": 13698.835580048517,
+                  "initial_charge_soc": 0.256468448013578,
+                  "final_charge_soc": 0.24915582494284938,
+                  "duration_s": 100.0,
+                  "terminal_energy_Wh": 383.2343629091336
+                }
+              ]
+            },
+            "last_domain_error": "Battery depleted or requested interval power is infeasible: SOC=0.25408199, pack_power_W=225314.06, interval_s=3.2301072, current_bracket_upper_A=25.45801",
+            "selected_seed": 3,
+            "seed_restarts": [],
+            "residual_inf": 7.575890919800718e-09,
+            "elapsed_seconds": 16.021969000000013,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 13912.051022146483,
+                "minimum_terminal_power_W": 13698.835580048517,
+                "initial_charge_soc": 0.256468448013578,
+                "final_charge_soc": 0.24915582494284938,
+                "duration_s": 100.0,
+                "terminal_energy_Wh": 383.2343629091336
+              }
+            ]
+          },
+          {
+            "segment": "Baseleg",
+            "method": "domain_backtracking_primary",
+            "converged": true,
+            "specified_duration_s": 120.0,
+            "unknown_fields": [
+              "propulsor_0_motor_current",
+              "body_angle",
+              "throttle_0"
+            ],
+            "unknown_dimension": 48,
+            "max_residual_evaluations": 522,
+            "evaluations": 65,
+            "rejected_domain_trials": 2,
+            "seed_trials": [
+              {
+                "index": 0,
+                "residual_inf": 58.507293676806256
+              },
+              {
+                "index": 1,
+                "residual_inf": 36.63473043434096
+              },
+              {
+                "index": 2,
+                "residual_inf": 61.47156363118047
+              },
+              {
+                "index": 3,
+                "residual_inf": 93.94675509200336
+              },
+              {
+                "index": 4,
+                "residual_inf": null
+              },
+              {
+                "index": 5,
+                "residual_inf": null
+              },
+              {
+                "index": 6,
+                "residual_inf": 185.10985943451152
+              },
+              {
+                "index": 7,
+                "residual_inf": 280.0771774338424
+              },
+              {
+                "index": 8,
+                "residual_inf": 342.7590187977414
+              }
+            ],
+            "best_evaluable_trial": {
+              "residual_inf": 9.934562257285506e-07,
+              "unknown_ranges": {
+                "propulsor_0_motor_current": [
+                  19.459658657950307,
+                  47.930208288618275
+                ],
+                "body_angle": [
+                  0.04743152583451628,
+                  0.10564977317291767
+                ],
+                "throttle_0": [
+                  0.17322504071009573,
+                  0.22214501715170706
+                ]
+              },
+              "residual_ranges": {
+                "force_x": [
+                  -2.2369338825711793e-08,
+                  2.3284818295721266e-08
+                ],
+                "force_z": [
+                  -1.1866159921026776e-08,
+                  1.847657618861708e-08
+                ]
+              },
+              "electrical_summary": [
+                {
+                  "bus": "bus",
+                  "maximum_terminal_power_W": 12080.679688868917,
+                  "minimum_terminal_power_W": 3845.1493215818473,
+                  "initial_charge_soc": 0.24915582494284938,
+                  "final_charge_soc": 0.24416597066989706,
+                  "duration_s": 120.0,
+                  "terminal_energy_Wh": 262.33278919449947
+                }
+              ]
+            },
+            "last_domain_error": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.24915582, cell_power_W=44.006652, pack_power_W=225314.06, cell_max_power_W=43.661596",
+            "selected_seed": 1,
+            "seed_restarts": [],
+            "residual_inf": 9.934562257285506e-07,
+            "elapsed_seconds": 17.25209220000002,
+            "electrical_summary": [
+              {
+                "bus": "bus",
+                "maximum_terminal_power_W": 12080.679688868917,
+                "minimum_terminal_power_W": 3845.1493215818473,
+                "initial_charge_soc": 0.24915582494284938,
+                "final_charge_soc": 0.24416597066989706,
+                "duration_s": 120.0,
+                "terminal_energy_Wh": 262.33278919449947
+              }
+            ]
+          }
+        ],
+        "energy_audit_status": "passed",
+        "battery_capacity_Wh": 56560.31949930993,
+        "battery_module_count": 8,
+        "objective_source": "sum_initial_minus_final_module_energy",
+        "initial_stored_energy_Wh": 56560.31949930993,
+        "final_stored_energy_Wh": 12079.64469262959,
+        "mission_depletion_Wh": 44480.67480668034,
+        "terminal_energy_Wh": 42134.81760071583,
+        "battery_loss_energy_Wh": 2345.8572057146953,
+        "energy_balance_residual_Wh": 2.498138282034132e-07,
+        "final_soc": 0.24416597066989706,
+        "minimum_recorded_soc": 0.24416597066989706,
+        "final_soc_segment": "Baseleg",
+        "operating_limits_status": "passed",
+        "battery_operating_constraints": {
+          "battery_current": -0.4392411053324694,
+          "battery_voltage": -0.24270097432361726
+        },
+        "peak_cell_current_A": 5.046830052007776,
+        "minimum_loaded_pack_voltage_V": 410.0913215267937,
+        "maximum_terminal_power_W": 96758.15010653494,
+        "usable_energy_constraint": -0.10351451913370568,
+        "final_stored_energy_fraction": 0.2135710123203418,
+        "simplified_powered_lift_file": "D:\\RA-LSBO\\x57-cold-debug-real-fccf94c6\\seed-20261127\\lsbo\\workers\\000012\\simplified_powered_lift.json",
+        "battery_domain_trial_log": {
+          "scope": "numerical_trial_errors_not_failed_aircraft_count",
+          "total": 20,
+          "counts_by_message_type": {
+            "Battery power exceeds reference-model voltage-collapse limit": 12,
+            "Battery depleted or requested interval power is infeasible": 8
+          },
+          "log_file": "D:\\RA-LSBO\\x57-cold-debug-real-fccf94c6\\seed-20261127\\lsbo\\workers\\000012\\battery_domain_trials.jsonl",
+          "last_message": "Battery power exceeds reference-model voltage-collapse limit: SOC=0.24915582, cell_power_W=44.006652, pack_power_W=225314.06, cell_max_power_W=43.661596"
+        },
+        "energy_audit_file": "D:\\RA-LSBO\\x57-cold-debug-real-fccf94c6\\seed-20261127\\lsbo\\workers\\000012\\energy_audit.json",
+        "constraint_policy": {
+          "version": "legacy_screening_precheck_v1",
+          "thresholds_changed": false,
+          "flutter": "inherited_dimensionless_geometry_proxy_not_dynamic_flutter_validation",
+          "structure": "inherited_root_bending_capacity_proxy_not_detailed_stress_validation",
+          "stall_speed": "inherited_sea_level_empirical_CLmax_not_airfoil_specific_stall_validation",
+          "span": "inherited_layout_dependent_design_bounds_not_NASA_certification_limits",
+          "soc": "charge_fraction_minimum_0.15",
+          "usable_energy": "terminal_output_cap_47000_Wh_not_stored_energy_depletion"
+        },
+        "mda_evaluated": true,
+        "backend_feasible": true,
+        "solver_discharge_margin_W": 2994.535806067838,
+        "solver_discharge_margin_source": "converged_original_discharge_model",
+        "nasa_feasible": true
+      },
+      "elapsed_seconds": 0.00015330000042013125
+    },
+    "feasible": true,
+    "phase": "refinement",
+    "proposal": {
+      "source": "elite_local_rescore",
+      "score": -2.2551100515763514,
+      "coverage_target": null,
+      "refinement_radius": 0.03,
+      "solver_risk_screen": {
+        "mode": "screened_acquisition",
+        "passing_candidates": 296,
+        "finite_candidates": 296,
+        "thresholds": {
+          "success": 0.7,
+          "domain": 0.95
+        },
+        "selected_probabilities": {
+          "success": 1.0,
+          "domain": 1.0
+        },
+        "interpretation": "uncalibrated_advisory_not_physical_feasibility"
+      },
+      "representation_version": 2,
+      "candidate_count": 296,
+      "search_policy_version": "exact_precheck_local_search_20261012_v2",
+      "raw_pool_count": 288,
+      "raw_pool_limit": 512,
+      "structured_candidates": 288,
+      "local_optimized_candidates": 8,
+      "local_search_reports": [
+        {
+          "discrete": {
+            "prop_layout": "leading_edge_distributed",
+            "propeller_count": 2,
+            "wing_airfoil": "NACA_65_215",
+            "blade_count": 3,
+            "has_winglet": "yes"
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "prop_disk_clearance": -4.641588568868255,
+            "prop_fuselage_clearance": -1.6957942844341272,
+            "prop_wing_clearance": -1.5831115248239889,
+            "flutter": -0.015020673755852587,
+            "span_min": -1.5786116185162324,
+            "span_max": -3.7213883814837683
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 4,
+          "raw_checks": {
+            "prop_disk_clearance": -4.674443071059601,
+            "prop_fuselage_clearance": -1.7122215355298005,
+            "prop_wing_clearance": -1.592768668714315,
+            "flutter": 2.324418435506459e-11,
+            "span_min": -1.630780408488521,
+            "span_max": -3.66921959151148
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 0.9999999883701854,
+          "final_checks": {
+            "prop_disk_clearance": -4.674443070678113,
+            "prop_fuselage_clearance": -1.7122215353390566,
+            "prop_wing_clearance": -1.5927686686028055,
+            "flutter": -1.5082113336006842e-10,
+            "span_min": -1.6307804078840142,
+            "span_max": -3.6692195921159865
+          },
+          "acquisition_before": -2.510819502182062,
+          "acquisition_after": -2.255110051576353,
+          "acquisition_evaluations": 6
+        },
+        {
+          "discrete": {
+            "prop_layout": "wingtip",
+            "propeller_count": 2,
+            "wing_airfoil": "NACA_65_215",
+            "blade_count": 3,
+            "has_winglet": "yes"
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "prop_disk_clearance": -9.437157021703403,
+            "prop_fuselage_clearance": -4.093578510851701,
+            "prop_wing_clearance": 0.0,
+            "flutter": -0.005607909782572529,
+            "span_min": -1.229763603726422,
+            "span_max": -3.270236396273578
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 9,
+          "raw_checks": {
+            "prop_disk_clearance": -9.450313616525804,
+            "prop_fuselage_clearance": -4.100156808262903,
+            "prop_wing_clearance": 0.0,
+            "flutter": 3.4361512524228033e-09,
+            "span_min": -1.2509751745440347,
+            "span_max": -3.2490248254559653
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 0.9999993809150423,
+          "final_checks": {
+            "prop_disk_clearance": -9.450313608395941,
+            "prop_fuselage_clearance": -4.100156804197971,
+            "prop_wing_clearance": 0.0,
+            "flutter": -5.710798500757619e-11,
+            "span_min": -1.250975161427455,
+            "span_max": -3.249024838572545
+          },
+          "acquisition_before": -39.67636014512663,
+          "acquisition_after": -34.98231266086152,
+          "acquisition_evaluations": 27
+        }
+      ],
+      "local_optimization_events": [
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.804468132534918,
+              "wing_area": 10.857156761892563,
+              "quarter_chord_sweep": 3.999999999999499,
+              "thickness_to_chord": 0.13999999999838614,
+              "taper_ratio": 0.3500000001699272,
+              "root_twist": 2.000000000087063,
+              "tip_twist": -2.199999999012308,
+              "dihedral": 1.701713821993506,
+              "prop_span_spacing": 0.5180715916485592,
+              "prop_diameter_ratio": 0.8200000000000842,
+              "tip_prop_diameter": 1.72,
+              "tip_prop_rpm": 2700.0,
+              "winglet_fraction": 0.058837897935051495,
+              "winglet_cant_angle": 45.00000000001925
+            },
+            "discrete": {
+              "prop_layout": "leading_edge_distributed",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.804468133257345,
+              "wing_area": 11.037156761745617,
+              "quarter_chord_sweep": 3.9999999999925917,
+              "thickness_to_chord": 0.13999999999959656,
+              "taper_ratio": 0.3500000000424846,
+              "root_twist": 2.0000000000324474,
+              "tip_twist": -2.1999999997530773,
+              "dihedral": 1.6274638229711114,
+              "prop_span_spacing": 0.5090715916563099,
+              "prop_diameter_ratio": 0.8249029482160657,
+              "tip_prop_diameter": 1.72,
+              "tip_prop_rpm": 2700.0,
+              "winglet_fraction": 0.06063789790545291,
+              "winglet_cant_angle": 45.00000000000481
+            },
+            "discrete": {
+              "prop_layout": "leading_edge_distributed",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.804468133016536,
+              "wing_area": 10.977156761794598,
+              "quarter_chord_sweep": 3.999999999994894,
+              "thickness_to_chord": 0.13999999999919308,
+              "taper_ratio": 0.3500000000849655,
+              "root_twist": 2.0000000000506524,
+              "tip_twist": -2.199999999506154,
+              "dihedral": 1.652213822645243,
+              "prop_span_spacing": 0.5120715916537263,
+              "prop_diameter_ratio": 0.8232686321440719,
+              "tip_prop_diameter": 1.72,
+              "tip_prop_rpm": 2700.0,
+              "winglet_fraction": 0.060037897915319105,
+              "winglet_cant_angle": 45.00000000000963
+            },
+            "discrete": {
+              "prop_layout": "leading_edge_distributed",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.804468132775728,
+              "wing_area": 10.91715676184358,
+              "quarter_chord_sweep": 3.9999999999971965,
+              "thickness_to_chord": 0.1399999999987896,
+              "taper_ratio": 0.35000000012744636,
+              "root_twist": 2.000000000068858,
+              "tip_twist": -2.199999999259231,
+              "dihedral": 1.6769638223193746,
+              "prop_span_spacing": 0.5150715916511428,
+              "prop_diameter_ratio": 0.821634316072078,
+              "tip_prop_diameter": 1.72,
+              "tip_prop_rpm": 2700.0,
+              "winglet_fraction": 0.0594378979251853,
+              "winglet_cant_angle": 45.00000000001444
+            },
+            "discrete": {
+              "prop_layout": "leading_edge_distributed",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.703746993048231,
+              "wing_area": 11.826180324074402,
+              "quarter_chord_sweep": 3.4514490931842086,
+              "thickness_to_chord": 0.13608217158188313,
+              "taper_ratio": 0.389624786862989,
+              "root_twist": 2.830852377528167,
+              "tip_twist": -1.4169040061477949,
+              "dihedral": 1.3231563506851354,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7506615530315137,
+              "tip_prop_rpm": 2653.9647577945066,
+              "winglet_fraction": 0.0767781417784345,
+              "winglet_cant_angle": 46.68108829070692
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.582532492603063,
+              "wing_area": 12.006180322960653,
+              "quarter_chord_sweep": 3.361449150468438,
+              "thickness_to_chord": 0.13495717173497776,
+              "taper_ratio": 0.40087478175822777,
+              "root_twist": 2.887102332185199,
+              "tip_twist": -1.500153994155,
+              "dihedral": 1.3974063415729896,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7427865567715495,
+              "tip_prop_rpm": 2666.339755722326,
+              "winglet_fraction": 0.0785781416101941,
+              "winglet_cant_angle": 45.89358839258395
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.622937326084784,
+              "wing_area": 11.946180323331902,
+              "quarter_chord_sweep": 3.3914491313736947,
+              "thickness_to_chord": 0.13533217168394623,
+              "taper_ratio": 0.39712478345981483,
+              "root_twist": 2.868352347299522,
+              "tip_twist": -1.4724039981525983,
+              "dihedral": 1.3726563446103712,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7454115555248708,
+              "tip_prop_rpm": 2662.214756413053,
+              "winglet_fraction": 0.07797814166627423,
+              "winglet_cant_angle": 46.15608835862494
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.663342159566508,
+              "wing_area": 11.886180323703151,
+              "quarter_chord_sweep": 3.421449112278952,
+              "thickness_to_chord": 0.13570717163291468,
+              "taper_ratio": 0.39337478516140195,
+              "root_twist": 2.8496023624138447,
+              "tip_twist": -1.4446540021501968,
+              "dihedral": 1.3479063476477533,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7480365542781924,
+              "tip_prop_rpm": 2658.08975710378,
+              "winglet_fraction": 0.07737814172235437,
+              "winglet_cant_angle": 46.418588324665926
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        }
+      ],
+      "refinement_challenger": false,
+      "global_stagnation": 0,
+      "head_y_mean": 45282.604549773896,
+      "head_y_std": 1962.0787954416378,
+      "gp_diagnostics": {
+        "objective": {
+          "name": "objective",
+          "attempts": 1,
+          "noise_variance": 0.0016841024984333933,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "soc": {
+          "name": "soc",
+          "attempts": 1,
+          "noise_variance": 0.001915157681999961,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "stall_speed": {
+          "name": "stall_speed",
+          "attempts": 1,
+          "noise_variance": 0.0020910628804707305,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "structure": {
+          "name": "structure",
+          "attempts": 1,
+          "noise_variance": 0.003011711108451385,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "usable_energy": {
+          "name": "usable_energy",
+          "attempts": 1,
+          "noise_variance": 0.0019067845182502556,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "battery_current": {
+          "name": "battery_current",
+          "attempts": 1,
+          "noise_variance": 0.0018832210040326514,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "battery_voltage": {
+          "name": "battery_voltage",
+          "attempts": 1,
+          "noise_variance": 0.0018535217342744465,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        },
+        "solver_discharge_domain": {
+          "name": "solver_discharge_domain",
+          "attempts": 1,
+          "noise_variance": 0.0016882759876752098,
+          "learning_rate": 0.04,
+          "training_points": 13,
+          "previous_errors": []
+        }
+      }
+    }
+  },
+  "rng_state": {
+    "bit_generator": "PCG64",
+    "state": {
+      "state": 306382933219043674202428116155566907872,
+      "inc": 30715098197490589729107799354177433159
+    },
+    "has_uint32": 0,
+    "uinteger": 2636815579
+  }
+}

@@ -1,0 +1,717 @@
+{
+  "status": "complete",
+  "problem": "X57_cold_start_qualification_55nmi",
+  "settings": {
+    "budget": 20,
+    "initial": 8,
+    "seed": 20261127,
+    "latent_dim": 4,
+    "pretrain_epochs": 60,
+    "update_epochs": 20,
+    "update_every": 8,
+    "gp_steps": 45,
+    "branches": 12,
+    "points_per_branch": 10,
+    "restarts": 4,
+    "raw_samples": 64,
+    "local_branches": 2,
+    "refinement_fraction": 0.2,
+    "exploration_probability": 0.1,
+    "use_prior": true,
+    "max_proposal_attempts": 3000,
+    "max_consecutive_solver_failures": 5,
+    "initial_local_fraction": 0.0,
+    "initial_local_radius": 0.03,
+    "stratified_initialization": true,
+    "coverage_interval": 5,
+    "use_solver_domain": true,
+    "refinement_radius": 0.03,
+    "adaptive_refinement": true,
+    "refinement_min_radius": 0.001,
+    "screen_solver_risk": true,
+    "bo_domain_probability": 0.8,
+    "refinement_domain_probability": 0.95,
+    "bo_success_probability": 0.5,
+    "refinement_success_probability": 0.7,
+    "proposal_pool_size": 512,
+    "coverage_min_evaluations": 4,
+    "refinement_challenger_patience": 8,
+    "refinement_challenger_interval": 5,
+    "constrained_local_search": true
+  },
+  "method": "lsbo",
+  "initial_design_sha256": null,
+  "recovery_policy": "margin_ranked_anchor_backoff_v1",
+  "consecutive_solver_failures": 0,
+  "resume_failure_limit": null,
+  "continuation": null,
+  "last_representation_update": 16,
+  "coverage": [
+    {
+      "stratum": {
+        "prop_layout": "wingtip",
+        "propeller_count": 2
+      },
+      "evaluations": 13
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 2
+      },
+      "evaluations": 2
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 4
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 6
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 8
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 10
+      },
+      "evaluations": 1
+    },
+    {
+      "stratum": {
+        "prop_layout": "leading_edge_distributed",
+        "propeller_count": 12
+      },
+      "evaluations": 1
+    }
+  ],
+  "evaluations": 20,
+  "feasible_evaluations": 10,
+  "precheck_rejections": {
+    "prop_disk_clearance": 4823,
+    "flutter": 8279,
+    "span_min": 1117,
+    "span_max": 185
+  },
+  "proposal_sources": {
+    "unspecified": 8,
+    "lsbo_latent_completion_risk": 2,
+    "latent_decode_rescore": 8,
+    "elite_local_rescore": 2
+  },
+  "best": {
+    "evaluation": 20,
+    "candidate": {
+      "continuous": {
+        "aspect_ratio": 10.423995909981207,
+        "wing_area": 11.27755016323869,
+        "quarter_chord_sweep": 2.859813141851541,
+        "thickness_to_chord": 0.1263279665709706,
+        "taper_ratio": 0.5072766990431699,
+        "root_twist": 3.409763932259107,
+        "tip_twist": -2.2,
+        "dihedral": 0.9362084844983354,
+        "prop_span_spacing": 0.5,
+        "prop_diameter_ratio": 1.0,
+        "tip_prop_diameter": 1.746872017620966,
+        "tip_prop_rpm": 2812.2954176731873,
+        "winglet_fraction": 0.07494812445190614,
+        "winglet_cant_angle": 45.00000001044924
+      },
+      "discrete": {
+        "prop_layout": "wingtip",
+        "propeller_count": 2,
+        "wing_airfoil": "NACA_65_215",
+        "blade_count": 2,
+        "has_winglet": "yes"
+      }
+    },
+    "result": {
+      "objective": 45521.136400752046,
+      "solver_success": true,
+      "constraints": {
+        "soc": -0.07445714760757885,
+        "stall_speed": -0.1754610163454302,
+        "flutter": -6.217582004808264e-11,
+        "structure": -0.4520929141209916,
+        "span_min": -0.8423768969819534,
+        "span_max": -3.6576231030180466,
+        "usable_energy": -0.08223676286587722,
+        "prop_disk_clearance": -9.045504879360987,
+        "prop_fuselage_clearance": -3.897752439680494,
+        "prop_wing_clearance": 0.0,
+        "battery_current": -0.4343201027397571,
+        "battery_voltage": -0.22447759154508806
+      },
+      "status": "ok",
+      "metrics": {
+        "worker_dir": "D:\\RA-LSBO\\x57-cold-debug-real-fccf94c6\\seed-20261127\\ra_lsbo_energy_interval\\workers\\000012",
+        "solver_discharge_margin_W": 4579.877123843168
+      },
+      "elapsed_seconds": 0.00014009999995323597
+    },
+    "feasible": true,
+    "phase": "refinement",
+    "proposal": {
+      "source": "elite_local_rescore",
+      "score": -3.3773099324783935,
+      "coverage_target": null,
+      "refinement_radius": 0.03,
+      "solver_risk_screen": {
+        "mode": "joint_score_only"
+      },
+      "representation_version": 2,
+      "candidate_count": 272,
+      "search_policy_version": "exact_precheck_local_search_20261012_v2",
+      "raw_pool_count": 264,
+      "raw_pool_limit": 512,
+      "structured_candidates": 264,
+      "local_optimized_candidates": 8,
+      "local_search_reports": [
+        {
+          "discrete": {
+            "prop_layout": "wingtip",
+            "propeller_count": 2,
+            "wing_airfoil": "NACA_65_215",
+            "blade_count": 2,
+            "has_winglet": "yes"
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "prop_disk_clearance": -8.998004629005424,
+            "prop_fuselage_clearance": -3.8740023145027123,
+            "prop_wing_clearance": 0.0,
+            "flutter": -0.0062327683282144,
+            "span_min": -0.7871793950477244,
+            "span_max": -3.7128206049522756
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 7,
+          "raw_checks": {
+            "prop_disk_clearance": -9.04550487985791,
+            "prop_fuselage_clearance": -3.8977524399289565,
+            "prop_wing_clearance": 0.0,
+            "flutter": 2.568611989772762e-12,
+            "span_min": -0.8423768975594346,
+            "span_max": -3.6576231024405654
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 0.9999999895343387,
+          "final_checks": {
+            "prop_disk_clearance": -9.045504879360987,
+            "prop_fuselage_clearance": -3.897752439680494,
+            "prop_wing_clearance": 0.0,
+            "flutter": -6.217582004808264e-11,
+            "span_min": -0.8423768969819534,
+            "span_max": -3.6576231030180466
+          },
+          "acquisition_before": -3.8287965463123608,
+          "acquisition_after": -3.3773099324784215,
+          "acquisition_evaluations": 9
+        },
+        {
+          "discrete": {
+            "prop_layout": "wingtip",
+            "propeller_count": 2,
+            "wing_airfoil": "NACA_65_215",
+            "blade_count": 3,
+            "has_winglet": "yes"
+          },
+          "method": "slsqp_exact_precheck_v1",
+          "seed_checks": {
+            "prop_disk_clearance": -9.412399143029727,
+            "prop_fuselage_clearance": -4.081199571514864,
+            "prop_wing_clearance": 0.0,
+            "flutter": -0.007035729070266172,
+            "span_min": -1.1906155278223078,
+            "span_max": -3.309384472177692
+          },
+          "threshold_relaxation": 0.0,
+          "success": true,
+          "message": "Optimization terminated successfully",
+          "iterations": 3,
+          "raw_checks": {
+            "prop_disk_clearance": -9.394699190085767,
+            "prop_fuselage_clearance": -4.0723495950428825,
+            "prop_wing_clearance": 0.0,
+            "flutter": -0.009430086813100202,
+            "span_min": -1.178671738453815,
+            "span_max": -3.321328261546185
+          },
+          "retained_improvement": true,
+          "feasible_fraction": 1.0,
+          "final_checks": {
+            "prop_disk_clearance": -9.394699190085767,
+            "prop_fuselage_clearance": -4.0723495950428825,
+            "prop_wing_clearance": 0.0,
+            "flutter": -0.009430086813100202,
+            "span_min": -1.178671738453815,
+            "span_max": -3.321328261546185
+          },
+          "acquisition_before": -13.35615972447471,
+          "acquisition_after": -9.887872447866739,
+          "acquisition_evaluations": 5
+        }
+      ],
+      "local_optimization_events": [
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.423995909981207,
+              "wing_area": 11.27755016323869,
+              "quarter_chord_sweep": 2.859813141851541,
+              "thickness_to_chord": 0.1263279665709706,
+              "taper_ratio": 0.5072766990431699,
+              "root_twist": 3.409763932259107,
+              "tip_twist": -2.2,
+              "dihedral": 0.9362084844983354,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.746872017620966,
+              "tip_prop_rpm": 2812.2954176731873,
+              "winglet_fraction": 0.07494812445190614,
+              "winglet_cant_angle": 45.00000001044924
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 2,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.446841161012957,
+              "wing_area": 11.313212609409145,
+              "quarter_chord_sweep": 2.9498131409706607,
+              "thickness_to_chord": 0.12745296657083968,
+              "taper_ratio": 0.4960266990464437,
+              "root_twist": 3.466013931398385,
+              "tip_twist": -2.1999999999943305,
+              "dihedral": 1.0104584840526152,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7389970176813836,
+              "tip_prop_rpm": 2799.920417774778,
+              "winglet_fraction": 0.07674812444132173,
+              "winglet_cant_angle": 45.000000002615224
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 2,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.439226077335707,
+              "wing_area": 11.301325127352328,
+              "quarter_chord_sweep": 2.9198131412642874,
+              "thickness_to_chord": 0.12707796657088333,
+              "taper_ratio": 0.4997766990453524,
+              "root_twist": 3.447263931685292,
+              "tip_twist": -2.19999999999622,
+              "dihedral": 0.9857084842011885,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7416220176612442,
+              "tip_prop_rpm": 2804.045417740914,
+              "winglet_fraction": 0.07614812444484986,
+              "winglet_cant_angle": 45.00000000522656
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 2,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.431610993658456,
+              "wing_area": 11.289437645295507,
+              "quarter_chord_sweep": 2.889813141557914,
+              "thickness_to_chord": 0.12670296657092694,
+              "taper_ratio": 0.5035266990442611,
+              "root_twist": 3.4285139319721996,
+              "tip_twist": -2.19999999999811,
+              "dihedral": 0.9609584843497618,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7442470176411051,
+              "tip_prop_rpm": 2808.170417707051,
+              "winglet_fraction": 0.075548124448378,
+              "winglet_cant_angle": 45.000000007837905
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 2,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.495135089409994,
+              "wing_area": 11.906726380511131,
+              "quarter_chord_sweep": 3.00092444050751,
+              "thickness_to_chord": 0.12772864150255367,
+              "taper_ratio": 0.5271946151053808,
+              "root_twist": 3.674233522968847,
+              "tip_twist": -2.1999999992302266,
+              "dihedral": 1.0321137516486096,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7339725483680486,
+              "tip_prop_rpm": 2840.8410805222866,
+              "winglet_fraction": 0.08196042226049674,
+              "winglet_cant_angle": 46.04999999793136
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.630135087746904,
+              "wing_area": 11.72672638084417,
+              "quarter_chord_sweep": 3.090924440418771,
+              "thickness_to_chord": 0.12885364149545797,
+              "taper_ratio": 0.5159446151196969,
+              "root_twist": 3.617983522994312,
+              "tip_twist": -2.153105606849827,
+              "dihedral": 1.1063637515157732,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7260975483763379,
+              "tip_prop_rpm": 2828.466080536957,
+              "winglet_fraction": 0.08016042226191977,
+              "winglet_cant_angle": 45.26249999948291
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.585135088301266,
+              "wing_area": 11.786726380733157,
+              "quarter_chord_sweep": 3.0609244404483507,
+              "thickness_to_chord": 0.1284786414978232,
+              "taper_ratio": 0.5196946151149249,
+              "root_twist": 3.636733522985824,
+              "tip_twist": -2.1687370709766265,
+              "dihedral": 1.081613751560052,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7287225483735749,
+              "tip_prop_rpm": 2832.5910805320673,
+              "winglet_fraction": 0.08076042226144542,
+              "winglet_cant_angle": 45.524999998965725
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        },
+        {
+          "outcome": "accepted",
+          "violations": {},
+          "candidate": {
+            "continuous": {
+              "aspect_ratio": 10.54013508885563,
+              "wing_area": 11.846726380622144,
+              "quarter_chord_sweep": 3.0309244404779303,
+              "thickness_to_chord": 0.12810364150018844,
+              "taper_ratio": 0.5234446151101528,
+              "root_twist": 3.6554835229773355,
+              "tip_twist": -2.1843685351034265,
+              "dihedral": 1.0568637516043307,
+              "prop_span_spacing": 0.5,
+              "prop_diameter_ratio": 1.0,
+              "tip_prop_diameter": 1.7313475483708116,
+              "tip_prop_rpm": 2836.716080527177,
+              "winglet_fraction": 0.0813604222609711,
+              "winglet_cant_angle": 45.78749999844854
+            },
+            "discrete": {
+              "prop_layout": "wingtip",
+              "propeller_count": 2,
+              "wing_airfoil": "NACA_65_215",
+              "blade_count": 3,
+              "has_winglet": "yes"
+            }
+          }
+        }
+      ],
+      "refinement_challenger": {
+        "mode": "joint_score_only"
+      },
+      "global_stagnation": 0,
+      "head_y_mean": 46785.73994599187,
+      "head_y_std": 1106.6537207412796,
+      "gp_diagnostics": {
+        "objective": {
+          "name": "objective",
+          "attempts": 1,
+          "noise_variance": 0.0018150369658649313,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        },
+        "soc": {
+          "name": "soc",
+          "attempts": 1,
+          "noise_variance": 0.0017577657130086373,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        },
+        "stall_speed": {
+          "name": "stall_speed",
+          "attempts": 1,
+          "noise_variance": 0.0016742362127898634,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        },
+        "structure": {
+          "name": "structure",
+          "attempts": 1,
+          "noise_variance": 0.0016799344324351525,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        },
+        "battery_current": {
+          "name": "battery_current",
+          "attempts": 1,
+          "noise_variance": 0.0017502913584255698,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        },
+        "battery_voltage": {
+          "name": "battery_voltage",
+          "attempts": 1,
+          "noise_variance": 0.0017701632939809617,
+          "learning_rate": 0.04,
+          "training_points": 12,
+          "previous_errors": []
+        }
+      },
+      "risk_stage": "performance",
+      "risk_training_rows": 12,
+      "usable_designs": 9,
+      "exact_objectives": 12,
+      "n_finite_information_rows": 0,
+      "engineering_energy_fit": {
+        "diagnostics": {
+          "n_exact": 12,
+          "n_interval": 7,
+          "n_missing": 0,
+          "converged": true,
+          "sweeps": 16,
+          "last_site_change": 9.870445114912614e-09,
+          "hyperparameters": "fixed",
+          "seed": 20261127,
+          "n_interval_sites": 7,
+          "prior_only": false,
+          "normalization": {
+            "input": "identity",
+            "output": "identity"
+          },
+          "length_scale": [
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "kernel": "matern52",
+          "inference": "ep",
+          "settings": {
+            "length_scale": 0.5,
+            "signal_variance": 0.0225,
+            "prior_mean": 0.0,
+            "exact_noise": 0.0001,
+            "interval_noise": 0.0,
+            "jitter": 1e-10,
+            "damping": 0.7,
+            "tolerance": 1e-08,
+            "max_sweeps": 120,
+            "stable_tail_moments": true,
+            "record_ep_trace": false
+          }
+        },
+        "partial_observations": [
+          {
+            "kind": "interval",
+            "evidence_id": "initial/01:000001",
+            "value": null,
+            "lower": 0.01307603561270776,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "initial/02:000001",
+            "value": null,
+            "lower": 0.04823890652214269,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "initial/03:000001",
+            "value": null,
+            "lower": 0.060413621964882536,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "initial/04:000001",
+            "value": null,
+            "lower": 0.06250833192037608,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "initial/06:000001",
+            "value": null,
+            "lower": 0.008138130219446538,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "initial/08:000001",
+            "value": null,
+            "lower": 0.002920930326280047,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          },
+          {
+            "kind": "interval",
+            "evidence_id": "ra_lsbo_energy_interval:000001",
+            "value": null,
+            "lower": 0.06846165373667645,
+            "upper": null,
+            "lower_inclusive": true,
+            "upper_inclusive": true,
+            "reason": null
+          }
+        ]
+      },
+      "risk_mode": "risk_weighted_native_search",
+      "p_complete": 0.9629359781148272
+    }
+  },
+  "rng_state": {
+    "bit_generator": "PCG64",
+    "state": {
+      "state": 276819493109520319210108356174020497184,
+      "inc": 30715098197490589729107799354177433159
+    },
+    "has_uint32": 0,
+    "uinteger": 4072958690
+  }
+}

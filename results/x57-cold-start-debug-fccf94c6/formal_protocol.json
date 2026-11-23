@@ -1,0 +1,69 @@
+{
+  "schema": "x57_formal_comparison_protocol_v1",
+  "execution_status": "protocol_frozen",
+  "reference_code_sha": "fccf94c61d87b170824476046c8f3d2a4d503229",
+  "pilot_report_sha256": "5fb719456cfcaa2b09ec86623e3410ae6ec9182b1d2a57a20b631b8b4ce40930",
+  "pilot_basis": "Both pilot seeds completed, both layouts supplied a usable pilot design, and both RA-LSBO arms fitted verified partial constraint observations. The pilot contained no seed with zero usable initial designs.",
+  "mission": {
+    "cruise_distance_nmi": 45,
+    "config": "configs/distance_45.json",
+    "config_sha256": "3d2cdb22bad14ae7da3988c210b29bfce4ec87fbc0002d0f8145c1a9ce1f6118",
+    "worker_manifest_sha256": "4877e1997298fc317d99269914bd315b06994e9d1c44f225ea3db963fae5b2ab",
+    "worker_overlay_sha256": "9549d9e724afe70d552c9cf5cf4c720eafefb6643a012377e52cb6a40f2da952",
+    "retain_physical_constraints_and_reserve_segments": true,
+    "engineering_stop": "first_converged_discharge_prefix_over_47000_Wh_v1",
+    "terminal_energy_cap_Wh": 47000,
+    "target_objective_Wh": 46000
+  },
+  "seeds": [104729, 130363, 155921, 196613, 230003, 262147],
+  "shared_designs": {
+    "sampler": "ra_lsbo.x57_cold_sampling.freeze_roster",
+    "roster_file": "formal_rosters.json",
+    "main_count": 32,
+    "main_count_per_layout": 16,
+    "sensitivity_count": 8,
+    "sensitivity_count_per_layout": 4,
+    "nested_rule": "Use the first eight members of the same pre-screened alternating-layout roster. All arms starting with eight receive only their eight shared outcomes.",
+    "exclusions": "Exclude all archived, calibration and pilot candidates and any earlier seed roster in this protocol. Keep every frozen seed irrespective of its initialization outcomes."
+  },
+  "arms": {
+    "lsbo_full_budget": "Frozen X-57 native LSBO encoding, surrogates, proposals and local search. Record and continue past the native consecutive missing-target stop.",
+    "ra_lsbo_energy_sign": "Structured completion head and joint engineering search. The sign of verified partial constraint violations supplies the lower endpoint g > 0.",
+    "ra_lsbo_energy_interval": "Same models, search and fallback rules as the sign arm. The same verified partial violations supply g >= E_prefix / 47000 - 1.",
+    "archsbo_screened": "Qualify the X-57 adaptation of the screened ArchSBO 1.7.1 baseline in run_aircraft_archsbo_screened.py.",
+    "logcei_screened_online": "Qualify the X-57 adaptation of the repository LogCEI baseline in ra_lsbo/experiments/comparison/methods.py."
+  },
+  "deployment": {
+    "formal_rcaide_calls_started": 0,
+    "external_adapters": "Qualify the two external adapters and freeze their environment and execution commit before starting the formal comparison.",
+    "max_workers": 12,
+    "threads_per_worker": 1,
+    "worker_timeout_seconds": 1800,
+    "trajectory_order": "Advance each trajectory only after its current call settles. Use the same physical worker, feasibility, missing-objective, pre-screening and billing contracts in all five arms."
+  },
+  "budgets": {
+    "per_arm_total": 320,
+    "main_online_per_arm": 288,
+    "sensitivity_online_per_arm": 312,
+    "main_cumulative_checkpoints": [32, 48, 64, 128, 256, 320],
+    "sensitivity_cumulative_checkpoints": [8, 16, 24, 32, 48, 64, 128, 256, 320],
+    "shared_initial_charge_once_per_seed_across_sizes": true,
+    "main_max_starts": 8832,
+    "sensitivity_additional_max_starts": 9360,
+    "combined_max_starts": 18192
+  },
+  "analysis": {
+    "initial_usable_groups": ["0", "1-2", "3+"],
+    "cold_start_group": "0",
+    "first_feasible": "Report first cumulative and first online usable call, hit rate, and censoring at the last observed call.",
+    "first_high_quality_feasible": "Report first cumulative usable call at or below the frozen objective threshold and its hit rate. Retain right-censored misses.",
+    "same_budget_performance": "Report best usable energy by checkpoint, paired endpoint differences for pairs with both usable outcomes and the no-usable fraction. Keep both zero-usable arms and one-sided missing endpoints visible.",
+    "mechanism_contrast": ["ra_lsbo_energy_interval", "ra_lsbo_energy_sign"],
+    "optimization_contrasts": [
+      ["ra_lsbo_energy_interval", "lsbo_full_budget"],
+      ["ra_lsbo_energy_interval", "archsbo_screened"],
+      ["ra_lsbo_energy_interval", "logcei_screened_online"]
+    ],
+    "report_all_seeds_and_actual_charges": true
+  }
+}
