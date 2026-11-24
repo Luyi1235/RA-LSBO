@@ -1,4 +1,4 @@
-"""Launch the two pinned X-57/RCAIDE checkpoints on a Windows workstation."""
+"""Launch the pinned eight-point X-57/RCAIDE comparison from PyCharm."""
 
 import argparse
 import hashlib
@@ -9,12 +9,11 @@ import subprocess
 import sys
 
 
-CODE_SHA = "919c118cd3a94f9fe97ab87120c7a9b112edea3f"
-LEGACY_PLAN_CODE_SHA = "0a3c1ea7db2ab093ada3b2cd4ae24b6d70c14377"
+CODE_SHA = "ae5dd445c9656ffa31c9e340b1364bc2c746eef7"
+PLAN_SCHEMA = "x57_five_arm_cold_n8"
+CHECKPOINT = 16
 QUALIFICATION_SHA = "9c5ac77c5ecc3987787292981dc679045441972c"
-PREFIX_SHA = "bcc54e6ecfda8a68fdcf93238d13b8a07d023daa"
 QUALIFICATION_DIR = "x57-formal-prefix-qualification"
-PREFIX_DIR = "x57-47p5-cold-start-checkpoint16"
 PHYSICAL_PLAN_HASH = "22ee810579fb83d35bf32869f388911d21cea51b2e53a73321c4d29df8bb34c8"
 QUALIFICATION_INPUTS = {
     f"{QUALIFICATION_DIR}/preregistered_47_5.json":
@@ -27,10 +26,6 @@ QUALIFICATION_INPUTS = {
         "3b3996b794d0584f1fe76cf6bc563dccc169ba94649e196fc383d46ecaac87a8",
     "x57-cold-start-debug-fccf94c6/calls.jsonl":
         "990caac32365893a8100e3cc10660cd554e1e7a4391b4b467a74a570c77314df",
-}
-PREFIX_INPUTS = {
-    f"{PREFIX_DIR}/run_plan.json": "1160101863a748cc0eda4283cd8c8cf1b269bcf432f441493114f9ada5b8531a",
-    f"{PREFIX_DIR}/calls.jsonl": "da57219a60b112165fce52ed2a048f2710872ee060541be24a084e5967022f1b",
 }
 THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                "NUMEXPR_NUM_THREADS", "NUMBA_NUM_THREADS")
@@ -51,10 +46,7 @@ def ensure_commit(repo, commit):
 
 
 def checkout(repo, workspace):
-    code = workspace / "x57-native-doe64"
-    if code.exists() and git(code, "rev-parse", "HEAD").decode().strip() == CODE_SHA:
-        return code
-    code = workspace / f"x57-native-doe64-{CODE_SHA[:7]}"
+    code = workspace / f"x57-cold-n8-{CODE_SHA[:7]}"
     if not code.exists():
         ensure_commit(repo, CODE_SHA)
         subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach", str(code), CODE_SHA], check=True)
@@ -121,27 +113,21 @@ def run_campaign(command, code, output):
     checkpoint = report.get("checkpoint", 0)
     resume = plan_file.is_file()
     if resume:
-        if read_json(plan_file).get("code_sha") not in (CODE_SHA, LEGACY_PLAN_CODE_SHA):
-            raise ValueError(f"Output belongs to a different code commit: {output}")
+        plan = read_json(plan_file)
+        if (plan.get("schema"), plan.get("code_sha")) != (PLAN_SCHEMA, CODE_SHA):
+            raise ValueError(f"Output belongs to a different experiment plan: {output}")
     elif output.exists():
         raise ValueError(f"No frozen run plan in {output}. Set --output to a new directory.")
 
-    if checkpoint >= 72 and report.get("status") == "complete":
+    if checkpoint >= CHECKPOINT and report.get("status") == "complete":
         print(f"Experiment already completed through checkpoint {checkpoint}: {output}")
         return 0
-    if checkpoint > 72:
-        raise ValueError(f"Output has advanced past this launcher's checkpoint 72: {output}")
+    if checkpoint > CHECKPOINT:
+        raise ValueError(f"Output has advanced past this launcher's checkpoint {CHECKPOINT}: {output}")
 
-    if checkpoint < 64 or (checkpoint == 64 and report.get("status") != "complete"):
-        status = run_stage(command, code, output, 64, resume)
-        if status:
-            return status
-    gate = read_json(output / "native_archsbo_gate.json").get("seeds", {})
-    if len(gate) != 6 or not all(row.get("qualified") is True for row in gate.values()):
-        raise ValueError(f"Native ArchSBO qualification is incomplete: {output / 'native_archsbo_gate.json'}")
-    status = run_stage(command, code, output, 72, resume=True)
+    status = run_stage(command, code, output, CHECKPOINT, resume=resume)
     if not status:
-        print(f"Checkpoint 72 complete. Report: {output / 'report.json'}", flush=True)
+        print(f"Checkpoint {CHECKPOINT} complete. Report: {output / 'report.json'}", flush=True)
     return status
 
 
@@ -163,8 +149,9 @@ def main():
     external = (args.external_python or (root / "x57-baseline-py311/Scripts/python.exe")).resolve()
     qualification = (args.qualification_plan or
                      (root / "x57-qualification-v1-final/qualification_plan.json")).resolve()
-    output = (args.output or (root / "x57-47p5-native-five-arm-n64")).resolve()
+    output = (args.output or (root / "x57-47p5-cold-five-arm-n8")).resolve()
     try:
+        print("[prepare] Checking the two Python environments and frozen inputs", flush=True)
         for name, item in (("--rcaide-python", rcaide), ("--external-python", external),
                            ("--qualification-plan", qualification)):
             if not item.is_file():
@@ -179,9 +166,8 @@ def main():
         cache = root / "x57-native-doe64-inputs"
         archive = prepare_inputs(repo, root / "x57-cold-debug-publish/results",
                                  cache / QUALIFICATION_SHA, QUALIFICATION_SHA, QUALIFICATION_INPUTS)
-        prefix = prepare_inputs(repo, root, cache / PREFIX_SHA, PREFIX_SHA, PREFIX_INPUTS) / PREFIX_DIR
         command = [str(rcaide), "-B", str(code / "run_x57_five_arm.py"),
-                   "--archive", str(archive), "--initial-replay", str(prefix),
+                   "--archive", str(archive), "--cold-baselines",
                    "--qualification-plan", str(qualification), "--external-python", str(external),
                    "--output", str(output), "--workers", "12", "--execute-rcaide"]
         output.parent.mkdir(parents=True, exist_ok=True)
