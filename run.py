@@ -9,7 +9,8 @@ import subprocess
 import sys
 
 
-CODE_SHA = "0a3c1ea7db2ab093ada3b2cd4ae24b6d70c14377"
+CODE_SHA = "919c118cd3a94f9fe97ab87120c7a9b112edea3f"
+LEGACY_PLAN_CODE_SHA = "0a3c1ea7db2ab093ada3b2cd4ae24b6d70c14377"
 QUALIFICATION_SHA = "9c5ac77c5ecc3987787292981dc679045441972c"
 PREFIX_SHA = "bcc54e6ecfda8a68fdcf93238d13b8a07d023daa"
 QUALIFICATION_DIR = "x57-formal-prefix-qualification"
@@ -120,7 +121,7 @@ def run_campaign(command, code, output):
     checkpoint = report.get("checkpoint", 0)
     resume = plan_file.is_file()
     if resume:
-        if read_json(plan_file).get("code_sha") != CODE_SHA:
+        if read_json(plan_file).get("code_sha") not in (CODE_SHA, LEGACY_PLAN_CODE_SHA):
             raise ValueError(f"Output belongs to a different code commit: {output}")
     elif output.exists():
         raise ValueError(f"No frozen run plan in {output}. Set --output to a new directory.")
