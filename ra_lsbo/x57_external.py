@@ -1,4 +1,4 @@
-"""Bridge the X-57 ledger to native ArchSBO and the repository's LogCEI."""
+"""Bridge the X-57 ledger to sequential external optimizers."""
 
 from collections import Counter
 from contextlib import contextmanager
@@ -15,6 +15,7 @@ from .x57_cold_sampling import violations
 from .x57_energy_stop import STATUS as ENGINEERING_STOP, verified_stop
 
 ARMS = ("archsbo_native", "logcei_screened_online")
+SCREENED_METHODS = {"logcei_screened_online": "logcei", "scbo_screened_online": "scbo_adapted"}
 TOTAL_BUDGET = 320
 RANDOM_LOCK = RLock()
 
@@ -76,7 +77,7 @@ def record_from_row(problem, row):
     return Record(candidate, observation, usable)
 
 
-class LogCEIProblem:
+class ScreenedProblem:
     allow_unknown_constraint_evidence = True
 
     def __init__(self, problem):
@@ -93,7 +94,8 @@ class X57External:
     """Sequential ask/tell with explicit worker ownership outside the optimizer."""
 
     def __init__(self, problem, arm, seed, initial, total_budget=TOTAL_BUDGET, pool_size=512):
-        if arm not in ARMS or len(initial) not in (8, 32, 64) or not len(initial) < total_budget <= TOTAL_BUDGET:
+        if (arm != "archsbo_native" and arm not in SCREENED_METHODS
+                or len(initial) not in (8, 32, 64) or not len(initial) < total_budget <= TOTAL_BUDGET):
             raise ValueError("Invalid external trajectory settings")
         self.problem, self.arm, self.seed = problem, arm, seed
         self.total_budget, self.initial_size, self.pool_size = total_budget, len(initial), pool_size
@@ -106,8 +108,8 @@ class X57External:
                 or any((r["seed"], r["evaluation"], r["online"], r["charged"]) != (seed, i, 0, True)
                        for i, r in enumerate(initial, 1))):
             raise ValueError("A shared prefix must contain unique settled observations")
-        if arm == "logcei_screened_online":
-            self.native = ExternalOptimizer(LogCEIProblem(problem), seed, "logcei",
+        if arm in SCREENED_METHODS:
+            self.native = ExternalOptimizer(ScreenedProblem(problem), seed, SCREENED_METHODS[arm],
                                             {"horizon": total_budget, "pool": pool_size})
         else:
             self._init_archsbo()
@@ -188,7 +190,7 @@ class X57External:
             rejections.append({"candidate_id": key, "precheck": margins, "charged": False})
         raise RuntimeError(f"Native ArchSBO exhausted 100 dispatch attempts; precheck rejections: {rejections}")
 
-    def _logcei_pool(self):
+    def _screened_pool(self):
         rng = np.random.default_rng(np.random.SeedSequence([self.seed, len(self.online)]))
         pool, keys = [], set(self.seen)
         rejected = Counter()
@@ -207,15 +209,15 @@ class X57External:
             if len(pool) == self.pool_size:
                 break
         if len(pool) != self.pool_size:
-            raise RuntimeError("LogCEI screened pool supply exhausted")
+            raise RuntimeError(f"{self.arm} screened pool supply exhausted")
         return pool, dict(rejected)
 
     def ask(self):
         if self.pending is not None or len(self.records) >= self.total_budget:
             raise RuntimeError("Settle the current proposal before requesting one within budget")
         self.problem.verify_frozen()
-        if self.arm == "logcei_screened_online":
-            pool, rejected = self._logcei_pool()
+        if self.arm in SCREENED_METHODS:
+            pool, rejected = self._screened_pool()
             candidate, info = self.native.propose(self.records, pool, len(self.online))
             info["precheck_rejected_by_constraint"] = rejected
             info["candidate_count"] = len(pool)
@@ -238,7 +240,7 @@ class X57External:
         record = record_from_row(self.problem, row)
         if row.get("charged") is not True or record.observation.status == "infrastructure_error":
             raise ValueError("Checkpoint the worker journal and suspend on infrastructure errors")
-        if self.arm == "logcei_screened_online":
+        if self.arm in SCREENED_METHODS:
             self.native.accept(record)
         else:
             f, g = self.arch.outputs(record)

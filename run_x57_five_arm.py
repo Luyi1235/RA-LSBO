@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import ExitStack, redirect_stdout
 from importlib.metadata import version
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,7 @@ from threading import Event, Lock
 from ra_lsbo.budget import digest
 from ra_lsbo.x57_cold_sampling import LAYOUTS, violations
 from ra_lsbo.x57_cold_worker import Dispatcher, dump, sha256
+from ra_lsbo.x57_progress import CampaignProgress
 from ra_lsbo.x57_energy_stop import prefix_energy, verified_stop
 from ra_lsbo.x57_energy_surrogate import energy_training_row
 from ra_lsbo.x57_live import X57LiveProblem, evaluator_files
@@ -26,6 +28,7 @@ from run_x57_initialization_diagnostic import verified_hash
 
 
 CODE_REFERENCE = "508398032f98b389be0701b8004aa5279c00b485"
+LEGACY_RESUME_CODE = "0a3c1ea7db2ab093ada3b2cd4ae24b6d70c14377"
 RESULT_REFERENCE = "9c5ac77c5ecc3987787292981dc679045441972c"
 RESULT_DIR = "x57-formal-prefix-qualification"
 PREFIX_REFERENCE = "bcc54e6ecfda8a68fdcf93238d13b8a07d023daa"
@@ -41,20 +44,37 @@ INPUTS = {
     "x57-cold-start-debug-fccf94c6/calls.jsonl": "990caac32365893a8100e3cc10660cd554e1e7a4391b4b467a74a570c77314df",
 }
 SEEDS = (307261, 356821, 412849, 470299, 528899, 590089)
+COLD_SEEDS = (643118, 705241, 767363, 829486, 891608, 953731)
 NATIVE = ("lsbo_full_budget", "ra_lsbo_energy_sign", "ra_lsbo_energy_interval")
 EXTERNAL = ("archsbo_native", "logcei_screened_online")
+COLD_EXTERNAL = ("logcei_screened_online", "scbo_screened_online")
 ARMS = NATIVE + EXTERNAL
 ARCHIVED_INITIAL = 8
 INITIAL = 64
+COLD_CHECKPOINT = 16
+COLD_SCHEMA = "x57_five_arm_cold_n8"
 HORIZON = 320
 TARGET_WH = 47500
 THREADS = (*THREAD_VARS, "NUMBA_NUM_THREADS")
 BASELINE_VERSIONS = {"sb-arch-opt": "1.7.1", "smt": "2.14.1", "pymoo": "0.6.1.5",
                      "torch": "2.7.1", "scikit-learn": "1.6.1"}
+COLD_BASELINE_VERSIONS = {"numpy": "2.2.6", "scipy": "1.15.3",
+                          "torch": "2.7.1", "scikit-learn": "1.6.1"}
 
 
 def load(path):
     return json.loads(path.read_bytes())
+
+
+def load_resume_plan(path, plan):
+    frozen = load(path)
+    # The legacy executor used Python equality before normalizing JSON arrays.
+    expected_code = frozen["code_sha"]
+    if expected_code not in (plan["code_sha"], LEGACY_RESUME_CODE) or (
+        digest({**plan, "code_sha": expected_code}) != digest(frozen)
+    ):
+        raise ValueError("Resume requires the original run plan and source identities")
+    return frozen
 
 
 def save(path, data):
@@ -66,18 +86,17 @@ def save(path, data):
 
 
 def check_threads():
-    import os
-
     if any(os.environ.get(name) != "1" for name in THREADS):
         raise ValueError(f"Before starting Python, set {', '.join(THREADS)} to 1")
 
 
-def external_service(base, config, work, arm):
+def external_service(base, config, work, arm, *, cold=False, mock=False):
     from ra_lsbo.x57_external import X57External, native_kpls_minimum
 
     check_threads()
-    versions = {name: version(name) for name in BASELINE_VERSIONS}
-    if versions != BASELINE_VERSIONS or sys.version_info[:2] != (3, 11):
+    expected = COLD_BASELINE_VERSIONS if cold else BASELINE_VERSIONS
+    versions = {name: version(name) for name in expected}
+    if not mock and (versions != expected or sys.version_info[:2] != (3, 11)):
         raise ValueError(f"Unexpected external baseline environment: {versions}")
     output = sys.stdout
     with redirect_stdout(sys.stderr):
@@ -133,11 +152,12 @@ def external_service(base, config, work, arm):
 
 
 class ExternalService:
-    def __init__(self, python, base, config, output, arm, stack):
+    def __init__(self, python, base, config, output, arm, stack, *, cold=False, mock=False):
         log = stack.enter_context((output / f"{arm}.optimizer.log").open("a", encoding="utf-8"))
+        flags = [flag for flag, enabled in (("--cold-baselines", cold), ("--mock", mock)) if enabled]
         self.process = subprocess.Popen(
             [str(python), "-B", "-u", str(Path(__file__).resolve()), "--external-service",
-             str(base), str(config), str(output / "unused"), arm],
+             str(base), str(config), str(output / "unused"), arm, *flags],
             cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log,
             text=True, encoding="utf-8",
         )
@@ -265,11 +285,22 @@ def freeze(args, output):
     confirmation_ids = {row["candidate_id"] for row in confirmation}
     if len(confirmation_ids) != 4 or not confirmation_ids <= historical_ids:
         raise ValueError("Expected four charged confirmation candidates in the exclusions")
-    seeds = SEEDS if args.execute_rcaide else SEEDS[:1]
-    archived_plan, reused = archived_initial(args.initial_replay, problem) if args.execute_rcaide else (None, {})
-    rosters = extended_rosters(problem, seeds, historical_ids, archived_plan)
+    if args.cold_baselines:
+        seeds = COLD_SEEDS if args.execute_rcaide else COLD_SEEDS[:1]
+        initial_count, arms, reused = ARCHIVED_INITIAL, NATIVE + COLD_EXTERNAL, {}
+        rosters, seen = {}, set(historical_ids)
+        for seed in seeds:
+            _, records, audit = points(problem, seed, seen, initial_count)
+            rosters[str(seed)] = {"records": records, "sampling": audit}
+            seen.update(r["candidate_id"] for r in records)
+    else:
+        seeds = SEEDS if args.execute_rcaide else SEEDS[:1]
+        initial_count, arms = INITIAL, ARMS
+        archived_plan, reused = archived_initial(args.initial_replay, problem) if args.execute_rcaide else (None, {})
+        rosters = extended_rosters(problem, seeds, historical_ids, archived_plan)
     plan = {
-        "schema": "x57_five_arm_native_archsbo_n64", "code_sha": code_sha(), "code_base": CODE_REFERENCE,
+        "schema": COLD_SCHEMA if args.cold_baselines else "x57_five_arm_native_archsbo_n64",
+        "code_sha": code_sha(), "code_base": CODE_REFERENCE,
         "result_reference": RESULT_REFERENCE, "input_sha256": INPUTS,
         "qualification_plan_sha256": QUALIFICATION_PLAN_SHA256, "config_sha256": sha256(config),
         "worker_manifest_sha256": digest(worker), "worker_overlay_sha256": overlay,
@@ -277,9 +308,9 @@ def freeze(args, output):
         "quality_target_Wh": TARGET_WH, "target_basis": "Ceil best prior confirmation to 500 Wh",
         "best_prior_confirmation_Wh": best, "45_nmi_quality_target_Wh": 46000,
         "seeds": list(seeds), "seed_selection": "Fixed before evaluation, independent of prior seeds",
-        "arms": list(ARMS), "initial_count": INITIAL, "total_budget_per_arm": HORIZON,
-        "first_checkpoint": INITIAL,
-        "first_checkpoint_new_call_cap": len(seeds) * INITIAL - sum(map(len, reused.values())),
+        "arms": list(arms), "initial_count": initial_count, "total_budget_per_arm": HORIZON,
+        "first_checkpoint": initial_count,
+        "first_checkpoint_new_call_cap": len(seeds) * initial_count - sum(map(len, reused.values())),
         "reused_shared_prefix": {"commit": PREFIX_REFERENCE, "hashes": PREFIX_HASHES,
                                  "per_seed": ARCHIVED_INITIAL} if reused else None,
         "max_workers": args.workers, "timeout_seconds": TIMEOUT, "thread_settings": dict.fromkeys(THREADS, "1"),
@@ -304,7 +335,11 @@ class Campaign:
         self.admitted = 0
         self.reused = reused
         self.reused_count = sum(map(len, reused.values()))
-        self.cap = len(plan["seeds"]) * (INITIAL + len(ARMS) * (args.checkpoint - INITIAL)) - self.reused_count
+        self.initial_count, self.arms = plan["initial_count"], plan["arms"]
+        shared_total = len(plan["seeds"]) * self.initial_count
+        total = shared_total + len(plan["seeds"]) * len(self.arms) * (args.checkpoint - self.initial_count)
+        self.cap = total - self.reused_count
+        self.progress = CampaignProgress(total, shared_total, args.workers)
         self.initial = {}
         self.qualification = {}
 
@@ -317,7 +352,8 @@ class Campaign:
             raise ValueError(f"Candidate failed dispatch identity or eligibility checks: {job}")
         out = self.output / job
         expected = ("dispatch_intent", "worker_started", "settled")
-        if out.exists():
+        replayed = out.exists()
+        if replayed:
             ledger = out / "calls.jsonl"
             events = read_events(ledger) if ledger.is_file() else []
             if (tuple(e["event"] for e in events) != expected or
@@ -339,12 +375,14 @@ class Campaign:
                 expected_worker=self.worker, max_calls=1, timeout=TIMEOUT, energy_stop=True,
                 mock_profile="formal-prefix",
             )
-            row = dispatcher.evaluate(point, seed=seed, arm=arm, evaluation=evaluation,
-                                      online=online, phase=phase, proposal=proposal)
+            with self.progress.activity("evaluating"):
+                row = dispatcher.evaluate(point, seed=seed, arm=arm, evaluation=evaluation,
+                                          online=online, phase=phase, proposal=proposal)
         if not row["charged"] or row["feedback"]["outcome"] == "infrastructure_error":
             raise RuntimeError(f"Infrastructure failure or uncharged settlement: {job}")
         row = {k: v for k, v in row.items() if k != "event"}
         row["source_id"] = job
+        self.progress.settle(job, row["feedback"], shared=arm == "shared", replayed=replayed)
         return row
 
     def dispatch_initial(self, seed, record):
@@ -353,10 +391,12 @@ class Campaign:
                 or self.problem.problem.precheck(point) != record["precheck"]):
             raise ValueError("Frozen initial candidate or precheck changed")
         evaluation = record["position"]
+        job = f"seed-{seed}/shared/{evaluation:03d}"
         reused = self.reused.get(seed, [])
         if evaluation <= len(reused):
-            return reused[evaluation - 1]
-        job = f"seed-{seed}/shared/{evaluation:03d}"
+            row = reused[evaluation - 1]
+            self.progress.settle(job, row["feedback"], shared=True, replayed=True)
+            return row
         return self.evaluate(job, point, seed=seed, arm="shared", evaluation=evaluation,
                              online=0, phase="formal_shared_initial", proposal={"frozen_task": job})
 
@@ -403,16 +443,17 @@ class Campaign:
             raise RuntimeError(f"Cannot rewind an already settled checkpoint: {output}")
 
         def persist():
-            save(checkpoint_path, {"plan_sha256": plan_hash, "evaluation": INITIAL + len(rows),
+            save(checkpoint_path, {"plan_sha256": plan_hash, "evaluation": self.initial_count + len(rows),
                                    "optimizer": checkpoint()})
 
-        for evaluation in range(INITIAL + 1, self.args.checkpoint + 1):
+        for evaluation in range(self.initial_count + 1, self.args.checkpoint + 1):
             job = f"seed-{seed}/{arm}/{evaluation:03d}"
             if self.halt.is_set() and not (self.output / job).exists():
                 break
-            raw, phase, info = ask()
+            with self.progress.activity("selecting"):
+                raw, phase, info = ask()
             point = self.problem.candidate_class(**raw)
-            if arm == "archsbo_native" and evaluation == INITIAL + 1:
+            if arm == "archsbo_native" and evaluation == self.initial_count + 1:
                 if self.problem.space.key(point) != self.qualification[str(seed)]["first_proposal_id"]:
                     raise RuntimeError(f"Native ArchSBO first proposal differs from qualification: {job}")
             if previous and previous["evaluation"] == evaluation:
@@ -420,7 +461,7 @@ class Campaign:
                     raise RuntimeError(f"Next proposal changed upon resume: {job}")
                 replay_verified = True
             row = self.evaluate(job, point, seed=seed, arm=arm, evaluation=evaluation,
-                                online=evaluation - INITIAL, phase=phase, proposal=info)
+                                online=evaluation - self.initial_count, phase=phase, proposal=info)
             if row is None:
                 break
             if arm == "archsbo_native" and row["proposal"] != info:
@@ -433,7 +474,8 @@ class Campaign:
             if not previous_checkpoint or evaluation >= previous_checkpoint["evaluation"]:
                 persist()
         if not self.args.execute_rcaide and self.args.checkpoint < HORIZON and not self.halt.is_set():
-            raw, phase, _ = ask()
+            with self.progress.activity("selecting"):
+                raw, phase, _ = ask()
             next_key = self.problem.space.key(self.problem.candidate_class(**raw))
             save(previews, {"evaluation": self.args.checkpoint + 1, "candidate_id": next_key, "phase": phase})
         return {"rows": rows, "replay_verified": replay_verified}
@@ -483,22 +525,26 @@ class Campaign:
 
         items = [((seed, row["position"]), (seed, row)) for seed in self.plan["seeds"]
                  for row in self.plan["rosters"][str(seed)]["records"]]
+        self.progress.phase("shared initialization")
         shared = wave(items, self.dispatch_initial)
         for seed in self.plan["seeds"]:
-            rows = [shared.get((seed, i)) for i in range(1, INITIAL + 1)]
+            rows = [shared.get((seed, i)) for i in range(1, self.initial_count + 1)]
             if all(rows):
                 self.initial[seed] = rows
         print(f"Shared prefixes complete: {len(self.initial)}; "
               f"groups: {dict(Counter(group(rows) for rows in self.initial.values()))}", flush=True)
         if errors:
             return errors, {}
-        self.qualification = self.qualify_native_archsbo(services["archsbo_native"])
-        errors.update({f"{seed}/archsbo_native": row["error"] for seed, row in self.qualification.items()
-                       if not row["qualified"]})
-        if errors or self.args.checkpoint == INITIAL:
+        if "archsbo_native" in services:
+            self.progress.phase("ArchSBO qualification")
+            self.qualification = self.qualify_native_archsbo(services["archsbo_native"])
+            errors.update({f"{seed}/archsbo_native": row["error"] for seed, row in self.qualification.items()
+                           if not row["qualified"]})
+        if errors or self.args.checkpoint == self.initial_count:
             return errors, {}
         items = [((seed, arm), (seed, arm, services))
-                 for seed in sorted(self.initial, key=lambda seed: group(self.initial[seed])) for arm in ARMS]
+                 for seed in sorted(self.initial, key=lambda seed: group(self.initial[seed])) for arm in self.arms]
+        self.progress.phase("online search")
         trajectories = wave(items, self.trajectory)
         return errors, trajectories
 
@@ -546,14 +592,15 @@ def history_stats(initial, online, arm):
             "trajectory": series, "arm": arm}
 
 
-def report(campaign, errors, trajectories, services):
+def report(campaign, errors, trajectories, services, execution_code_sha):
     output = campaign.output
     windows = []
     ledger = output / "calls.jsonl"
     events = []
-    keys = [(seed, "shared", i) for seed in campaign.plan["seeds"] for i in range(1, INITIAL + 1)]
-    keys.extend((seed, arm, i) for seed in campaign.plan["seeds"] for arm in ARMS
-                for i in range(INITIAL + 1, campaign.args.checkpoint + 1))
+    initial_count, arms = campaign.initial_count, campaign.arms
+    keys = [(seed, "shared", i) for seed in campaign.plan["seeds"] for i in range(1, initial_count + 1)]
+    keys.extend((seed, arm, i) for seed in campaign.plan["seeds"] for arm in arms
+                for i in range(initial_count + 1, campaign.args.checkpoint + 1))
     for seed, arm, evaluation in keys:
         job = f"seed-{seed}/{arm}/{evaluation:03d}"
         path = output / job / "calls.jsonl"
@@ -583,19 +630,19 @@ def report(campaign, errors, trajectories, services):
             continue
         initial_groups[str(seed)] = group(initial)
         summaries[str(seed)] = {"shared": history_stats(initial, [], "shared")}
-        for arm in ARMS:
+        for arm in arms:
             result = trajectories.get((seed, arm))
             if result:
                 summaries[str(seed)][arm] = history_stats(initial, result["rows"], arm)
                 replay[f"{seed}/{arm}"] = result["replay_verified"]
     complete = (not errors and len(windows) == campaign.cap and
-                all(len(trajectories.get((seed, arm), {}).get("rows", [])) == campaign.args.checkpoint - INITIAL
-                    for seed in campaign.plan["seeds"] for arm in ARMS))
+                all(len(trajectories.get((seed, arm), {}).get("rows", [])) == campaign.args.checkpoint - initial_count
+                    for seed in campaign.plan["seeds"] for arm in arms))
     groups = {}
     for label in ("0", "1-2", "3+"):
         members = [seed for seed in initial_groups if initial_groups[seed] == label]
         by_arm = {}
-        for arm in ARMS:
+        for arm in arms:
             settled = [summaries[s][arm] for s in members if arm in summaries[s] and
                        len(summaries[s][arm]["trajectory"]) == campaign.args.checkpoint]
             by_arm[arm] = {
@@ -608,16 +655,18 @@ def report(campaign, errors, trajectories, services):
         groups[label] = {"seeds": members, "arms": by_arm}
     result = {
         "status": "complete" if complete else "incomplete", "errors": errors, "backend": campaign.plan["backend"],
+        "execution_code_sha": execution_code_sha,
         "plan_sha256": sha256(output / "run_plan.json"), "checkpoint": campaign.args.checkpoint,
         "total_budget_per_arm": HORIZON, "quality_target_Wh": TARGET_WH,
         "actual_rcaide_calls": len(windows) if campaign.args.execute_rcaide else 0,
         "reused_shared_calls": campaign.reused_count,
-        "native_archsbo_qualification": campaign.qualification,
         "worker_starts": len(windows), "peak_workers": peak, "worker_times": windows,
         "external_environments": {arm: service.identity for arm, service in services.items()},
         "initial_groups": initial_groups, "group_metrics": groups, "per_seed": summaries,
         "next_proposal_replay_verified": replay,
     }
+    if "archsbo_native" in arms:
+        result["native_archsbo_qualification"] = campaign.qualification
     save(output / "report.json", result)
     print(f"{result['status']} | starts={len(windows)} | peak={peak} | output={output}", flush=True)
     return 0 if complete else 1
@@ -625,7 +674,12 @@ def report(campaign, errors, trajectories, services):
 
 def run(args):
     check_threads()
-    if args.execute_rcaide and (args.initial_replay is None or (not args.resume and args.checkpoint != INITIAL)):
+    cold = args.cold_baselines
+    initial_count = ARCHIVED_INITIAL if cold else INITIAL
+    if args.checkpoint < initial_count:
+        raise ValueError(f"Checkpoint must include the {initial_count} shared initial evaluations")
+    if args.execute_rcaide and not cold and (args.initial_replay is None or
+                                           (not args.resume and args.checkpoint != INITIAL)):
         raise ValueError("Start the physical campaign with the frozen prefix archive at checkpoint 64")
     if args.execute_rcaide:
         status = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT)
@@ -633,22 +687,27 @@ def run(args):
             raise ValueError("Physical campaign requires committed source")
     args.output.mkdir(parents=True, exist_ok=args.resume)
     with ExitStack() as stack:
-        import msvcrt
-        lockfile = stack.enter_context((args.qualification_plan.parent / ".x57-five-arm.lock").open("a+b"))
-        lockfile.seek(0)
-        msvcrt.locking(lockfile.fileno(), msvcrt.LK_NBLCK, 1)
+        if args.execute_rcaide or os.name == "nt":
+            import msvcrt
+
+            lockfile = stack.enter_context((args.qualification_plan.parent / ".x57-five-arm.lock").open("a+b"))
+            lockfile.seek(0)
+            msvcrt.locking(lockfile.fileno(), msvcrt.LK_NBLCK, 1)
+        print("[prepare] Verifying the worker and building the frozen roster", flush=True)
         plan, problem, worker, reused = freeze(args, args.output)
         services = {arm: ExternalService(args.external_python, problem.base, problem.config_path,
-                                         args.output, arm, stack) for arm in EXTERNAL}
-        minimum = services["archsbo_native"].identity["kpls_minimum_complete_rows"]
-        if args.execute_rcaide and minimum is not None and INITIAL < minimum:
-            raise ValueError(f"The {INITIAL}-point DOE cannot supply {minimum} complete rows "
-                             "for native ArchSBO KPLS. No worker has been started.")
+                                         args.output, arm, stack, cold=cold, mock=cold and not args.execute_rcaide)
+                    for arm in (COLD_EXTERNAL if cold else EXTERNAL)}
+        if not cold:
+            minimum = services["archsbo_native"].identity["kpls_minimum_complete_rows"]
+            if args.execute_rcaide and minimum is not None and INITIAL < minimum:
+                raise ValueError(f"The {INITIAL}-point DOE cannot supply {minimum} complete rows "
+                                 "for native ArchSBO KPLS. No worker has been started.")
         plan["external_environments"] = {arm: service.identity for arm, service in services.items()}
+        execution_code_sha = plan["code_sha"]
         path = args.output / "run_plan.json"
         if args.resume:
-            if plan != load(path):
-                raise ValueError("Resume requires the original run plan and source identities")
+            plan = load_resume_plan(path, plan)
             previous_report = args.output / "report.json"
             if previous_report.is_file() and load(previous_report)["checkpoint"] > args.checkpoint:
                 raise ValueError("Resume cannot rewind a reported checkpoint")
@@ -656,12 +715,16 @@ def run(args):
             dump(path, plan)
             print(f"Frozen plan {sha256(path)} at {path}", flush=True)
         campaign = Campaign(args, plan, problem, worker, reused)
-        return report(campaign, *campaign.run(services), services)
+        with campaign.progress:
+            errors, trajectories = campaign.run(services)
+            campaign.progress.phase("writing report")
+            return report(campaign, errors, trajectories, services, execution_code_sha)
 
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--external-service":
-        external_service(*(Path(s) for s in sys.argv[2:5]), sys.argv[5])
+        external_service(*(Path(s) for s in sys.argv[2:5]), sys.argv[5],
+                         cold="--cold-baselines" in sys.argv[6:], mock="--mock" in sys.argv[6:])
         return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=lambda p: Path(p).resolve(), required=True)
@@ -670,10 +733,14 @@ def main():
     parser.add_argument("--external-python", type=lambda p: Path(p).resolve(), required=True)
     parser.add_argument("--output", type=lambda p: Path(p).resolve(), required=True)
     parser.add_argument("--workers", type=int, choices=range(1, 13), default=12)
-    parser.add_argument("--checkpoint", type=int, choices=range(INITIAL, HORIZON + 1), default=INITIAL)
+    parser.add_argument("--checkpoint", type=int, choices=range(ARCHIVED_INITIAL, HORIZON + 1))
+    parser.add_argument("--cold-baselines", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--execute-rcaide", action="store_true")
-    raise SystemExit(run(parser.parse_args()))
+    args = parser.parse_args()
+    if args.checkpoint is None:
+        args.checkpoint = COLD_CHECKPOINT if args.cold_baselines else INITIAL
+    raise SystemExit(run(args))
 
 
 if __name__ == "__main__":
