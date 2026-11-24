@@ -26,6 +26,7 @@ from run_x57_initialization_diagnostic import verified_hash
 
 
 CODE_REFERENCE = "508398032f98b389be0701b8004aa5279c00b485"
+LEGACY_RESUME_CODE = "0a3c1ea7db2ab093ada3b2cd4ae24b6d70c14377"
 RESULT_REFERENCE = "9c5ac77c5ecc3987787292981dc679045441972c"
 RESULT_DIR = "x57-formal-prefix-qualification"
 PREFIX_REFERENCE = "bcc54e6ecfda8a68fdcf93238d13b8a07d023daa"
@@ -55,6 +56,17 @@ BASELINE_VERSIONS = {"sb-arch-opt": "1.7.1", "smt": "2.14.1", "pymoo": "0.6.1.5"
 
 def load(path):
     return json.loads(path.read_bytes())
+
+
+def load_resume_plan(path, plan):
+    frozen = load(path)
+    # The legacy executor used Python equality before normalizing JSON arrays.
+    expected_code = frozen["code_sha"]
+    if expected_code not in (plan["code_sha"], LEGACY_RESUME_CODE) or (
+        digest({**plan, "code_sha": expected_code}) != digest(frozen)
+    ):
+        raise ValueError("Resume requires the original run plan and source identities")
+    return frozen
 
 
 def save(path, data):
@@ -546,7 +558,7 @@ def history_stats(initial, online, arm):
             "trajectory": series, "arm": arm}
 
 
-def report(campaign, errors, trajectories, services):
+def report(campaign, errors, trajectories, services, execution_code_sha):
     output = campaign.output
     windows = []
     ledger = output / "calls.jsonl"
@@ -608,6 +620,7 @@ def report(campaign, errors, trajectories, services):
         groups[label] = {"seeds": members, "arms": by_arm}
     result = {
         "status": "complete" if complete else "incomplete", "errors": errors, "backend": campaign.plan["backend"],
+        "execution_code_sha": execution_code_sha,
         "plan_sha256": sha256(output / "run_plan.json"), "checkpoint": campaign.args.checkpoint,
         "total_budget_per_arm": HORIZON, "quality_target_Wh": TARGET_WH,
         "actual_rcaide_calls": len(windows) if campaign.args.execute_rcaide else 0,
@@ -645,10 +658,10 @@ def run(args):
             raise ValueError(f"The {INITIAL}-point DOE cannot supply {minimum} complete rows "
                              "for native ArchSBO KPLS. No worker has been started.")
         plan["external_environments"] = {arm: service.identity for arm, service in services.items()}
+        execution_code_sha = plan["code_sha"]
         path = args.output / "run_plan.json"
         if args.resume:
-            if plan != load(path):
-                raise ValueError("Resume requires the original run plan and source identities")
+            plan = load_resume_plan(path, plan)
             previous_report = args.output / "report.json"
             if previous_report.is_file() and load(previous_report)["checkpoint"] > args.checkpoint:
                 raise ValueError("Resume cannot rewind a reported checkpoint")
@@ -656,7 +669,7 @@ def run(args):
             dump(path, plan)
             print(f"Frozen plan {sha256(path)} at {path}", flush=True)
         campaign = Campaign(args, plan, problem, worker, reused)
-        return report(campaign, *campaign.run(services), services)
+        return report(campaign, *campaign.run(services), services, execution_code_sha)
 
 
 def main():
