@@ -113,7 +113,7 @@ def latent_pool(native, phase, mixed_candidate_pool, limit):
     return points + mixed_candidate_pool(native, limit - len(points), target, keys)
 
 
-def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_energy=None):
+def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_energy=None, recovery=None):
     phase = native.search_phase()
     if arm == "lsbo_full_budget":
         candidate, info = native.propose(phase)
@@ -156,6 +156,12 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
             native.last_representation_update = len(history)
             torch.save(rep.checkpoint(), native.output / "representation.pt")
         pool = latent_pool(native, phase, mixed_candidate_pool, risk_pool_size)
+        if recovery is not None:
+            neighbor, metadata = recovery
+            neighbor_key = native.space.key(neighbor)
+            info["recovery_candidate_id"] = neighbor_key
+            if all(native.space.key(p) != neighbor_key for p in pool):
+                pool.append(neighbor)
         if not pool:
             return fallback("no_screened_cold_candidates")
         log_completion = np.zeros(len(pool))
@@ -192,7 +198,10 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
         if fit_energy:
             info["p_usable_energy"] = float(energy_probabilities[index])
             info["engineering_log_probability"] = float(log_engineering[index])
-        return pool[index], phase, {**info, "source": "lsbo_latent_completion_risk",
+        selected = {"source": "lsbo_latent_completion_risk"}
+        if recovery is not None and native.space.key(pool[index]) == neighbor_key:
+            selected = metadata
+        return pool[index], phase, {**info, **selected,
                                     "candidate_count": len(pool),
                                     "candidate_list_sha256": digest([p.to_dict() for p in pool]),
                                     "p_complete": None if "completion_fallback" in info else
@@ -200,9 +209,10 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
 
     state = {"risk_mode": "native_recovery_or_exploration"}
     posterior = None
+    ranking = None
 
     def weighted(surrogate, rep):
-        nonlocal posterior
+        nonlocal posterior, ranking
         if fit_energy:
             try:
                 surrogate = with_energy(surrogate, rep)
@@ -230,9 +240,22 @@ def propose(native, history, arm, mixed_candidate_pool, risk_pool_size, *, fit_e
                 surrogate.fit_diagnostics = {k: v for k, v in surrogate.fit_diagnostics.items()
                                              if k != "solver_discharge_domain"}
         state["risk_mode"] = "risk_weighted_native_search"
-        return RiskWeightedRefinement(surrogate, posterior)
+        ranking = RiskWeightedRefinement(surrogate, posterior)
+        return ranking
 
     point, native_info = native.propose(phase, refine_surrogate=weighted)
+    if recovery is not None:
+        neighbor, metadata = recovery
+        state["recovery_candidate_id"] = native.space.key(neighbor)
+        if ranking is not None and native.space.key(point) != state["recovery_candidate_id"]:
+            with torch.no_grad():
+                pair = ranking.score(native.representation.features([point, neighbor])).reshape(-1).tolist()
+            if not np.isfinite(pair).all():
+                raise ValueError("Nonfinite final recovery comparison")
+            state["recovery_comparison"] = {"ra_candidate_id": native.space.key(point),
+                                            "ra_log_score": pair[0], "neighbor_log_score": pair[1]}
+            if pair[1] > pair[0]:
+                point, native_info = neighbor, metadata
     if posterior is not None:
         state["p_complete"] = float(posterior.probabilities([point])[0])
     return point, phase, {**native_info, **info, **state}

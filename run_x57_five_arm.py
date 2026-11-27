@@ -47,6 +47,8 @@ SEEDS = (307261, 356821, 412849, 470299, 528899, 590089)
 COLD_SEEDS = (643118, 705241, 767363, 829486, 891608, 953731)
 NATIVE = ("lsbo_full_budget", "ra_lsbo_energy_sign", "ra_lsbo_energy_interval")
 EXTERNAL = ("archsbo_native", "logcei_screened_online")
+RECOVERY_ARMS = ("lsbo_full_budget", "ra_lsbo_energy_interval", "ra_lsbo_energy_interval_recovery_pool")
+RECOVERY_SEEDS = tuple(range(2026112801, 2026112807))
 COLD_EXTERNAL = ("logcei_screened_online", "scbo_screened_online")
 ARMS = NATIVE + EXTERNAL
 ARCHIVED_INITIAL = 8
@@ -288,6 +290,9 @@ def freeze(args, output):
     if args.cold_baselines:
         seeds = COLD_SEEDS if args.execute_rcaide else COLD_SEEDS[:1]
         initial_count, arms, reused = ARCHIVED_INITIAL, NATIVE + COLD_EXTERNAL, {}
+        if getattr(args, "recovery_pool_pilot", False):
+            seeds = RECOVERY_SEEDS if args.execute_rcaide else RECOVERY_SEEDS[:1]
+            arms = RECOVERY_ARMS
         rosters, seen = {}, set(historical_ids)
         for seed in seeds:
             _, records, audit = points(problem, seed, seen, initial_count)
@@ -318,6 +323,8 @@ def freeze(args, output):
         "confirmation_exclusions": sorted(confirmation_ids), "initial_exclusions": sorted(historical_ids),
         "rosters": rosters,
     }
+    if getattr(args, "recovery_pool_pilot", False):
+        plan.update(schema="x57_recovery_pool_pilot_v1", shared_max_workers=min(4, args.workers))
     return plan, problem, worker, reused
 
 
@@ -404,7 +411,7 @@ class Campaign:
         output = self.output / f"seed-{seed}" / arm
         output.mkdir(parents=True, exist_ok=True)
         initial = self.initial[seed]
-        if arm in NATIVE:
+        if arm in NATIVE or arm == RECOVERY_ARMS[-1]:
             from tempfile import TemporaryDirectory
             from ra_lsbo.x57_formal_native import FormalNative
 
@@ -501,7 +508,7 @@ class Campaign:
     def run(self, services):
         errors = {}
 
-        def wave(items, launch):
+        def wave(items, launch, workers=None):
             def guarded(item):
                 if self.halt.is_set():
                     return None
@@ -512,7 +519,7 @@ class Campaign:
                     raise
 
             results = {}
-            with ThreadPoolExecutor(max_workers=self.args.workers) as pool:
+            with ThreadPoolExecutor(max_workers=workers or self.args.workers) as pool:
                 futures = {pool.submit(guarded, item): key for key, item in items}
                 for future in as_completed(futures):
                     key = futures[future]
@@ -526,7 +533,7 @@ class Campaign:
         items = [((seed, row["position"]), (seed, row)) for seed in self.plan["seeds"]
                  for row in self.plan["rosters"][str(seed)]["records"]]
         self.progress.phase("shared initialization")
-        shared = wave(items, self.dispatch_initial)
+        shared = wave(items, self.dispatch_initial, self.plan.get("shared_max_workers"))
         for seed in self.plan["seeds"]:
             rows = [shared.get((seed, i)) for i in range(1, self.initial_count + 1)]
             if all(rows):
@@ -695,9 +702,10 @@ def run(args):
             msvcrt.locking(lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         print("[prepare] Verifying the worker and building the frozen roster", flush=True)
         plan, problem, worker, reused = freeze(args, args.output)
+        external_arms = () if getattr(args, "recovery_pool_pilot", False) else (COLD_EXTERNAL if cold else EXTERNAL)
         services = {arm: ExternalService(args.external_python, problem.base, problem.config_path,
                                          args.output, arm, stack, cold=cold, mock=cold and not args.execute_rcaide)
-                    for arm in (COLD_EXTERNAL if cold else EXTERNAL)}
+                    for arm in external_arms}
         if not cold:
             minimum = services["archsbo_native"].identity["kpls_minimum_complete_rows"]
             if args.execute_rcaide and minimum is not None and INITIAL < minimum:
@@ -735,9 +743,12 @@ def main():
     parser.add_argument("--workers", type=int, choices=range(1, 13), default=12)
     parser.add_argument("--checkpoint", type=int, choices=range(ARCHIVED_INITIAL, HORIZON + 1))
     parser.add_argument("--cold-baselines", action="store_true")
+    parser.add_argument("--recovery-pool-pilot", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--execute-rcaide", action="store_true")
     args = parser.parse_args()
+    if args.recovery_pool_pilot:
+        args.cold_baselines = True
     if args.checkpoint is None:
         args.checkpoint = COLD_CHECKPOINT if args.cold_baselines else INITIAL
     raise SystemExit(run(args))
