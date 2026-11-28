@@ -48,7 +48,7 @@ def load_jobs(base):
     return jobs, groups
 
 
-def replay(job):
+def replay(job, score_hook=None):
     seed, base, init, online, probes = job
     sys.path.insert(0, str(ROOT))
     import torch
@@ -94,6 +94,8 @@ def replay(job):
                 record["remaining_log_score_gap"] = (
                     None if ei_gap is None else record["ra_minus_probe_log_score"] - ei_gap
                 )
+                if score_hook is not None:
+                    score_hook(model, traces["performance"], point, challenger, record)
                 records.append(record)
             if (p.space.key(point), phase, i) != (row["candidate_id"], row["phase"], row["evaluation"]):
                 raise ValueError(f"RA replay differs: {seed}/{i}")
