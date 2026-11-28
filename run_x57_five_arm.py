@@ -48,6 +48,9 @@ COLD_SEEDS = (643118, 705241, 767363, 829486, 891608, 953731)
 NATIVE = ("lsbo_full_budget", "ra_lsbo_energy_sign", "ra_lsbo_energy_interval")
 EXTERNAL = ("archsbo_native", "logcei_screened_online")
 RECOVERY_ARMS = ("lsbo_full_budget", "ra_lsbo_energy_interval", "ra_lsbo_energy_interval_recovery_pool")
+RECOVERY_RESULT = "e5fcec2710f1a8f3b5326974a76fff23f67ed917"
+RECOVERY_HASHES = {"run_plan.json": "6cf4dfe88c249a238d99ea61f905702d0d703bebe9fd4e1040d5dcf0346eea55",
+                   "calls.jsonl": "22e5658d4c4dffaea7b1c18e6ba32bdd501d187315333a5ebf8197051fd4911c"}
 RECOVERY_SEEDS = tuple(range(2026112801, 2026112807))
 COLD_EXTERNAL = ("logcei_screened_online", "scbo_screened_online")
 ARMS = NATIVE + EXTERNAL
@@ -189,14 +192,14 @@ class ExternalService:
         self.process.stdout.close()
 
 
-def archived_initial(path, problem):
+def archived_initial(path, problem, *, seeds=SEEDS, hashes=PREFIX_HASHES, reference=PREFIX_REFERENCE):
     from ra_lsbo.x57_external import record_from_row
 
-    for filename, expected in PREFIX_HASHES.items():
+    for filename, expected in hashes.items():
         verified_hash(path / filename, expected)
     plan = load(path / "run_plan.json")
     if (plan["backend"] != "rcaide" or plan["contract_id"] != problem.contract_id
-            or plan["seeds"] != list(SEEDS) or plan["initial_count"] != ARCHIVED_INITIAL
+            or plan["seeds"] != list(seeds) or plan["initial_count"] != ARCHIVED_INITIAL
             or plan["total_budget_per_arm"] != HORIZON):
         raise ValueError("The archived initialization belongs to a different evaluation protocol")
     events = [e for e in read_events(path / "calls.jsonl") if e["arm"] == "shared"]
@@ -208,7 +211,7 @@ def archived_initial(path, problem):
             != [(e["task_id"], e["candidate_id"]) for e in ledger]):
         raise ValueError("Archived shared settlements do not match charged RCAIDE starts")
     reused = {}
-    for seed in SEEDS:
+    for seed in seeds:
         rows = [r for r in ledger if r["seed"] == seed]
         expected = plan["rosters"][str(seed)]["records"]
         if (len(rows) != ARCHIVED_INITIAL or
@@ -222,7 +225,7 @@ def archived_initial(path, problem):
             if record.observation.status == "infrastructure_error":
                 raise ValueError(f"Unusable infrastructure settlement in archived seed {seed}")
         reused[seed] = [{**{k: v for k, v in r.items() if k != "event"},
-                         "source_id": f"{PREFIX_REFERENCE}:{r['task_id']}"} for r in rows]
+                         "source_id": f"{reference}:{r['task_id']}"} for r in rows]
     return plan, reused
 
 
@@ -287,7 +290,13 @@ def freeze(args, output):
     confirmation_ids = {row["candidate_id"] for row in confirmation}
     if len(confirmation_ids) != 4 or not confirmation_ids <= historical_ids:
         raise ValueError("Expected four charged confirmation candidates in the exclusions")
-    if args.cold_baselines:
+    matched = getattr(args, "matched_external", False)
+    if matched:
+        seeds, arms, initial_count = RECOVERY_SEEDS, COLD_EXTERNAL, ARCHIVED_INITIAL
+        archived, reused = archived_initial(args.initial_replay, problem, seeds=seeds,
+                                          hashes=RECOVERY_HASHES, reference=RECOVERY_RESULT)
+        rosters = archived["rosters"]
+    elif args.cold_baselines:
         seeds = COLD_SEEDS if args.execute_rcaide else COLD_SEEDS[:1]
         initial_count, arms, reused = ARCHIVED_INITIAL, NATIVE + COLD_EXTERNAL, {}
         if getattr(args, "recovery_pool_pilot", False):
@@ -323,7 +332,16 @@ def freeze(args, output):
         "confirmation_exclusions": sorted(confirmation_ids), "initial_exclusions": sorted(historical_ids),
         "rosters": rosters,
     }
-    if getattr(args, "recovery_pool_pilot", False):
+    if matched:
+        for key in ("config_sha256", "quality_target_Wh", "total_budget_per_arm", "qualification_plan_sha256",
+                    "worker_manifest_sha256", "worker_overlay_sha256", "confirmation_exclusions",
+                    "initial_exclusions", "thread_settings", "environment"):
+            if digest(plan[key]) != digest(archived[key]):
+                raise ValueError(f"External comparison differs from the archived campaign: {key}")
+        plan.update(schema="x57_recovery_matched_external_v1",
+                    reused_shared_prefix={"commit": RECOVERY_RESULT, "hashes": RECOVERY_HASHES,
+                                          "per_seed": ARCHIVED_INITIAL})
+    elif getattr(args, "recovery_pool_pilot", False):
         plan.update(schema="x57_recovery_pool_pilot_v1", shared_max_workers=min(4, args.workers))
     return plan, problem, worker, reused
 
@@ -743,11 +761,15 @@ def main():
     parser.add_argument("--workers", type=int, choices=range(1, 13), default=12)
     parser.add_argument("--checkpoint", type=int, choices=range(ARCHIVED_INITIAL, HORIZON + 1))
     parser.add_argument("--cold-baselines", action="store_true")
-    parser.add_argument("--recovery-pool-pilot", action="store_true")
+    profile = parser.add_mutually_exclusive_group()
+    profile.add_argument("--recovery-pool-pilot", action="store_true")
+    profile.add_argument("--matched-external", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--execute-rcaide", action="store_true")
     args = parser.parse_args()
-    if args.recovery_pool_pilot:
+    if args.matched_external and (args.initial_replay is None or not args.execute_rcaide):
+        parser.error("--matched-external requires the archived --initial-replay and --execute-rcaide")
+    if args.recovery_pool_pilot or args.matched_external:
         args.cold_baselines = True
     if args.checkpoint is None:
         args.checkpoint = COLD_CHECKPOINT if args.cold_baselines else INITIAL
