@@ -290,12 +290,15 @@ def freeze(args, output):
     confirmation_ids = {row["candidate_id"] for row in confirmation}
     if len(confirmation_ids) != 4 or not confirmation_ids <= historical_ids:
         raise ValueError("Expected four charged confirmation candidates in the exclusions")
-    matched = getattr(args, "matched_external", False)
+    fork = getattr(args, "risk_screen_fork", False)
+    matched = getattr(args, "matched_external", False) or fork
     if matched:
         seeds, arms, initial_count = RECOVERY_SEEDS, COLD_EXTERNAL, ARCHIVED_INITIAL
         archived, reused = archived_initial(args.initial_replay, problem, seeds=seeds,
                                           hashes=RECOVERY_HASHES, reference=RECOVERY_RESULT)
         rosters = archived["rosters"]
+        if fork:
+            arms = ("ra_lsbo_energy_interval",)
     elif args.cold_baselines:
         seeds = COLD_SEEDS if args.execute_rcaide else COLD_SEEDS[:1]
         initial_count, arms, reused = ARCHIVED_INITIAL, NATIVE + COLD_EXTERNAL, {}
@@ -341,6 +344,8 @@ def freeze(args, output):
         plan.update(schema="x57_recovery_matched_external_v1",
                     reused_shared_prefix={"commit": RECOVERY_RESULT, "hashes": RECOVERY_HASHES,
                                           "per_seed": ARCHIVED_INITIAL})
+        if fork:
+            plan.update(schema="x57_posterior_screen_fork_v1", common_prefix=16, screened_probability=0.5)
     elif getattr(args, "recovery_pool_pilot", False):
         plan.update(schema="x57_recovery_pool_pilot_v1", shared_max_workers=min(4, args.workers))
     return plan, problem, worker, reused
@@ -364,6 +369,19 @@ class Campaign:
         shared_total = len(plan["seeds"]) * self.initial_count
         total = shared_total + len(plan["seeds"]) * len(self.arms) * (args.checkpoint - self.initial_count)
         self.cap = total - self.reused_count
+        self.prefix = {}
+        self.reference_online = {}
+        self.matched_feedback = {}
+        if plan.get("common_prefix") == 16:
+            for event in read_events(args.initial_replay / "calls.jsonl"):
+                if (event["event"] == "settled" and event["arm"] in self.arms
+                        and self.initial_count < event["evaluation"] <= 16):
+                    self.prefix[event["task_id"]] = event
+                elif (event["event"] == "settled" and event["arm"] in self.arms and event["evaluation"] > 16):
+                    self.reference_online[event["task_id"]] = event
+            if len(self.prefix) != len(plan["seeds"]) * (16 - self.initial_count):
+                raise ValueError("Incomplete archived online prefix")
+            self.cap -= len(self.prefix)
         self.progress = CampaignProgress(total, shared_total, args.workers)
         self.initial = {}
         self.qualification = {}
@@ -375,7 +393,20 @@ class Campaign:
                 or candidate != point.to_dict()
                 or (online and key in self.plan["confirmation_exclusions"])):
             raise ValueError(f"Candidate failed dispatch identity or eligibility checks: {job}")
+        if self.prefix and online and evaluation <= 16:
+            r = self.prefix[job]
+            if (r["candidate_id"], r["candidate"], r["phase"], r["charged"]) != (key, candidate, phase, True):
+                raise RuntimeError(f"Archived prefix proposal differs at {job}")
+            self.progress.settle(job, r["feedback"], shared=False, replayed=True)
+            return {**{k: v for k, v in r.items() if k not in ("task_id", "event")}, "source_id": job}
         out = self.output / job
+        ref = self.reference_online.get(job)
+        if (ref and not out.exists() and (key, candidate, phase) ==
+                (ref["candidate_id"], ref["candidate"], ref["phase"])):
+            self.matched_feedback[job] = {"candidate_id": key, "proposal": proposal, "source": RECOVERY_RESULT}
+            self.progress.settle(job, ref["feedback"], shared=False, replayed=True)
+            return {**{k: v for k, v in ref.items() if k not in ("event", "task_id")},
+                    "source_id": job, "proposal": proposal}
         expected = ("dispatch_intent", "worker_started", "settled")
         replayed = out.exists()
         if replayed:
@@ -435,6 +466,11 @@ class Campaign:
 
             with TemporaryDirectory(dir=self.output, prefix="optimizer-") as temp:
                 adapter = FormalNative(self.problem, arm, seed, initial, Path(temp) / "native")
+
+                if self.prefix:
+                    from ra_lsbo.x57_native_slot import configure_native_search
+                    configure_native_search(adapter.optimizer, reserve=True, joint_final=True,
+                                            force_weighted=True, screen_after=16)
 
                 def ask():
                     point, phase, info = adapter.ask()
@@ -660,7 +696,7 @@ def report(campaign, errors, trajectories, services, execution_code_sha):
             if result:
                 summaries[str(seed)][arm] = history_stats(initial, result["rows"], arm)
                 replay[f"{seed}/{arm}"] = result["replay_verified"]
-    complete = (not errors and len(windows) == campaign.cap and
+    complete = (not errors and len(windows) + len(campaign.matched_feedback) == campaign.cap and
                 all(len(trajectories.get((seed, arm), {}).get("rows", [])) == campaign.args.checkpoint - initial_count
                     for seed in campaign.plan["seeds"] for arm in arms))
     groups = {}
@@ -690,6 +726,9 @@ def report(campaign, errors, trajectories, services, execution_code_sha):
         "initial_groups": initial_groups, "group_metrics": groups, "per_seed": summaries,
         "next_proposal_replay_verified": replay,
     }
+    if campaign.prefix:
+        result["reused_online_prefix_calls"] = len(campaign.prefix)
+        result["reused_matching_late_feedback"] = campaign.matched_feedback
     if "archsbo_native" in arms:
         result["native_archsbo_qualification"] = campaign.qualification
     save(output / "report.json", result)
@@ -720,7 +759,7 @@ def run(args):
             msvcrt.locking(lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         print("[prepare] Verifying the worker and building the frozen roster", flush=True)
         plan, problem, worker, reused = freeze(args, args.output)
-        external_arms = () if getattr(args, "recovery_pool_pilot", False) else (COLD_EXTERNAL if cold else EXTERNAL)
+        external_arms = () if (getattr(args, "recovery_pool_pilot", False) or getattr(args, "risk_screen_fork", False)) else (COLD_EXTERNAL if cold else EXTERNAL)
         services = {arm: ExternalService(args.external_python, problem.base, problem.config_path,
                                          args.output, arm, stack, cold=cold, mock=cold and not args.execute_rcaide)
                     for arm in external_arms}
@@ -763,13 +802,16 @@ def main():
     parser.add_argument("--cold-baselines", action="store_true")
     profile = parser.add_mutually_exclusive_group()
     profile.add_argument("--recovery-pool-pilot", action="store_true")
+    profile.add_argument("--risk-screen-fork", action="store_true")
     profile.add_argument("--matched-external", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--execute-rcaide", action="store_true")
     args = parser.parse_args()
-    if args.matched_external and (args.initial_replay is None or not args.execute_rcaide):
+    if (args.matched_external or args.risk_screen_fork) and (args.initial_replay is None or not args.execute_rcaide):
         parser.error("--matched-external requires the archived --initial-replay and --execute-rcaide")
-    if args.recovery_pool_pilot or args.matched_external:
+    if args.risk_screen_fork and args.checkpoint not in (16, 32):
+        parser.error("The risk-screen fork supports checkpoints 16 and 32")
+    if args.recovery_pool_pilot or args.matched_external or args.risk_screen_fork:
         args.cold_baselines = True
     if args.checkpoint is None:
         args.checkpoint = COLD_CHECKPOINT if args.cold_baselines else INITIAL

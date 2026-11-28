@@ -59,7 +59,32 @@ def ordered_branches(candidates, scores, space, centers, quota, reserve):
     return [leaders[key] for key in selected + [key for key in order if key not in selected]]
 
 
-def configure_native_search(optimizer, *, reserve, joint_final=False, audit=False, force_weighted=False):
+def posterior_screen(native, candidates, scores, surrogate, rep, *, screen_after):
+    original = int(np.argmax(np.where(np.isfinite(scores), scores, -np.inf)))
+    if len(native.observations) < screen_after:
+        return original, {"mode": "joint_score_only"}
+    # The two audited marginals are evaluated on the actual final pool.
+    # Reuse the frozen joint ranking among designs passing both medians.
+    engineering = surrogate.native
+    energy = getattr(engineering, "energy", None)
+    raw = engineering.native if energy is not None else engineering
+    stall = raw.constraints.get("stall_speed")
+    if energy is None or stall is None:
+        return original, {"mode": "missing_screen_model"}
+    with torch.no_grad():
+        x = rep.features(candidates)
+        energy_ok = (energy.log_probability(x).reshape(-1) >= np.log(0.5)).numpy()
+        model, threshold = stall
+        post = model.posterior(((x - raw.offset) / raw.scale).unsqueeze(-2))
+        stall_ok = (post.mean.reshape(-1) <= threshold).numpy()
+    mask = np.isfinite(scores) & energy_ok & stall_ok
+    selected = int(np.argmax(np.where(mask, scores, -np.inf))) if mask.any() else original
+    return selected, {"mode": "posterior_median_screen", "passing": int(mask.sum()),
+                      "original_candidate": native.space.key(candidates[original]),
+                      "changed": original != selected}
+
+
+def configure_native_search(optimizer, *, reserve, joint_final=False, audit=False, force_weighted=False, screen_after=None):
     """Adapt only the pinned method; do not patch the physical module or other arms."""
     original = type(optimizer).propose
     source = dedent(inspect.getsource(original))
@@ -80,6 +105,12 @@ def configure_native_search(optimizer, *, reserve, joint_final=False, audit=Fals
             '        challenger = {"mode": "joint_score_only"}\n'
             '    elif self.settings.screen_solver_risk:\n        index, screening = select_candidate',
     }
+    if screen_after is not None:
+        key = '    if self.settings.screen_solver_risk:\n        index, screening = select_candidate'
+        changes[key] = changes[key].replace(
+            'index = int(np.argmax(np.where(np.isfinite(scores), scores, -np.inf)))',
+            'index, audit_screen = _posterior_screen(self, candidates, scores, surrogate, rep)')
+        changes[key] = changes[key].replace('screening = {"mode": "joint_score_only"}', 'screening = audit_screen')
     for before, after in changes.items():
         if source.count(before) != 1:
             raise ValueError("Frozen native propose layout differs from the audited hook")
@@ -111,6 +142,9 @@ def configure_native_search(optimizer, *, reserve, joint_final=False, audit=Fals
     globals_with_hooks = dict(original.__globals__, _branch_order=branch_order, _raw_scores=raw_scores,
                               _joint_final=lambda: joint_final and trace.get("weighted", False),
                               _force_weighted=lambda: force_weighted and trace.get("has_refinement", False))
+    if screen_after is not None:
+        from functools import partial
+        globals_with_hooks["_posterior_screen"] = partial(posterior_screen, screen_after=screen_after)
     namespace = {}
     exec(compile(source, inspect.getfile(original), "exec"), globals_with_hooks, namespace)
     adapted = namespace["propose"]
