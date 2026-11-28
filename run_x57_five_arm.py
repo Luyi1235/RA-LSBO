@@ -291,13 +291,16 @@ def freeze(args, output):
     if len(confirmation_ids) != 4 or not confirmation_ids <= historical_ids:
         raise ValueError("Expected four charged confirmation candidates in the exclusions")
     fork = getattr(args, "risk_screen_fork", False)
-    matched = getattr(args, "matched_external", False) or fork
+    long_pair = getattr(args, "long_pair", False)
+    matched = getattr(args, "matched_external", False) or fork or long_pair
     if matched:
         seeds, arms, initial_count = RECOVERY_SEEDS, COLD_EXTERNAL, ARCHIVED_INITIAL
         archived, reused = archived_initial(args.initial_replay, problem, seeds=seeds,
                                           hashes=RECOVERY_HASHES, reference=RECOVERY_RESULT)
         rosters = archived["rosters"]
-        if fork:
+        if long_pair:
+            arms = ("lsbo_full_budget", "ra_lsbo_energy_interval")
+        elif fork:
             arms = ("ra_lsbo_energy_interval",)
     elif args.cold_baselines:
         seeds = COLD_SEEDS if args.execute_rcaide else COLD_SEEDS[:1]
@@ -344,7 +347,9 @@ def freeze(args, output):
         plan.update(schema="x57_recovery_matched_external_v1",
                     reused_shared_prefix={"commit": RECOVERY_RESULT, "hashes": RECOVERY_HASHES,
                                           "per_seed": ARCHIVED_INITIAL})
-        if fork:
+        if long_pair:
+            plan.update(schema="x57_long_pair_v1", common_prefix=32, checkpoints=[32, 64, 128, 320])
+        elif fork:
             plan.update(schema="x57_posterior_screen_fork_v1", common_prefix=16, screened_probability=0.5)
     elif getattr(args, "recovery_pool_pilot", False):
         plan.update(schema="x57_recovery_pool_pilot_v1", shared_max_workers=min(4, args.workers))
@@ -372,14 +377,15 @@ class Campaign:
         self.prefix = {}
         self.reference_online = {}
         self.matched_feedback = {}
-        if plan.get("common_prefix") == 16:
+        self.prefix_end = plan.get("common_prefix", 0)
+        if self.prefix_end:
             for event in read_events(args.initial_replay / "calls.jsonl"):
                 if (event["event"] == "settled" and event["arm"] in self.arms
-                        and self.initial_count < event["evaluation"] <= 16):
+                        and self.initial_count < event["evaluation"] <= self.prefix_end):
                     self.prefix[event["task_id"]] = event
-                elif (event["event"] == "settled" and event["arm"] in self.arms and event["evaluation"] > 16):
+                elif (event["event"] == "settled" and event["arm"] in self.arms and event["evaluation"] > self.prefix_end):
                     self.reference_online[event["task_id"]] = event
-            if len(self.prefix) != len(plan["seeds"]) * (16 - self.initial_count):
+            if len(self.prefix) != len(plan["seeds"]) * len(self.arms) * (self.prefix_end - self.initial_count):
                 raise ValueError("Incomplete archived online prefix")
             self.cap -= len(self.prefix)
         self.progress = CampaignProgress(total, shared_total, args.workers)
@@ -393,7 +399,7 @@ class Campaign:
                 or candidate != point.to_dict()
                 or (online and key in self.plan["confirmation_exclusions"])):
             raise ValueError(f"Candidate failed dispatch identity or eligibility checks: {job}")
-        if self.prefix and online and evaluation <= 16:
+        if self.prefix and online and evaluation <= self.prefix_end:
             r = self.prefix[job]
             if (r["candidate_id"], r["candidate"], r["phase"], r["charged"]) != (key, candidate, phase, True):
                 raise RuntimeError(f"Archived prefix proposal differs at {job}")
@@ -467,7 +473,7 @@ class Campaign:
             with TemporaryDirectory(dir=self.output, prefix="optimizer-") as temp:
                 adapter = FormalNative(self.problem, arm, seed, initial, Path(temp) / "native")
 
-                if self.prefix:
+                if self.plan.get("schema") == "x57_posterior_screen_fork_v1":
                     from ra_lsbo.x57_native_slot import configure_native_search
                     configure_native_search(adapter.optimizer, reserve=True, joint_final=True,
                                             force_weighted=True, screen_after=16)
@@ -759,7 +765,7 @@ def run(args):
             msvcrt.locking(lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         print("[prepare] Verifying the worker and building the frozen roster", flush=True)
         plan, problem, worker, reused = freeze(args, args.output)
-        external_arms = () if (getattr(args, "recovery_pool_pilot", False) or getattr(args, "risk_screen_fork", False)) else (COLD_EXTERNAL if cold else EXTERNAL)
+        external_arms = () if (getattr(args, "recovery_pool_pilot", False) or getattr(args, "risk_screen_fork", False) or getattr(args, "long_pair", False)) else (COLD_EXTERNAL if cold else EXTERNAL)
         services = {arm: ExternalService(args.external_python, problem.base, problem.config_path,
                                          args.output, arm, stack, cold=cold, mock=cold and not args.execute_rcaide)
                     for arm in external_arms}
@@ -803,15 +809,18 @@ def main():
     profile = parser.add_mutually_exclusive_group()
     profile.add_argument("--recovery-pool-pilot", action="store_true")
     profile.add_argument("--risk-screen-fork", action="store_true")
+    profile.add_argument("--long-pair", action="store_true")
     profile.add_argument("--matched-external", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--execute-rcaide", action="store_true")
     args = parser.parse_args()
-    if (args.matched_external or args.risk_screen_fork) and (args.initial_replay is None or not args.execute_rcaide):
+    if (args.matched_external or args.risk_screen_fork or args.long_pair) and (args.initial_replay is None or not args.execute_rcaide):
         parser.error("--matched-external requires the archived --initial-replay and --execute-rcaide")
     if args.risk_screen_fork and args.checkpoint not in (16, 32):
         parser.error("The risk-screen fork supports checkpoints 16 and 32")
-    if args.recovery_pool_pilot or args.matched_external or args.risk_screen_fork:
+    if args.long_pair and args.checkpoint not in (32, 64, 128, 320):
+        parser.error("The long paired comparison uses checkpoints 32, 64, 128, 320")
+    if args.recovery_pool_pilot or args.matched_external or args.risk_screen_fork or args.long_pair:
         args.cold_baselines = True
     if args.checkpoint is None:
         args.checkpoint = COLD_CHECKPOINT if args.cold_baselines else INITIAL
